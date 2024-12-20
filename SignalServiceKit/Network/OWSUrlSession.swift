@@ -375,7 +375,7 @@ public class OWSURLSession: NSObject, OWSURLSessionProtocol {
 
                     if requestConfig.failOnError,
                        !error.isUnknownDomainError {
-                        owsFailDebugUnlessNetworkFailure(error)
+                       // owsFailDebugUnlessNetworkFailure(error)
                     } else {
                         Logger.error("Request failed: \(error)")
                     }

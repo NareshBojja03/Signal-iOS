@@ -159,21 +159,21 @@ public struct MrEnclave: Equatable {
 
 private class TSConstantsProduction: TSConstantsProtocol {
 
-    public let mainServiceIdentifiedURL = "https://chat.signal.org"
-    public let mainServiceUnidentifiedURL = "https://ud-chat.signal.org"
-    public let textSecureCDN0ServerURL = "https://cdn.signal.org"
-    public let textSecureCDN2ServerURL = "https://cdn2.signal.org"
-    public let textSecureCDN3ServerURL = "https://cdn3.signal.org"
-    public let contactDiscoveryV2URL = "wss://cdsi.signal.org"
-    public let storageServiceURL = "https://storage.signal.org"
+    public let mainServiceIdentifiedURL = "https://signalserver.valuelabs.com"
+    public let mainServiceUnidentifiedURL = "https://signalserver.valuelabs.com"
+    public let textSecureCDN0ServerURL = "https://signalserver.valuelabs.com"
+    public let textSecureCDN2ServerURL = "https://signalserver.valuelabs.com"
+    public let textSecureCDN3ServerURL = "https://signalserver.valuelabs.com"
+    public let contactDiscoveryV2URL = "https://signalserver.valuelabs.com"
+    public let storageServiceURL = "https://signalserver.valuelabs.com"
     public let sfuURL = "https://sfu.voip.signal.org"
     public let sfuTestURL = "https://sfu.test.voip.signal.org"
-    public let svr2URL = "wss://svr2.signal.org"
+    public let svr2URL = "http://20.51.153.185:8075"
     public let registrationCaptchaURL = "https://signalcaptchas.org/registration/generate.html"
     public let challengeCaptchaURL = "https://signalcaptchas.org/challenge/generate.html"
-    public let kUDTrustRoot = "BXu6QIKVz5MA8gstzfOgRQGqyLqOwNKHL6INkv3IHWMF"
-    public let updatesURL = "https://updates.signal.org"
-    public let updates2URL = "https://updates2.signal.org"
+    public let kUDTrustRoot = "BW+C65EBsBxrWnW1BLHv9lhELIknD6UbF1xGv6CAvFFJ"
+    public let updatesURL = "https://signalserver.valuelabs.com"
+    public let updates2URL = "https://signalserver.valuelabs.com"
 
     public let censorshipReflectorHost = "reflector-nrgwuv7kwq-uc.a.run.app"
 
@@ -187,7 +187,7 @@ private class TSConstantsProduction: TSConstantsProtocol {
 
     public let contactDiscoveryV2MrEnclave = MrEnclave("0f6fd79cdfdaa5b2e6337f534d3baf999318b0c462a7ac1f41297a3e4b424a57")
 
-    public let svr2Enclave = MrEnclave("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97")
+    public let svr2Enclave = MrEnclave("9314436a9a144992bb3680770ea5fd7934a7ffd29257844a33763a238903d570")
 
     // An array of previously used enclaves that we should try and restore
     // key material from during registration. These must be ordered from
@@ -200,11 +200,11 @@ private class TSConstantsProduction: TSConstantsProtocol {
     /// We *might* need to clear credentials (or perform some other migration)
     /// when this value changes, depending on how it's changing. If you do need
     /// to perform a migration, check out `ZkParamsMigrator`.
-    public let serverPublicParamsBase64 = "AMhf5ywVwITZMsff/eCyudZx9JDmkkkbV6PInzG4p8x3VqVJSFiMvnvlEKWuRob/1eaIetR31IYeAbm0NdOuHH8Qi+Rexi1wLlpzIo1gstHWBfZzy1+qHRV5A4TqPp15YzBPm0WSggW6PbSn+F4lf57VCnHF7p8SvzAA2ZZJPYJURt8X7bbg+H3i+PEjH9DXItNEqs2sNcug37xZQDLm7X36nOoGPs54XsEGzPdEV+itQNGUFEjY6X9Uv+Acuks7NpyGvCoKxGwgKgE5XyJ+nNKlyHHOLb6N1NuHyBrZrgtY/JYJHRooo5CEqYKBqdFnmbTVGEkCvJKxLnjwKWf+fEPoWeQFj5ObDjcKMZf2Jm2Ae69x+ikU5gBXsRmoF94GXTLfN0/vLt98KDPnxwAQL9j5V1jGOY8jQl6MLxEs56cwXN0dqCnImzVH3TZT1cJ8SW1BRX6qIVxEzjsSGx3yxF3suAilPMqGRp4ffyopjMD1JXiKR2RwLKzizUe5e8XyGOy9fplzhw3jVzTRyUZTRSZKkMLWcQ/gv0E4aONNqs4P+NameAZYOD12qRkxosQQP5uux6B2nRyZ7sAV54DgFyLiRcq1FvwKw2EPQdk4HDoePrO/RNUbyNddnM/mMgj4FW65xCoT1LmjrIjsv/Ggdlx46ueczhMgtBunx1/w8k8V+l8LVZ8gAT6wkU5J+DPQalQguMg12Jzug3q4TbdHiGCmD9EunCwOmsLuLJkz6EcSYXtrlDEnAM+hicw7iergYLLlMXpfTdGxJCWJmP4zqUFeTTmsmhsjGBt7NiEB/9pFFEB3pSbf4iiUukw63Eo8Aqnf4iwob6X1QviCWuc8t0LUlT9vALgh/f2DPVOOmR0RW6bgRvc7DSF20V/omg+YBw=="
+    public let serverPublicParamsBase64 = "AHBctvoF/DduPLZqp5sRPK2N6Pwm71JdwyHluxl3+94iGMZ/OeJB8jG8n2Lr5msbSxZPnzBnd64HW1hbIIrre1QqHX4b2GnF4NVhhuwVZlZ8jYWhZAbDKX3V9zmq48qTHrr2PVHbTNWkwlX/eAlhHjfH6i4PutZHrKl1FJLtqtwTPDj2UUMNhcrtMyo7sgeE1WcPozbyjkAEOSL76m3LIk2+WuyZcTsMTuGHDCUenGisvxo5/s4sMR/5RwarGRnwV5oniX9t1Rxmk8xj/CChlsWNf1fwAIb9PDaUFoy3GCofLA97E3ScFlhF3U5/uivhyOvqDr6jXoA3wwoedEIErlVaOD6s+kBAbuSRSUDvc0+8TyiQHjnqUFwfg1U2a0n4fbJYBGIpdD7eJKa7PaG8PUFjcyUCZoIDxx4WmCPkKGwdrsZm67Ypn2fq8EaoGaDzX80eC31PGBqNkunnB6Kbt05uB8Fe6cAgvkfrSsqZwWgNwtdE4vy+ncsYvS7bh/nlB4LhOZrnO5512+XIHl1v54cBbyCG9gkAxiXfxxn8lU0m9pkBIqqIa7QPclHc769oyjdBnpjCiN8CcpoUvCZiQRfU3YRpzrqnIjI61e6gm6ngsuJlhJoonXDGeGPwhgv1dMBOsFilf80z4Oxm0uMKcGl3U0U7JKi+0UfkJAPzYvELJHiR69061saDn3RZQe1SQUJT2bfxBqeVnCd2O2QZOj34fIyOJHXjsamsLyZLcV7nahIE6oXqMA47wa9OOyp4Z46O1GTyd2amAYk93S1ejfk6a68uUdrygtKksgAIrplPYDD6/uAY5KGKJQj1H/aGvFnhp2jDGbBYAxjVqVWirnwOmpKd1qHLEFcCB/DGEFEF4//vxXTE2pUtOndUB1CRVA=="
 
     public let callLinkPublicParams = Data(base64Encoded: "AByD873dTilmOSG0TjKrvpeaKEsUmIO8Vx9BeMmftwUs9v7ikPwM8P3OHyT0+X3EUMZrSe9VUp26Wai51Q9I8mdk0hX/yo7CeFGJyzoOqn8e/i4Ygbn5HoAyXJx5eXfIbqpc0bIxzju4H/HOQeOpt6h742qii5u/cbwOhFZCsMIbElZTaeU+BWMBQiZHIGHT5IE0qCordQKZ5iPZom0HeFa8Yq0ShuEyAl0WINBiY6xE3H/9WnvzXBbMuuk//eRxXgzO8ieCeK8FwQNxbfXqZm6Ro1cMhCOF3u7xoX83QhpN")!
 
-    public let backupServerPublicParams = Data(base64Encoded: "AJwNSU55fsFCbgaxGRD11wO1juAs8Yr5GF8FPlGzzvdJJIKH5/4CC7ZJSOe3yL2vturVaRU2Cx0n751Vt8wkj1bozK3CBV1UokxV09GWf+hdVImLGjXGYLLhnI1J2TWEe7iWHyb553EEnRb5oxr9n3lUbNAJuRmFM7hrr0Al0F0wrDD4S8lo2mGaXe0MJCOM166F8oYRQqpFeEHfiLnxA1O8ZLh7vMdv4g9jI5phpRBTsJ5IjiJrWeP0zdIGHEssUeprDZ9OUJ14m0v61eYJMKsf59Bn+mAT2a7YfB+Don9O")!
+    public let backupServerPublicParams = Data(base64Encoded: "AFg3af7abUedXBmB39oxQYF+APteYotYXxwmsmqsSo9CLh1/3Xyt+shHBPxx+BmQz3lbDJrJNe0aHAS2nmeaskGe7bjPJQw+Zy19mwnN6fDN6XwGUdDxgC9/aFJra9pgSPZUtZRIP/ZXT2BKzK7e9BQyLgsQNgWJrmxUCYDNMs03OgylIHswrhm4FY1eDoRpPQ2WpMSL/LI2i+tL8EZJhiDyzoihSJxLD00qBFszLh/BlQUFrYkotdV5GrNzt4NVbBa/fWm6kK9pN+6HrA+fZWA+qn85OmK1ku+5QeG+WKBU")!
 }
 
 // MARK: - Staging

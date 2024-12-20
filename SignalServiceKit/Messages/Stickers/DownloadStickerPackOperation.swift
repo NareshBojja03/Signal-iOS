@@ -29,48 +29,52 @@ class DownloadStickerPackOperation: CDNDownloadOperation {
 
     override public func run() {
 
-        if let stickerPack = StickerManager.fetchStickerPack(stickerPackInfo: stickerPackInfo) {
-            success(stickerPack)
-            self.reportSuccess()
-            return
-        }
-
+       // success()
+        self.reportSuccess()
+        return
+        
+//        if let stickerPack = StickerManager.fetchStickerPack(stickerPackInfo: stickerPackInfo) {
+//            success(stickerPack)
+//            self.reportSuccess()
+//            return
+//        }
+        
         // https://cdn.signal.org/stickers/<pack_id>/manifest.proto
-        let urlPath = "stickers/\(stickerPackInfo.packId.hexadecimalString)/manifest.proto"
-
-        firstly {
-            try tryToDownload(urlPath: urlPath, maxDownloadSize: kMaxStickerPackDownloadSize)
-        }.done(on: DispatchQueue.global()) { [weak self] (url: URL) in
-            guard let self = self else {
-                return
-            }
-
-            do {
-                let url = try StickerManager.decrypt(at: url, packKey: self.stickerPackInfo.packKey)
-                let plaintext = try Data(contentsOf: url)
-
-                let stickerPack = try self.parseStickerPackManifest(stickerPackInfo: self.stickerPackInfo,
-                                                                    manifestData: plaintext)
-
-                self.success(stickerPack)
-                self.reportSuccess()
-            } catch {
-                owsFailDebug("Decryption failed: \(error)")
-
-                self.markUrlPathAsCorrupt(urlPath)
-
-                // Fail immediately; do not retry.
-                return self.reportError(SSKUnretryableError.stickerDecryptionFailure)
-            }
-        }.catch(on: DispatchQueue.global()) { [weak self] error in
-            guard let self = self else {
-                return
-            }
-            if error.hasFatalHttpStatusCode() {
-                StickerManager.markStickerPackAsMissing(stickerPackInfo: self.stickerPackInfo)
-            }
-            return self.reportError(withUndefinedRetry: error)
-        }
+//        let urlPath = "stickers/\(stickerPackInfo.packId.hexadecimalString)/manifest.proto"
+//
+//        firstly {
+//            try tryToDownload(urlPath: urlPath, maxDownloadSize: kMaxStickerPackDownloadSize)
+//        }.done(on: DispatchQueue.global()) { [weak self] (url: URL) in
+//            guard let self = self else {
+//                return
+//            }
+//
+//            do {
+//                let url = try StickerManager.decrypt(at: url, packKey: self.stickerPackInfo.packKey)
+//                let plaintext = try Data(contentsOf: url)
+//
+//                let stickerPack = try self.parseStickerPackManifest(stickerPackInfo: self.stickerPackInfo,
+//                                                                    manifestData: plaintext)
+//
+//                self.success(stickerPack)
+//                self.reportSuccess()
+//            } catch {
+//                owsFailDebug("Decryption failed: \(error)")
+//
+//                self.markUrlPathAsCorrupt(urlPath)
+//
+//                // Fail immediately; do not retry.
+//                return self.reportError(SSKUnretryableError.stickerDecryptionFailure)
+//            }
+//        }.catch(on: DispatchQueue.global()) { [weak self] error in
+//            guard let self = self else {
+//                return
+//            }
+//            if error.hasFatalHttpStatusCode() {
+//                StickerManager.markStickerPackAsMissing(stickerPackInfo: self.stickerPackInfo)
+//            }
+//            return self.reportError(withUndefinedRetry: error)
+//        }
     }
 
     private func parseStickerPackManifest(stickerPackInfo: StickerPackInfo,

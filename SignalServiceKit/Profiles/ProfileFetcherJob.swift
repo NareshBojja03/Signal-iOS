@@ -147,6 +147,10 @@ public class ProfileFetcherJob {
                             auth: self.authedAccount.chatServiceAuth
                         )
                         currentVersionedProfileRequest = request
+                        print("currentVersionedProfileRequest \(String(describing: currentVersionedProfileRequest))")
+                        print("request \(aci)")
+                        print("request \(self.authedAccount.chatServiceAuth)")
+
                         return request.request
                     } catch {
                         owsFailDebug("Error: \(error)")
@@ -346,12 +350,12 @@ public class ProfileFetcherJob {
                 tx: SDSDB.shimOnlyBridge(transaction)
             )
 
-            self.updateCapabilitiesIfNeeded(
-                serviceId: serviceId,
-                fetchedCapabilities: fetchedProfile.profile.capabilities,
-                localIdentifiers: localIdentifiers,
-                tx: transaction
-            )
+//            self.updateCapabilitiesIfNeeded(
+//                serviceId: serviceId,
+//                fetchedCapabilities: fetchedProfile.profile.capabilities,
+//                localIdentifiers: localIdentifiers,
+//                tx: transaction
+//            )
 
             if localIdentifiers.contains(serviceId: serviceId) {
                 self.reconcileLocalProfileIfNeeded(fetchedProfile: fetchedProfile)

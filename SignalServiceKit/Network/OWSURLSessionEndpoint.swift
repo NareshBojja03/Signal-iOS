@@ -43,6 +43,7 @@ public class OWSURLSessionEndpoint {
         guard let url = buildUrl(urlString, overrideUrlScheme: overrideUrlScheme) else {
             throw OWSAssertionError("Invalid url.")
         }
+        print("FETCHH \(url)")
         var request = URLRequest(url: url)
         request.httpMethod = method.methodName
 

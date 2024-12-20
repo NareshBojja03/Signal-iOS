@@ -861,7 +861,7 @@ extension OWSTableViewController2: UITableViewDataSource, UITableViewDelegate, O
         } else if let headerTitle = section.headerTitle, !headerTitle.isEmpty {
             // Get around a bug sizing UITextView in iOS 16/17 by manually sizing instead
             // of relying on UITableView.automaticDimension
-            if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
+          //  if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
             let insets = headerTextContainerInsets(for: section)
             // Reuse sizing code for CVText even though we aren't using a CVText here.
             let height = CVText.measureLabel(
@@ -879,7 +879,7 @@ extension OWSTableViewController2: UITableViewDataSource, UITableViewDelegate, O
         } else if let headerTitle = section.headerAttributedTitle, !headerTitle.isEmpty {
             // Get around a bug sizing UITextView in iOS 16/17 by manually sizing instead
             // of relying on UITableView.automaticDimension
-            if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
+          // if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
             let insets = headerTextContainerInsets(for: section)
             // Reuse sizing code for CVText even though we aren't using a CVText here.
             let height = CVText.measureLabel(
@@ -914,7 +914,7 @@ extension OWSTableViewController2: UITableViewDataSource, UITableViewDelegate, O
         } else if let footerTitle = section.footerTitle, !footerTitle.isEmpty {
             // Get around a bug sizing UITextView in iOS 16/17 by manually sizing instead
             // of relying on UITableView.automaticDimension
-            if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
+          //  if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
             let insets = footerTextContainerInsets(for: section)
             // Reuse sizing code for CVText even though we aren't using a CVText here.
             let height = CVText.measureLabel(
@@ -932,7 +932,7 @@ extension OWSTableViewController2: UITableViewDataSource, UITableViewDelegate, O
         } else if let footerTitle = section.footerAttributedTitle, !footerTitle.isEmpty {
             // Get around a bug sizing UITextView in iOS 16/17 by manually sizing instead
             // of relying on UITableView.automaticDimension
-            if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
+        //    if #available(iOS 18, *) { owsFailDebug("Canary to check if this has been fixed") }
             let insets = footerTextContainerInsets(for: section)
             // Reuse sizing code for CVText even though we aren't using a CVText here.
             let height = CVText.measureLabel(

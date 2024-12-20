@@ -317,14 +317,18 @@ public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedP
     }
 
     public func didFetchProfile(profile: SignalServiceProfile, profileRequest: VersionedProfileRequest) async {
+        print("FETCHH profile\(profile)")
+        print("FETCHH profile\(profileRequest)")
         do {
             guard let profileRequest = profileRequest as? VersionedProfileRequestImpl else {
+                print("FETCHH profile\(profileRequest)")
                 return
             }
             guard let credentialResponseData = profile.credential else {
                 return
             }
             guard credentialResponseData.count > 0 else {
+                print("FETCHH credentialResponseData\(credentialResponseData)")
                 throw OWSAssertionError("Invalid credential response.")
             }
             guard let requestContext = profileRequest.requestContext else {
@@ -332,20 +336,28 @@ public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedP
             }
 
             let credentialResponse = try ExpiringProfileKeyCredentialResponse(contents: [UInt8](credentialResponseData))
+            print("credentialResponse \(credentialResponse)")
+
             let clientZkProfileOperations = try self.clientZkProfileOperations()
+            print("credentialResponse \(clientZkProfileOperations)")
+
             let profileKeyCredential = try clientZkProfileOperations.receiveExpiringProfileKeyCredential(
                 profileKeyCredentialRequestContext: requestContext,
                 profileKeyCredentialResponse: credentialResponse
             )
+            print("profileKeyCredential \(profileKeyCredential)")
 
             guard let requestProfileKey = profileRequest.profileKey else {
                 throw OWSAssertionError("Missing profile key for credential from versioned profile fetch.")
             }
 
+            print("profileKeyCredential \(requestProfileKey)")
+
             // ACI TODO: This must be an Aci, but the compiler loses type information. Fix that.
             guard let aci = profile.serviceId as? Aci else {
                 throw OWSAssertionError("Missing ACI.")
             }
+            print("aci \(aci)")
 
             try await databaseStorage.awaitableWrite { tx throws in
                 guard let currentProfileKey = self.profileManager.profileKey(for: SignalServiceAddress(aci), transaction: tx) else {
