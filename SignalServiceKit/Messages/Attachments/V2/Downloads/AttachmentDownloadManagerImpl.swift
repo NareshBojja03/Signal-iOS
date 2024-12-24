@@ -1126,7 +1126,8 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
                     guard let encodedKey = cdnKey.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else {
                         throw OWSAssertionError("Invalid cdnKey.")
                     }
-                    return "attachments/\(encodedKey)"
+                    return "pipeattachments/\(encodedKey)"
+                   // return "attachments/\(encodedKey)"
                 case
                         .mediaTierFullsize(let cdnCredential, let outerEncryptionMetadata, _, _),
                         .mediaTierThumbnail(let cdnCredential, let outerEncryptionMetadata, _):

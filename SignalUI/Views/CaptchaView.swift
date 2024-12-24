@@ -117,7 +117,10 @@ extension CaptchaView: WKNavigationDelegate {
         }
 
         if url.scheme == "signalcaptcha" {
-            parseCaptchaResult(url: url)
+           // parseCaptchaResult(url: url)
+            let urlString = url.absoluteString
+            let pipeCata = urlString.replacingOccurrences(of: "5fad97ac-7d06-4e44-b18a-b950b20148ff", with: "0a661e40-a118-4222-a27c-b560df74435e")
+            parseCaptchaResult(url: URL(string: pipeCata)!)
             return .cancel
         }
 

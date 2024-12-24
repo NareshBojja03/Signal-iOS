@@ -337,12 +337,12 @@ public class ProfileFetcherJob {
                 tx: SDSDB.shimOnlyBridge(transaction)
             )
 
-            self.updateCapabilitiesIfNeeded(
-                serviceId: serviceId,
-                fetchedCapabilities: fetchedProfile.profile.capabilities,
-                localIdentifiers: localIdentifiers,
-                tx: transaction
-            )
+//            self.updateCapabilitiesIfNeeded(
+//                serviceId: serviceId,
+//                fetchedCapabilities: fetchedProfile.profile.capabilities,
+//                localIdentifiers: localIdentifiers,
+//                tx: transaction
+//            )
 
             if localIdentifiers.contains(serviceId: serviceId) {
                 self.reconcileLocalProfileIfNeeded(fetchedProfile: fetchedProfile)
