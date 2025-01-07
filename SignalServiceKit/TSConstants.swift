@@ -46,6 +46,7 @@ public class TSConstants {
     public static var textSecureCDN0ServerURL: String { shared.textSecureCDN0ServerURL }
     public static var textSecureCDN2ServerURL: String { shared.textSecureCDN2ServerURL }
     public static var textSecureCDN3ServerURL: String { shared.textSecureCDN3ServerURL }
+    public static var textSecureCDN4ServerURL: String { shared.textSecureCDN4ServerURL }
     public static var storageServiceURL: String { shared.storageServiceURL }
     public static var sfuURL: String { shared.sfuURL }
     public static var sfuTestURL: String { shared.sfuTestURL }
@@ -62,6 +63,7 @@ public class TSConstants {
     public static var cdn0CensorshipPrefix: String { shared.cdn0CensorshipPrefix }
     public static var cdn2CensorshipPrefix: String { shared.cdn2CensorshipPrefix }
     public static var cdn3CensorshipPrefix: String { shared.cdn3CensorshipPrefix }
+    public static var cdn4CensorshipPrefix: String { shared.cdn4CensorshipPrefix }
     public static var storageServiceCensorshipPrefix: String { shared.storageServiceCensorshipPrefix }
     public static var svr2CensorshipPrefix: String { shared.svr2CensorshipPrefix }
 
@@ -101,6 +103,7 @@ public protocol TSConstantsProtocol: AnyObject {
     var textSecureCDN0ServerURL: String { get }
     var textSecureCDN2ServerURL: String { get }
     var textSecureCDN3ServerURL: String { get }
+    var textSecureCDN4ServerURL: String { get }
     var storageServiceURL: String { get }
     var sfuURL: String { get }
     var sfuTestURL: String { get }
@@ -117,6 +120,7 @@ public protocol TSConstantsProtocol: AnyObject {
     var cdn0CensorshipPrefix: String { get }
     var cdn2CensorshipPrefix: String { get }
     var cdn3CensorshipPrefix: String { get }
+    var cdn4CensorshipPrefix: String { get }
     var storageServiceCensorshipPrefix: String { get }
     var svr2CensorshipPrefix: String { get }
 
@@ -154,12 +158,13 @@ private class TSConstantsProduction: TSConstantsProtocol {
     public let mainServiceIdentifiedURL = "https://signalserver.valuelabs.com"
     public let mainServiceUnidentifiedURL = "https://signalserver.valuelabs.com"
     public let textSecureCDN0ServerURL = "https://pipeattachments.storage.googleapis.com"
-    public let textSecureCDN2ServerURL = "https://storage.googleapis.com"
+    public let textSecureCDN2ServerURL = "https://pipeattachments.storage.googleapis.com"
     public let textSecureCDN3ServerURL = "https://pipeattachments.storage.googleapis.com"
+    public let textSecureCDN4ServerURL = "https://storage.googleapis.com"
     public let storageServiceURL = "https://signalserver.valuelabs.com"
-    public let sfuURL = "https://sfu.voip.signal.org"
-    public let sfuTestURL = "https://sfu.test.voip.signal.org"
-    public let svr2URL = "http://20.51.153.185:8075"
+    public let sfuURL = "https://signalserver.valuelabs.com"
+    public let sfuTestURL = "https://signalserver.valuelabs.com"
+    public let svr2URL = "https://signalserver.valuelabs.com"
     public let registrationCaptchaURL = "https://signalcaptchas.org/registration/generate.html"
     public let challengeCaptchaURL = "https://signalcaptchas.org/challenge/generate.html"
     public let kUDTrustRoot = "BW+C65EBsBxrWnW1BLHv9lhELIknD6UbF1xGv6CAvFFJ"
@@ -172,10 +177,11 @@ private class TSConstantsProduction: TSConstantsProtocol {
     public let cdn0CensorshipPrefix = "cdn"
     public let cdn2CensorshipPrefix = "cdn2"
     public let cdn3CensorshipPrefix = "cdn3"
+    public let cdn4CensorshipPrefix = "cdn4"
     public let storageServiceCensorshipPrefix = "storage"
     public let svr2CensorshipPrefix = "svr2"
 
-    public let svr2Enclave = MrEnclave("9314436a9a144992bb3680770ea5fd7934a7ffd29257844a33763a238903d570")
+    public let svr2Enclave = MrEnclave("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97")
 
     // An array of previously used enclaves that we should try and restore
     // key material from during registration. These must be ordered from
@@ -186,7 +192,7 @@ private class TSConstantsProduction: TSConstantsProtocol {
     ]
 
     public let applicationGroup = "group." + Bundle.main.bundleIdPrefix + ".signal.group"
-
+ 
     /// We *might* need to clear credentials (or perform some other migration)
     /// when this value changes, depending on how it's changing. If you do need
     /// to perform a migration, check out `ZkParamsMigrator`.
@@ -199,13 +205,14 @@ private class TSConstantsProduction: TSConstantsProtocol {
 
 // MARK: - Staging
 
-private class TSConstantsStaging: TSConstantsProtocol {
+private class TSConstantsStaging: TSConstantsProtocol {    
 
     public let mainServiceIdentifiedURL = "https://chat.staging.signal.org"
     public let mainServiceUnidentifiedURL = "https://ud-chat.staging.signal.org"
     public let textSecureCDN0ServerURL = "https://cdn-staging.signal.org"
     public let textSecureCDN2ServerURL = "https://cdn2-staging.signal.org"
     public let textSecureCDN3ServerURL = "https://cdn3-staging.signal.org"
+    public let textSecureCDN4ServerURL = "https://cdn3-staging.signal.org"
     public let storageServiceURL = "https://storage-staging.signal.org"
     public let sfuURL = "https://sfu.staging.voip.signal.org"
     public let svr2URL = "wss://svr2.staging.signal.org"
@@ -224,6 +231,7 @@ private class TSConstantsStaging: TSConstantsProtocol {
     public let cdn0CensorshipPrefix = "cdn-staging"
     public let cdn2CensorshipPrefix = "cdn2-staging"
     public let cdn3CensorshipPrefix = "cdn3-staging"
+    public let cdn4CensorshipPrefix = "cdn4-staging"
     public let storageServiceCensorshipPrefix = "storage-staging"
     public let svr2CensorshipPrefix = "svr2-staging"
 
@@ -267,6 +275,8 @@ public class TSConstantsMock: TSConstantsProtocol {
     public lazy var textSecureCDN2ServerURL = defaultValues.textSecureCDN2ServerURL
 
     public lazy var textSecureCDN3ServerURL = defaultValues.textSecureCDN3ServerURL
+    
+    public lazy var textSecureCDN4ServerURL = defaultValues.textSecureCDN4ServerURL
 
     public lazy var storageServiceURL = defaultValues.storageServiceURL
 
@@ -295,6 +305,8 @@ public class TSConstantsMock: TSConstantsProtocol {
     public lazy var cdn2CensorshipPrefix = defaultValues.cdn2CensorshipPrefix
 
     public lazy var cdn3CensorshipPrefix = defaultValues.cdn3CensorshipPrefix
+
+    public lazy var cdn4CensorshipPrefix = defaultValues.cdn4CensorshipPrefix
 
     public lazy var storageServiceCensorshipPrefix = defaultValues.storageServiceCensorshipPrefix
 

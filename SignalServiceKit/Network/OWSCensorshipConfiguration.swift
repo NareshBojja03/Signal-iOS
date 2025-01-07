@@ -109,6 +109,8 @@ struct OWSCensorshipConfiguration {
                 return "cdn2.signal.org.global.prod.fastly.net"
             case .cdn3:
                 return "cdn3-signal.global.ssl.fastly.net"
+            case .cdn4:
+                return "cdn2.signal.org.global.prod.fastly.net"
             case .updates, .updates2:
                 return nil
             case .svr2:

@@ -606,7 +606,7 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
                 }
                 downloadMetadata = .init(
                     mimeType: attachment.mimeType,
-                    cdnNumber: transitTierInfo.cdnNumber,
+                    cdnNumber: 4,
                     encryptionKey: transitTierInfo.encryptionKey,
                     source: .transitTier(
                         cdnKey: transitTierInfo.cdnKey,
@@ -620,14 +620,14 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
                     let cdnNumber = attachment.mediaTierInfo?.cdnNumber,
                     let mediaName = attachment.mediaName,
                     let encryptionMetadata = buildCdnEncryptionMetadata(mediaName: mediaName, type: .attachment),
-                    let cdnCredential = await fetchBackupCdnReadCredential(for: cdnNumber)
+                    let cdnCredential = await fetchBackupCdnReadCredential(for: 4)
                 else {
                     downloadMetadata = nil
                     break
                 }
                 downloadMetadata = .init(
                     mimeType: attachment.mimeType,
-                    cdnNumber: cdnNumber,
+                    cdnNumber: 4,
                     encryptionKey: attachment.encryptionKey,
                     source: .mediaTierFullsize(
                         cdnReadCredential: cdnCredential,
@@ -651,7 +651,7 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
                         mediaName: AttachmentBackupThumbnail.thumbnailMediaName(fullsizeMediaName: mediaName),
                         type: .thumbnail
                     ),
-                    let cdnReadCredential = await fetchBackupCdnReadCredential(for: cdnNumber)
+                    let cdnReadCredential = await fetchBackupCdnReadCredential(for: 4)
                 else {
                     downloadMetadata = nil
                     break
@@ -659,7 +659,7 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
 
                 downloadMetadata = .init(
                     mimeType: attachment.mimeType,
-                    cdnNumber: cdnNumber,
+                    cdnNumber: 4,
                     encryptionKey: attachment.encryptionKey,
                     source: .mediaTierThumbnail(
                         cdnReadCredential: cdnReadCredential,
@@ -692,6 +692,7 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
             }
 
             let pendingAttachment: PendingAttachment
+            print("DOWNLOADDDD \(downloadedFileUrl)")
             do {
                 pendingAttachment = try await decrypter.validateAndPrepare(
                     encryptedFileUrl: downloadedFileUrl,
@@ -1142,7 +1143,8 @@ public class AttachmentDownloadManagerImpl: AttachmentDownloadManager {
             case .backup(let info, _):
                 return UInt32(clamping: info.cdn)
             case .attachment(let metadata, _), .transientAttachment(let metadata, _):
-                return metadata.cdnNumber
+                print("MY CDN \(metadata)")
+                return 4
             }
         }
 
