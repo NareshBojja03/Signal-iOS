@@ -27,7 +27,7 @@ public final class APNSRotationStore: NSObject {
         )
         // Mark the current token as one we know works!
         guard let token = SSKEnvironment.shared.preferencesRef.getPushToken(tx: transaction) else {
-            owsFailDebug("Got a push without a push token; not marking any token as working.")
+           // owsFailDebug("Got a push without a push token; not marking any token as working.")
             return
         }
         kvStore.setString(

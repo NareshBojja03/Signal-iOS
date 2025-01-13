@@ -11,7 +11,7 @@ extension TSMessage {
     /// uses already-inserted messages, obviating the concern.
     public func hasRenderableContent(tx: SDSAnyReadTransaction) -> Bool {
         guard let rowId = self.sqliteRowId else {
-            owsFailDebug("Checking renderable content for uninserted message!")
+            Logger.warn("Checking renderable content for uninserted message!")
             return TSMessageBuilder.hasRenderableContent(
                 hasNonemptyBody: body?.nilIfEmpty != nil,
                 hasBodyAttachmentsOrOversizeText: false,
