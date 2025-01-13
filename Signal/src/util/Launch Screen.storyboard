@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23504" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="23094" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23506"/>
-        <capability name="Named colors" minToolsVersion="9.0"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="23084"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -22,13 +21,14 @@
                         <subviews>
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="signal-logo-128-launch-screen" translatesAutoresizingMaskIntoConstraints="NO" id="b92-yg-YYQ">
                                 <rect key="frame" x="132.66666666666666" y="362" width="127.99999999999997" height="128"/>
+                                <color key="tintColor" red="0.13333332540000001" green="0.25490197539999998" blue="0.93333333730000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="128" id="Xkq-NE-BxQ"/>
                                     <constraint firstAttribute="height" constant="128" id="vKA-H4-Kec"/>
                                 </constraints>
                             </imageView>
                         </subviews>
-                        <color key="backgroundColor" name="Signal/BackgroundLevels/backgroundBase"/>
+                        <color key="backgroundColor" red="0.13333332540000001" green="0.25490197539999998" blue="0.93333333730000001" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
                         <constraints>
                             <constraint firstItem="b92-yg-YYQ" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="3n6-fz-Z3k"/>
                             <constraint firstItem="b92-yg-YYQ" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="gMB-yR-CiP"/>
@@ -41,9 +41,6 @@
         </scene>
     </scenes>
     <resources>
-        <image name="signal-logo-128-launch-screen" width="128" height="128"/>
-        <namedColor name="Signal/BackgroundLevels/backgroundBase">
-            <color red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-        </namedColor>
+        <image name="signal-logo-128-launch-screen" width="1024" height="1024"/>
     </resources>
 </document>
