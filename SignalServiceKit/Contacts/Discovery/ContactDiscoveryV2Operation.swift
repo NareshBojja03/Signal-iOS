@@ -130,6 +130,7 @@ final class ContactDiscoveryV2Operation<ConnectionType: ContactDiscoveryConnecti
         self.remoteAttestation = remoteAttestation
     }
 
+    // Start from here to convert Old code from promises to Async Await
     func perform() async throws -> [ContactDiscoveryResult] {
         do {
             let cdsiAuth = try await self.remoteAttestation.authForCDSI().awaitable()

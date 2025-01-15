@@ -38,6 +38,7 @@ public enum SignalServiceType {
     case updates
     case updates2
     case svr2
+    case contactDiscoveryV2
 
     static func type(forCdnNumber cdnNumber: UInt32) -> SignalServiceType {
         switch cdnNumber {
@@ -186,6 +187,15 @@ extension SignalServiceType {
                 baseUrl: URL(string: TSConstants.svr2URL)!,
                 censorshipCircumventionSupported: true,
                 censorshipCircumventionPathPrefix: TSConstants.svr2CensorshipPrefix,
+                shouldUseSignalCertificate: true,
+                shouldHandleRemoteDeprecation: false,
+                type: self
+            )
+        case .contactDiscoveryV2:
+            return SignalServiceInfo(
+                baseUrl: URL(string: TSConstants.contactDiscoveryV2URL)!,
+                censorshipCircumventionSupported: true,
+                censorshipCircumventionPathPrefix: TSConstants.contactDiscoveryV2CensorshipPrefix,
                 shouldUseSignalCertificate: true,
                 shouldHandleRemoteDeprecation: false,
                 type: self
