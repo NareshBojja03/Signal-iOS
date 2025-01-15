@@ -31,6 +31,7 @@ public class TSRequest: NSMutableURLRequest {
     }
 
     public init(url: URL, method: String, parameters: [String: Any]?) {
+        print("FETCHH TS req \(url)")
         owsAssertDebug(method.isEmpty.negated)
 
         self.parameters = parameters ?? [:]

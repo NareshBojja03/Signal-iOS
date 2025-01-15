@@ -996,7 +996,7 @@ extension OWSContactsManager: ContactManager {
                 )
             }
         }.catch(on: swiftValues.intersectionQueue) { error in
-            owsFailDebug("Couldn't intersect contacts: \(error)")
+            //owsFailDebug("Couldn't intersect contacts: \(error)")
         }
     }
 

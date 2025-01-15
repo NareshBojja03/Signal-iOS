@@ -22,7 +22,8 @@ extension Bundle {
     @objc
     public var bundleIdPrefix: String {
         if let prefix = infoPlistString(for: Self.InfoPlistKey.bundleIdPrefix) {
-            return prefix
+            return "com.valuelabs.inhouse.App"
+            //return prefix
         } else {
             owsFailDebug("Missing Info.plist entry for OWSBundleIDPrefix")
             return "org.whispersystems"
