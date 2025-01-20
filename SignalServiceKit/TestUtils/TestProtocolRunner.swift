@@ -221,6 +221,7 @@ public struct LocalSignalClient: TestSignalClient {
         self.identity = identity
         self.protocolStore = SignalProtocolStoreImpl(
             for: identity,
+            keyValueStoreFactory: DependenciesBridge.shared.keyValueStoreFactory,
             recipientIdFinder: DependenciesBridge.shared.recipientIdFinder,
             remoteConfigProvider: SSKEnvironment.shared.remoteConfigManagerRef
         )

@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Bemutatkozik a „Híváslinkek” funkció: a hiányzó link a naptármeghívókhoz és a rögtönzött összejövetelekhez.
+• Mostantól gyorsan létrehozhatsz egy egyszerű linket, amellyel a Signal felhasználói csoportos híváshoz csatlakozhatnak anélkül, hogy először csatlakozniuk kellene egy csoportos Signal csevegéshez.
+• A híváslinkek újrafelhasználhatók, és ideálisak a legjobb barátaiddal való ismétlődő telefonrandikhoz vagy a munkatársaiddal való heti megbeszélésekhez.
+• A gyors megosztás érdekében kezelheted a híváslinkeket, szabályozhatod a jóváhagyási beállításokat, és a hívások lapról másolhatod a hivatkozásokat.

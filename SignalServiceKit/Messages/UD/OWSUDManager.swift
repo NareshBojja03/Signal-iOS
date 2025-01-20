@@ -60,9 +60,25 @@ extension UnidentifiedAccessMode: CustomStringConvertible {
 
 // MARK: -
 
-public struct OWSUDAccess {
-    let udAccessKey: SMKUDAccessKey
-    let udAccessMode: UnidentifiedAccessMode
+public class OWSUDAccess: NSObject {
+    public let udAccessKey: SMKUDAccessKey
+    public var senderKeyUDAccessKey: SMKUDAccessKey {
+        // If unrestricted, we use a zeroed out key instead of a random key
+        // This ensures we don't scribble over the rest of our composite key when talking to the multi_recipient endpoint
+        udAccessMode == .unrestricted ? .zeroedKey : udAccessKey
+    }
+
+    public let udAccessMode: UnidentifiedAccessMode
+
+    public let isRandomKey: Bool
+
+    public init(udAccessKey: SMKUDAccessKey,
+                udAccessMode: UnidentifiedAccessMode,
+                isRandomKey: Bool) {
+        self.udAccessKey = udAccessKey
+        self.udAccessMode = udAccessMode
+        self.isRandomKey = isRandomKey
+    }
 }
 
 // MARK: -
@@ -73,6 +89,20 @@ public class SenderCertificates: NSObject {
     init(defaultCert: SenderCertificate, uuidOnlyCert: SenderCertificate) {
         self.defaultCert = defaultCert
         self.uuidOnlyCert = uuidOnlyCert
+    }
+}
+
+// MARK: -
+
+public class OWSUDSendingAccess: NSObject {
+
+    public let udAccess: OWSUDAccess
+
+    public let senderCertificate: SenderCertificate
+
+    init(udAccess: OWSUDAccess, senderCertificate: SenderCertificate) {
+        self.udAccess = udAccess
+        self.senderCertificate = senderCertificate
     }
 }
 
@@ -122,8 +152,8 @@ public protocol OWSUDManager {
 
 public class OWSUDManagerImpl: NSObject, OWSUDManager {
 
-    private let keyValueStore = KeyValueStore(collection: "kUDCollection")
-    private let serviceIdAccessStore = KeyValueStore(collection: "kUnidentifiedAccessUUIDCollection")
+    private let keyValueStore = SDSKeyValueStore(collection: "kUDCollection")
+    private let serviceIdAccessStore = SDSKeyValueStore(collection: "kUnidentifiedAccessUUIDCollection")
 
     // MARK: Local Configuration State
 
@@ -193,9 +223,13 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
 
     // MARK: - Recipient state
 
+    private func randomUDAccessKey() -> SMKUDAccessKey {
+        return SMKUDAccessKey(randomKeyData: ())
+    }
+
     private func unidentifiedAccessMode(for serviceId: ServiceId, tx: SDSAnyReadTransaction) -> UnidentifiedAccessMode {
         let existingValue: UnidentifiedAccessMode? = {
-            guard let rawValue = serviceIdAccessStore.getInt(serviceId.serviceIdUppercaseString, transaction: tx.asV2Read) else {
+            guard let rawValue = serviceIdAccessStore.getInt(serviceId.serviceIdUppercaseString, transaction: tx) else {
                 return nil
             }
             return UnidentifiedAccessMode(rawValue: rawValue)
@@ -208,11 +242,11 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
         for serviceId: ServiceId,
         tx: SDSAnyWriteTransaction
     ) {
-        serviceIdAccessStore.setInt(mode.rawValue, key: serviceId.serviceIdUppercaseString, transaction: tx.asV2Write)
+        serviceIdAccessStore.setInt(mode.rawValue, key: serviceId.serviceIdUppercaseString, transaction: tx)
     }
 
     public func fetchAllAciUakPairs(tx: SDSAnyReadTransaction) -> [Aci: SMKUDAccessKey] {
-        let acis: [Aci] = serviceIdAccessStore.allKeys(transaction: tx.asV2Read).compactMap { serviceIdString in
+        let acis: [Aci] = serviceIdAccessStore.allKeys(transaction: tx).compactMap { serviceIdString in
             guard let aci = try? ServiceId.parseFrom(serviceIdString: serviceIdString) as? Aci else {
                 return nil
             }
@@ -246,30 +280,38 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
 
     // Returns the UD access key for sending to a given recipient or fetching a profile
     public func udAccess(for serviceId: ServiceId, tx: SDSAnyReadTransaction) -> OWSUDAccess? {
-        let accessKey: SMKUDAccessKey
         let accessMode = unidentifiedAccessMode(for: serviceId, tx: tx)
 
         switch accessMode {
         case .unrestricted:
-            accessKey = .zeroedKey
+            // Unrestricted users should use a random key.
+            let udAccessKey = randomUDAccessKey()
+            return OWSUDAccess(udAccessKey: udAccessKey, udAccessMode: accessMode, isRandomKey: true)
         case .unknown:
-            // If we're not sure, try our best to use the right key.
-            accessKey = udAccessKey(for: serviceId, tx: tx) ?? .zeroedKey
+            // Unknown users should use a derived key if possible,
+            // and otherwise use a random key.
+            if let udAccessKey = udAccessKey(for: serviceId, tx: tx) {
+                return OWSUDAccess(udAccessKey: udAccessKey, udAccessMode: accessMode, isRandomKey: false)
+            } else {
+                let udAccessKey = randomUDAccessKey()
+                return OWSUDAccess(udAccessKey: udAccessKey, udAccessMode: accessMode, isRandomKey: true)
+            }
         case .enabled:
-            guard let knownAccessKey = udAccessKey(for: serviceId, tx: tx) else {
-                // Shouldn't happen because we need a profile key to enable it.
+            guard let udAccessKey = udAccessKey(for: serviceId, tx: tx) else {
+                // Not an error.
+                // We can only use UD if the user has UD enabled _and_
+                // we know their profile key.
                 Logger.warn("Missing profile key for UD-enabled user: \(serviceId).")
                 return nil
             }
-            accessKey = knownAccessKey
+            return OWSUDAccess(udAccessKey: udAccessKey, udAccessMode: accessMode, isRandomKey: false)
         case .disabled:
             return nil
         }
-        return OWSUDAccess(udAccessKey: accessKey, udAccessMode: accessMode)
     }
 
     public func storyUdAccess() -> OWSUDAccess {
-        return OWSUDAccess(udAccessKey: .zeroedKey, udAccessMode: .unrestricted)
+        return OWSUDAccess(udAccessKey: randomUDAccessKey(), udAccessMode: .unrestricted, isRandomKey: true)
     }
 
     // MARK: - Sender Certificate
@@ -277,8 +319,8 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
     private func senderCertificate(aciOnly: Bool, certificateExpirationPolicy: OWSUDCertificateExpirationPolicy) -> SenderCertificate? {
         let (dateValue, dataValue) = SSKEnvironment.shared.databaseStorageRef.read { tx in
             return (
-                self.keyValueStore.getDate(self.senderCertificateDateKey(aciOnly: aciOnly), transaction: tx.asV2Read),
-                self.keyValueStore.getData(self.senderCertificateKey(aciOnly: aciOnly), transaction: tx.asV2Read)
+                self.keyValueStore.getDate(self.senderCertificateDateKey(aciOnly: aciOnly), transaction: tx),
+                self.keyValueStore.getData(self.senderCertificateKey(aciOnly: aciOnly), transaction: tx)
             )
         }
 
@@ -307,16 +349,16 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
 
     func setSenderCertificate(aciOnly: Bool, certificateData: Data) async {
         await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
-            self.keyValueStore.setDate(Date(), key: self.senderCertificateDateKey(aciOnly: aciOnly), transaction: tx.asV2Write)
-            self.keyValueStore.setData(certificateData, key: self.senderCertificateKey(aciOnly: aciOnly), transaction: tx.asV2Write)
+            self.keyValueStore.setDate(Date(), key: self.senderCertificateDateKey(aciOnly: aciOnly), transaction: tx)
+            self.keyValueStore.setData(certificateData, key: self.senderCertificateKey(aciOnly: aciOnly), transaction: tx)
         }
     }
 
     public func removeSenderCertificates(transaction: SDSAnyWriteTransaction) {
-        keyValueStore.removeValue(forKey: senderCertificateDateKey(aciOnly: true), transaction: transaction.asV2Write)
-        keyValueStore.removeValue(forKey: senderCertificateKey(aciOnly: true), transaction: transaction.asV2Write)
-        keyValueStore.removeValue(forKey: senderCertificateDateKey(aciOnly: false), transaction: transaction.asV2Write)
-        keyValueStore.removeValue(forKey: senderCertificateKey(aciOnly: false), transaction: transaction.asV2Write)
+        keyValueStore.removeValue(forKey: senderCertificateDateKey(aciOnly: true), transaction: transaction)
+        keyValueStore.removeValue(forKey: senderCertificateKey(aciOnly: true), transaction: transaction)
+        keyValueStore.removeValue(forKey: senderCertificateDateKey(aciOnly: false), transaction: transaction)
+        keyValueStore.removeValue(forKey: senderCertificateKey(aciOnly: false), transaction: transaction)
     }
 
     public func removeSenderCertificates(tx: DBWriteTransaction) {
@@ -430,12 +472,12 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
     }
 
     public func shouldAllowUnrestrictedAccessLocal(transaction: SDSAnyReadTransaction) -> Bool {
-        return self.keyValueStore.getBool(self.kUDUnrestrictedAccessKey, defaultValue: false, transaction: transaction.asV2Read)
+        return self.keyValueStore.getBool(self.kUDUnrestrictedAccessKey, defaultValue: false, transaction: transaction)
     }
 
     public func setShouldAllowUnrestrictedAccessLocal(_ value: Bool) {
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
-            self.keyValueStore.setBool(value, key: self.kUDUnrestrictedAccessKey, transaction: transaction.asV2Write)
+            self.keyValueStore.setBool(value, key: self.kUDUnrestrictedAccessKey, transaction: transaction)
         }
 
         // Try to update the account attributes to reflect this change.
@@ -453,7 +495,7 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
     private static var phoneNumberSharingModeKey: String { "phoneNumberSharingMode" }
 
     public func phoneNumberSharingMode(tx: DBReadTransaction) -> PhoneNumberSharingMode? {
-        guard let rawMode = keyValueStore.getInt(Self.phoneNumberSharingModeKey, transaction: tx) else {
+        guard let rawMode = keyValueStore.getInt(Self.phoneNumberSharingModeKey, transaction: SDSDB.shimOnlyBridge(tx)) else {
             return nil
         }
         return PhoneNumberSharingMode(rawValue: rawMode)
@@ -464,7 +506,7 @@ public class OWSUDManagerImpl: NSObject, OWSUDManager {
         updateStorageServiceAndProfile: Bool,
         tx: SDSAnyWriteTransaction
     ) {
-        keyValueStore.setInt(mode.rawValue, key: Self.phoneNumberSharingModeKey, transaction: tx.asV2Write)
+        keyValueStore.setInt(mode.rawValue, key: Self.phoneNumberSharingModeKey, transaction: tx)
 
         if updateStorageServiceAndProfile {
             tx.addSyncCompletion {

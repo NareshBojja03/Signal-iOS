@@ -76,7 +76,7 @@ public class PaymentsReconciliation {
         await Self.reconcileIfNecessary(transactionHistory: accountActivity)
     }
 
-    private static let schedulingStore = KeyValueStore(collection: "PaymentsReconciliation.schedulingStore")
+    private static let schedulingStore = SDSKeyValueStore(collection: "PaymentsReconciliation.schedulingStore")
     private static let successDateKey = "successDateKey"
     private static let lastKnownBlockCountKey = "lastKnownBlockCountKey"
     private static let lastKnownReceivedTXOCountKey = "lastKnownReceivedTXOCountKey"
@@ -89,7 +89,7 @@ public class PaymentsReconciliation {
     }
 
     private static func shouldReconcileByDate(transaction: SDSAnyReadTransaction) -> Bool {
-        guard let date = Self.schedulingStore.getDate(Self.successDateKey, transaction: transaction.asV2Read) else {
+        guard let date = Self.schedulingStore.getDate(Self.successDateKey, transaction: transaction) else {
             return true
         }
         let reconciliationInterval = kHourInterval * 1
@@ -114,17 +114,17 @@ public class PaymentsReconciliation {
 
         guard lastKnownBlockCount == Self.schedulingStore.getUInt64(Self.lastKnownBlockCountKey,
                                                                     defaultValue: 0,
-                                                                    transaction: transaction.asV2Read) else {
+                                                                    transaction: transaction) else {
             return true
         }
         guard spentTXOCount == Self.schedulingStore.getUInt(Self.lastKnownSpentTXOCountKey,
                                                             defaultValue: 0,
-                                                            transaction: transaction.asV2Read) else {
+                                                            transaction: transaction) else {
             return true
         }
         guard receivedTXOCount == Self.schedulingStore.getUInt(Self.lastKnownReceivedTXOCountKey,
                                                                defaultValue: 0,
-                                                               transaction: transaction.asV2Read) else {
+                                                               transaction: transaction) else {
             return true
         }
         return false
@@ -132,7 +132,10 @@ public class PaymentsReconciliation {
 
     private static func reconciliationDidSucceed(transaction: SDSAnyWriteTransaction,
                                                  transactionHistory: MCTransactionHistory) {
-        Self.schedulingStore.setDate(Date(), key: Self.successDateKey, transaction: transaction.asV2Write)
+        // TODO: Until reconciliation testing is complete, don't mark reconciliation as complete.
+        #if TESTABLE_BUILD
+        #else
+        Self.schedulingStore.setDate(Date(), key: Self.successDateKey, transaction: transaction)
 
         let lastKnownBlockCount = transactionHistory.blockCount
         let spentItemsCount = transactionHistory.spentItems.count
@@ -140,17 +143,18 @@ public class PaymentsReconciliation {
 
         Self.schedulingStore.setUInt64(lastKnownBlockCount,
                                        key: Self.lastKnownBlockCountKey,
-                                       transaction: transaction.asV2Write)
+                                       transaction: transaction)
         Self.schedulingStore.setInt(spentItemsCount,
                                     key: Self.lastKnownSpentTXOCountKey,
-                                    transaction: transaction.asV2Write)
+                                    transaction: transaction)
         Self.schedulingStore.setInt(receivedItemsCount,
                                     key: Self.lastKnownReceivedTXOCountKey,
-                                    transaction: transaction.asV2Write)
+                                    transaction: transaction)
+        #endif
     }
 
     public func scheduleReconciliationNow(transaction: SDSAnyWriteTransaction) {
-        Self.schedulingStore.removeAll(transaction: transaction.asV2Write)
+        Self.schedulingStore.removeAll(transaction: transaction)
 
         transaction.addAsyncCompletionOffMain {
             self.reconcileIfNecessary()

@@ -43,7 +43,7 @@ extension EmojiWithSkinTones {
 }
 
 extension Emoji {
-    private static let keyValueStore = KeyValueStore(collection: "Emoji+PreferredSkinTonePermutation")
+    private static let keyValueStore = SDSKeyValueStore(collection: "Emoji+PreferredSkinTonePermutation")
 
     static func allSendableEmojiByCategoryWithPreferredSkinTones(transaction: SDSAnyReadTransaction) -> [Category: [EmojiWithSkinTones]] {
         return Category.allCases.reduce(into: [Category: [EmojiWithSkinTones]]()) { result, category in
@@ -52,15 +52,18 @@ extension Emoji {
     }
 
     func withPreferredSkinTones(transaction: SDSAnyReadTransaction) -> EmojiWithSkinTones {
-        let rawSkinTones = Self.keyValueStore.getStringArray(rawValue, transaction: transaction.asV2Read)
-        return EmojiWithSkinTones(baseEmoji: self, skinTones: rawSkinTones?.compactMap { SkinTone(rawValue: $0) })
+        guard let rawSkinTones = Self.keyValueStore.getObject(forKey: rawValue, transaction: transaction) as? [String] else {
+            return EmojiWithSkinTones(baseEmoji: self, skinTones: nil)
+        }
+
+        return EmojiWithSkinTones(baseEmoji: self, skinTones: rawSkinTones.compactMap { SkinTone(rawValue: $0) })
     }
 
     func setPreferredSkinTones(_ preferredSkinTonePermutation: [SkinTone]?, transaction: SDSAnyWriteTransaction) {
         if let preferredSkinTonePermutation = preferredSkinTonePermutation {
-            Self.keyValueStore.setObject(preferredSkinTonePermutation.map { $0.rawValue }, key: rawValue, transaction: transaction.asV2Write)
+            Self.keyValueStore.setObject(preferredSkinTonePermutation.map { $0.rawValue }, key: rawValue, transaction: transaction)
         } else {
-            Self.keyValueStore.removeValue(forKey: rawValue, transaction: transaction.asV2Write)
+            Self.keyValueStore.removeValue(forKey: rawValue, transaction: transaction)
         }
     }
 

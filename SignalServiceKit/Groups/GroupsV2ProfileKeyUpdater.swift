@@ -57,7 +57,7 @@ class GroupsV2ProfileKeyUpdater {
     // MARK: -
 
     // Stores the list of v2 groups that we need to update with our latest profile key.
-    private let keyValueStore = KeyValueStore(collection: "GroupsV2ProfileKeyUpdater")
+    private let keyValueStore = SDSKeyValueStore(collection: "GroupsV2ProfileKeyUpdater")
 
     private func key(for groupId: Data) -> String {
         return groupId.hexadecimalString
@@ -107,7 +107,7 @@ class GroupsV2ProfileKeyUpdater {
         }
         let groupId = groupThread.groupModel.groupId
         let key = self.key(for: groupId)
-        self.keyValueStore.setData(groupId, key: key, transaction: transaction.asV2Write)
+        self.keyValueStore.setData(groupId, key: key, transaction: transaction)
     }
 
     public func processProfileKeyUpdates() {
@@ -169,7 +169,7 @@ class GroupsV2ProfileKeyUpdater {
 
             do {
                 let databaseStorage = SSKEnvironment.shared.databaseStorageRef
-                let groupIdKeys = databaseStorage.read(block: { self.keyValueStore.allKeys(transaction: $0.asV2Read) })
+                let groupIdKeys = databaseStorage.read(block: self.keyValueStore.allKeys(transaction:))
                 let taskQueue = ConcurrentTaskQueue(concurrentLimit: 16)
                 try await withThrowingTaskGroup(of: Void.self) { taskGroup in
                     for groupIdKey in groupIdKeys {
@@ -192,7 +192,7 @@ class GroupsV2ProfileKeyUpdater {
 
     private func _tryToUpdateNext(groupIdKey: String) async throws {
         let databaseStorage = SSKEnvironment.shared.databaseStorageRef
-        guard let groupId = databaseStorage.read(block: { tx in keyValueStore.getData(groupIdKey, transaction: tx.asV2Read) }) else {
+        guard let groupId = databaseStorage.read(block: { tx in keyValueStore.getData(groupIdKey, transaction: tx) }) else {
             return
         }
         do {
@@ -231,7 +231,7 @@ class GroupsV2ProfileKeyUpdater {
 
     private func markAsComplete(groupIdKey: String) async {
         await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { transaction in
-            self.keyValueStore.removeValue(forKey: groupIdKey, transaction: transaction.asV2Write)
+            self.keyValueStore.removeValue(forKey: groupIdKey, transaction: transaction)
         }
     }
 
@@ -253,14 +253,14 @@ class GroupsV2ProfileKeyUpdater {
 
         // Get latest group state from service and verify that this update is still necessary.
         try Task.checkCancellation()
-        let snapshotResponse = try await SSKEnvironment.shared.groupsV2Ref.fetchLatestSnapshot(groupModel: groupModel)
-        guard snapshotResponse.groupSnapshot.groupMembership.isFullMember(localAci) else {
+        let groupV2Snapshot = try await SSKEnvironment.shared.groupsV2Ref.fetchCurrentGroupV2Snapshot(groupModel: groupModel)
+        guard groupV2Snapshot.groupMembership.isFullMember(localAci) else {
             // We're not a full member, no need to update profile key.
             throw GroupsV2Error.redundantChange
         }
         let profileManager = SSKEnvironment.shared.profileManagerRef
         let profileKeyData = profileManager.localProfileKey.keyData
-        guard snapshotResponse.groupSnapshot.profileKeys[localAci] != profileKeyData else {
+        guard groupV2Snapshot.profileKeys[localAci] != profileKeyData else {
             // Group state already has our current key.
             throw GroupsV2Error.redundantChange
         }

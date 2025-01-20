@@ -49,17 +49,9 @@ extension TSAttachmentMigration {
             renderingFlag: TSAttachmentMigration.V2RenderingFlag,
             sourceFilename: String?
         ) throws -> TSAttachmentMigration.PendingV2AttachmentFile {
-            let byteSize: Int = {
-                return OWSFileSystem.fileSize(of: unencryptedFileUrl)?.intValue ?? 0
-            }()
-            guard byteSize < 95 * 1000 * 1000 /* SignalAttachment.kMaxFileSizeGeneric */ else {
-                throw AttachmentTooLargeError()
-            }
-
             let encryptionKey = encryptionKey ?? Cryptography.randomAttachmentEncryptionKey()
             let pendingAttachment = try validateContents(
                 unencryptedFileUrl: unencryptedFileUrl,
-                byteSize: byteSize,
                 reservedFileIds: reservedFileIds,
                 encryptionKey: encryptionKey,
                 mimeType: mimeType,
@@ -72,7 +64,6 @@ extension TSAttachmentMigration {
 
         private static func validateContents(
             unencryptedFileUrl: URL,
-            byteSize: Int,
             reservedFileIds: ReservedRelativeFileIds,
             encryptionKey: Data,
             mimeType: String,
@@ -82,7 +73,6 @@ extension TSAttachmentMigration {
             var mimeType = mimeType
             let contentTypeResult = try validateContentType(
                 unencryptedFileUrl: unencryptedFileUrl,
-                byteSize: byteSize,
                 reservedFileIds: reservedFileIds,
                 encryptionKey: encryptionKey,
                 mimeType: &mimeType
@@ -119,8 +109,7 @@ extension TSAttachmentMigration {
                 throw OWSAssertionError("Non visual media target")
             case .image, .animatedImage:
                 guard let image = UIImage(contentsOfFile: localFilePath) else {
-                    Logger.error("Unable to read image")
-                    return nil
+                    throw OWSAssertionError("Unable to read image")
                 }
                 originalImage = image
             case .video:
@@ -271,7 +260,6 @@ extension TSAttachmentMigration {
 
         private static func validateContentType(
             unencryptedFileUrl: URL,
-            byteSize: Int,
             reservedFileIds: ReservedRelativeFileIds,
             encryptionKey: Data,
             mimeType: inout String
@@ -299,26 +287,12 @@ extension TSAttachmentMigration {
                     audioWaveformFile: nil,
                     videoStillFrameFile: nil
                 )
-            case .image:
-                guard byteSize < 8 * 1024 * 1024 /* SignalAttachment.kMaxFileSizeImage */ else {
-                    throw AttachmentTooLargeError()
-                }
-                return try validateImageContentType(
-                    unencryptedFileUrl,
-                    mimeType: &mimeType
-                ) ?? invalidResult
-            case .animatedImage:
-                guard byteSize < 25 * 1024 * 1024 /* SignalAttachment.kMaxFileSizeAnimatedImage */ else {
-                    throw AttachmentTooLargeError()
-                }
+            case .image, .animatedImage:
                 return try validateImageContentType(
                     unencryptedFileUrl,
                     mimeType: &mimeType
                 ) ?? invalidResult
             case .video:
-                guard byteSize < 95 * 1000 * 1000 /* SignalAttachment.kMaxFileSizeVideo */ else {
-                    throw AttachmentTooLargeError()
-                }
                 return try validateVideoContentType(
                     unencryptedFileUrl,
                     reservedFileIds: reservedFileIds,
@@ -326,9 +300,6 @@ extension TSAttachmentMigration {
                     encryptionKey: encryptionKey
                 ) ?? invalidResult
             case .audio:
-                guard byteSize < 95 * 1000 * 1000 /* SignalAttachment.kMaxFileSizeAudio */ else {
-                    throw AttachmentTooLargeError()
-                }
                 return try validateAudioContentType(
                     unencryptedFileUrl,
                     reservedFileIds: reservedFileIds,
@@ -402,6 +373,13 @@ extension TSAttachmentMigration {
             mimeType: String,
             encryptionKey: Data
         ) throws -> ContentTypeResult? {
+            let byteSize: Int = {
+                return OWSFileSystem.fileSize(of: unencryptedFileUrl)?.intValue ?? 0
+            }()
+            guard byteSize < SignalAttachment.kMaxFileSizeVideo else {
+                throw AttachmentTooLargeError()
+            }
+
             let asset: AVAsset = {
                 return AVAsset(url: unencryptedFileUrl)
             }()

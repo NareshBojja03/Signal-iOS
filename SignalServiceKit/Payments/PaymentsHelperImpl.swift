@@ -62,7 +62,7 @@ public class PaymentsHelperImpl: PaymentsHelperSwift, PaymentsHelper {
             // Germany
             49
         ]
-        return validCallingCodes.contains(callingCode)
+        return validCallingCodes.contains(callingCode.intValue)
     }
 
     internal static func isValidPhoneNumberForPayments_remoteConfigBlocklist(
@@ -86,8 +86,8 @@ public class PaymentsHelperImpl: PaymentsHelperSwift, PaymentsHelper {
     // MARK: - PaymentsState
 
     // NOTE: This k-v store is shared by PaymentsHelperImpl and PaymentsImpl.
-    fileprivate static let keyValueStore = KeyValueStore(collection: "Payments")
-    public var keyValueStore: KeyValueStore { Self.keyValueStore}
+    fileprivate static let keyValueStore = SDSKeyValueStore(collection: "Payments")
+    public var keyValueStore: SDSKeyValueStore { Self.keyValueStore}
 
     private static let arePaymentsEnabledKey = "isPaymentEnabled"
     private static let paymentsEntropyKey = "paymentsEntropy"
@@ -187,11 +187,11 @@ public class PaymentsHelperImpl: PaymentsHelperSwift, PaymentsHelper {
 
         Self.keyValueStore.setBool(newPaymentsState.isEnabled,
                                    key: Self.arePaymentsEnabledKey,
-                                   transaction: transaction.asV2Write)
+                                   transaction: transaction)
         if let paymentsEntropy = newPaymentsState.paymentsEntropy {
             Self.keyValueStore.setData(paymentsEntropy,
                                        key: Self.paymentsEntropyKey,
-                                       transaction: transaction.asV2Write)
+                                       transaction: transaction)
         }
 
         self.paymentStateCache.set(newPaymentsState)
@@ -249,10 +249,10 @@ public class PaymentsHelperImpl: PaymentsHelperSwift, PaymentsHelper {
         guard DependenciesBridge.shared.tsAccountManager.registrationState(tx: transaction.asV2Read).isRegistered else {
             return .disabled
         }
-        let paymentsEntropy = keyValueStore.getData(paymentsEntropyKey, transaction: transaction.asV2Read)
+        let paymentsEntropy = keyValueStore.getData(paymentsEntropyKey, transaction: transaction)
         let arePaymentsEnabled = keyValueStore.getBool(Self.arePaymentsEnabledKey,
                                                        defaultValue: false,
-                                                       transaction: transaction.asV2Read)
+                                                       transaction: transaction)
         return PaymentsState.build(arePaymentsEnabled: arePaymentsEnabled,
                                    paymentsEntropy: paymentsEntropy)
     }
@@ -262,26 +262,26 @@ public class PaymentsHelperImpl: PaymentsHelperSwift, PaymentsHelper {
     }
 
     public func clearState(transaction: SDSAnyWriteTransaction) {
-        Self.keyValueStore.removeAll(transaction: transaction.asV2Write)
+        Self.keyValueStore.removeAll(transaction: transaction)
 
         paymentStateCache.set(nil)
     }
 
     public func setLastKnownLocalPaymentAddressProtoData(_ data: Data?, transaction: SDSAnyWriteTransaction) {
-        Self.keyValueStore.setData(data, key: Self.lastKnownLocalPaymentAddressProtoDataKey, transaction: transaction.asV2Write)
+        Self.keyValueStore.setData(data, key: Self.lastKnownLocalPaymentAddressProtoDataKey, transaction: transaction)
     }
 
     public func lastKnownLocalPaymentAddressProtoData(transaction: SDSAnyWriteTransaction) -> Data? {
         SSKEnvironment.shared.paymentsEventsRef.updateLastKnownLocalPaymentAddressProtoData(transaction: transaction)
-        return Self.keyValueStore.getData(Self.lastKnownLocalPaymentAddressProtoDataKey, transaction: transaction.asV2Read)
+        return Self.keyValueStore.getData(Self.lastKnownLocalPaymentAddressProtoDataKey, transaction: transaction)
     }
 
     // MARK: -
 
-    private static let arePaymentsEnabledForUserStore = KeyValueStore(collection: "arePaymentsEnabledForUserStore")
+    private static let arePaymentsEnabledForUserStore = SDSKeyValueStore(collection: "arePaymentsEnabledForUserStore")
 
     public func setArePaymentsEnabled(for serviceId: ServiceIdObjC, hasPaymentsEnabled: Bool, transaction tx: SDSAnyWriteTransaction) {
-        Self.arePaymentsEnabledForUserStore.setBool(hasPaymentsEnabled, key: serviceId.serviceIdUppercaseString, transaction: tx.asV2Write)
+        Self.arePaymentsEnabledForUserStore.setBool(hasPaymentsEnabled, key: serviceId.serviceIdUppercaseString, transaction: tx)
     }
 
     public func arePaymentsEnabled(for address: SignalServiceAddress, transaction tx: SDSAnyReadTransaction) -> Bool {
@@ -292,7 +292,7 @@ public class PaymentsHelperImpl: PaymentsHelperSwift, PaymentsHelper {
         return Self.arePaymentsEnabledForUserStore.getBool(
             serviceId.serviceIdUppercaseString,
             defaultValue: false,
-            transaction: tx.asV2Read
+            transaction: tx
         )
     }
 

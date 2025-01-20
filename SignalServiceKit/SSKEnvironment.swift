@@ -56,6 +56,8 @@ public class SSKEnvironment: NSObject {
     public let receiptSenderRef: ReceiptSender
     public let reachabilityManagerRef: SSKReachabilityManager
     public let syncManagerRef: SyncManagerProtocol
+    /// This should be deprecated.
+    public var syncManagerImplRef: OWSSyncManager { syncManagerRef as! OWSSyncManager }
     public let typingIndicatorsRef: TypingIndicators
     public let stickerManagerRef: StickerManager
     @objc
@@ -64,8 +66,12 @@ public class SSKEnvironment: NSObject {
     public let signalServiceRef: OWSSignalServiceProtocol
     public let accountServiceClientRef: AccountServiceClient
     public let storageServiceManagerRef: StorageServiceManager
+    @objc
+    public var storageServiceManagerObjcRef: StorageServiceManagerObjc { storageServiceManagerRef }
     public let sskPreferencesRef: SSKPreferences
     public let groupV2UpdatesRef: GroupV2Updates
+    /// This should be deprecated.
+    public var groupV2UpdatesImplRef: GroupV2UpdatesImpl { groupV2UpdatesRef as! GroupV2UpdatesImpl }
     public let messageFetcherJobRef: MessageFetcherJob
     public let versionedProfilesRef: VersionedProfilesSwift
     @objc
@@ -86,7 +92,13 @@ public class SSKEnvironment: NSObject {
     public let systemStoryManagerRef: SystemStoryManagerProtocol
     public let contactDiscoveryManagerRef: ContactDiscoveryManager
     public let notificationPresenterRef: any NotificationPresenter
+    /// This should be deprecated.
+    public var notificationPresenterImplRef: NotificationPresenterImpl { notificationPresenterRef as! NotificationPresenterImpl }
     public let messageSendLogRef: MessageSendLog
+    public let messageSenderJobQueueRef: MessageSenderJobQueue
+    public let localUserLeaveGroupJobQueueRef: LocalUserLeaveGroupJobQueue
+    public let callRecordDeleteAllJobQueueRef: CallRecordDeleteAllJobQueue
+    public let bulkDeleteInteractionJobQueueRef: BulkDeleteInteractionJobQueue
     public let preferencesRef: Preferences
     public let proximityMonitoringManagerRef: OWSProximityMonitoringManager
     public let avatarBuilderRef: AvatarBuilder
@@ -94,18 +106,11 @@ public class SSKEnvironment: NSObject {
     public let groupCallManagerRef: GroupCallManager
     public let profileFetcherRef: any ProfileFetcher
 
-    public let messageSenderJobQueueRef: MessageSenderJobQueue
-    public let localUserLeaveGroupJobQueueRef: LocalUserLeaveGroupJobQueue
-    public let callRecordDeleteAllJobQueueRef: CallRecordDeleteAllJobQueue
-    public let bulkDeleteInteractionJobQueueRef: BulkDeleteInteractionJobQueue
-    let backupReceiptCredentialRedemptionJobQueue: BackupReceiptCredentialRedemptionJobQueue
-    let donationReceiptCredentialRedemptionJobQueue: DonationReceiptCredentialRedemptionJobQueue
-
     private let appExpiryRef: AppExpiry
     private let aciSignalProtocolStoreRef: SignalProtocolStore
     private let pniSignalProtocolStoreRef: SignalProtocolStore
 
-    init(
+    public init(
         contactManager: any ContactManager,
         messageSender: MessageSender,
         pendingReceiptRecorder: PendingReceiptRecorder,
@@ -159,9 +164,7 @@ public class SSKEnvironment: NSObject {
         messageSenderJobQueue: MessageSenderJobQueue,
         localUserLeaveGroupJobQueue: LocalUserLeaveGroupJobQueue,
         callRecordDeleteAllJobQueue: CallRecordDeleteAllJobQueue,
-        bulkDeleteInteractionJobQueue: BulkDeleteInteractionJobQueue,
-        backupReceiptCredentialRedemptionJobQueue: BackupReceiptCredentialRedemptionJobQueue,
-        donationReceiptCredentialRedemptionJobQueue: DonationReceiptCredentialRedemptionJobQueue,
+        bulkdDeleteInteractionJobQueue: BulkDeleteInteractionJobQueue,
         preferences: Preferences,
         proximityMonitoringManager: OWSProximityMonitoringManager,
         avatarBuilder: AvatarBuilder,
@@ -222,9 +225,7 @@ public class SSKEnvironment: NSObject {
         self.messageSenderJobQueueRef = messageSenderJobQueue
         self.localUserLeaveGroupJobQueueRef = localUserLeaveGroupJobQueue
         self.callRecordDeleteAllJobQueueRef = callRecordDeleteAllJobQueue
-        self.bulkDeleteInteractionJobQueueRef = bulkDeleteInteractionJobQueue
-        self.backupReceiptCredentialRedemptionJobQueue = backupReceiptCredentialRedemptionJobQueue
-        self.donationReceiptCredentialRedemptionJobQueue = donationReceiptCredentialRedemptionJobQueue
+        self.bulkDeleteInteractionJobQueueRef = bulkdDeleteInteractionJobQueue
         self.preferencesRef = preferences
         self.proximityMonitoringManagerRef = proximityMonitoringManager
         self.avatarBuilderRef = avatarBuilder
@@ -266,10 +267,9 @@ public class SSKEnvironment: NSObject {
             self.localUserLeaveGroupJobQueueRef.start(appContext: CurrentAppContext())
             self.callRecordDeleteAllJobQueueRef.start(appContext: CurrentAppContext())
             self.bulkDeleteInteractionJobQueueRef.start(appContext: CurrentAppContext())
-            self.backupReceiptCredentialRedemptionJobQueue.start(appContext: CurrentAppContext())
-            self.donationReceiptCredentialRedemptionJobQueue.start(appContext: CurrentAppContext())
-
+            self.smJobQueuesRef.tsAttachmentMultisendJobQueue.start(appContext: CurrentAppContext())
             self.smJobQueuesRef.incomingContactSyncJobQueue.start(appContext: CurrentAppContext())
+            self.smJobQueuesRef.receiptCredentialJobQueue.start(appContext: CurrentAppContext())
             self.smJobQueuesRef.sendGiftBadgeJobQueue.start(appContext: CurrentAppContext())
             self.smJobQueuesRef.sessionResetJobQueue.start(appContext: CurrentAppContext())
         }

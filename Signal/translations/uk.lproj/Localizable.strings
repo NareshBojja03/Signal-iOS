@@ -143,7 +143,7 @@
 "ALERT_SAVE" = "Зберегти";
 
 /* Message for UI warning about an unknown contact thread. */
-"ALERT_UNKNOWN_THREAD_WARNING_CONTACT_MESSAGE" = "У вас немає спільних груп із цією людиною. Щоб уникнути небажаних повідомлень, не приймайте запитів без уважної перевірки відправника.";
+"ALERT_UNKNOWN_THREAD_WARNING_CONTACT_MESSAGE" = "У вас немає спільних груп з цією людиною. Не приймайте запитів без уважної перевірки відправника, щоб уникнути небажаних повідомлень.";
 
 /* Message for UI warning about an unknown group thread. */
 "ALERT_UNKNOWN_THREAD_WARNING_GROUP_MESSAGE" = "У вас немає спільних учасників з цією групою. Не приймайте запитів без уважної перевірки, щоб уникнути небажаних повідомлень.";
@@ -1984,9 +1984,6 @@
 /* Alert title that can occur when viewing device manager. */
 "DEVICE_LIST_UPDATE_FAILED_TITLE" = "Не вдалось оновити список пристроїв.";
 
-/* Message appearing on a toast indicating a new device was successfully linked and synced. */
-"DEVICE_LIST_UPDATE_NEW_DEVICE_SYNCED_TOAST" = "Message sync complete";
-
 /* Message appearing on a toast indicating a new device was successfully linked. Embeds {{ device name }} */
 "DEVICE_LIST_UPDATE_NEW_DEVICE_TOAST" = "«%1$@» зв'язано";
 
@@ -2698,6 +2695,9 @@
 /* Error message when attempting to send message */
 "ERROR_DESCRIPTION_UNREGISTERED_RECIPIENT" = "Цей контакт не користується Signal.";
 
+/* Error message indicating that attachment download(s) failed. */
+"ERROR_MESSAGE_ATTACHMENT_DOWNLOAD_FAILED" = "Не вдалося завантажити вкладення.";
+
 /* Error message indicating that attachment upload(s) failed. */
 "ERROR_MESSAGE_ATTACHMENT_UPLOAD_FAILED" = "Не вдалося завантажити вкладення.";
 
@@ -3263,7 +3263,7 @@
 "GROUP_LINK_PROMOTION_ALERT_APPROVE_NEW_MEMBERS_EXPLANATION" = "Нових учасників, які приєднуються до групи за посиланням, повинен затверджувати адміністратор.";
 
 /* Label for the 'approve new group members' switch. */
-"GROUP_LINK_PROMOTION_ALERT_APPROVE_NEW_MEMBERS_SWITCH" = "Адміністратор затверджує учасників";
+"GROUP_LINK_PROMOTION_ALERT_APPROVE_NEW_MEMBERS_SWITCH" = "Затверджувати нових учасників";
 
 /* Label for the 'enable and share link' button in the 'group link promotion' alert view. */
 "GROUP_LINK_PROMOTION_ALERT_ENABLE_AND_SHARE_LINK" = "Поділитися посиланням";
@@ -3290,7 +3290,7 @@
 "GROUP_LINK_QR_CODE_VIEW_TITLE" = "QR-код";
 
 /* Label for the 'approve new members' switch in the 'group link' view. */
-"GROUP_LINK_VIEW_APPROVE_NEW_MEMBERS_SWITCH" = "Адміністратор затверджує учасників";
+"GROUP_LINK_VIEW_APPROVE_NEW_MEMBERS_SWITCH" = "Затверджувати нових учасників";
 
 /* Label for the 'copy link' button in the 'group link' view. */
 "GROUP_LINK_VIEW_COPY_LINK" = "Копіювати посилання";
@@ -4006,21 +4006,6 @@
 /* Title for a sheet explaining details about 'New Groups'. */
 "LEGACY_GROUP_WHAT_ARE_NEW_GROUPS_TITLE" = "Що таке Нові Групи?";
 
-/* subtitle for declining to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_DONT_TRANSFER_SUBTITLE" = "Старі повідомлення й медіафайли не буде перенесено на зв'язаний пристрій";
-
-/* title for declining to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_DONT_TRANSFER_TITLE" = "Не переносити";
-
-/* confirm the users intent to link a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TITLE" = "Завершіть зв'язування";
-
-/* subtitle for choosing to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TRANSFER_SUBTITLE" = "Перенесіть історію повідомлень і недавні медіафайли на зв'язаний пристрій";
-
-/* title for choosing to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TRANSFER_TITLE" = "Перенести історію повідомлень";
-
 /* report an invalid linking code */
 "LINK_DEVICE_INVALID_CODE_BODY" = "Це не QR-код для зв'язування. Переконайтеся, що ви скануєте QR-код на пристрої, який хочете зв’язати.";
 
@@ -4035,6 +4020,9 @@
 
 /* attempt another linking */
 "LINK_DEVICE_RESTART" = "Зв'язати ще раз";
+
+/* QR Scanning screen instructions, placed alongside a camera view for scanning QR Codes */
+"LINK_DEVICE_SCANNING_INSTRUCTIONS" = "Зіскануйте QR-код на пристрої, який ви хочете зв'язати зі своїм акаунтом.";
 
 /* Title for QR Scanning screen instructions sheet */
 "LINK_DEVICE_SCANNING_INSTRUCTIONS_SHEET_BODY" = "Зіскануйте QR-код на пристрої, який ви хочете зв'язати зі своїм акаунтом";
@@ -4057,17 +4045,8 @@
 /* Title for a sheet when a user has started linking a device informing them to finish the process on that other device */
 "LINK_NEW_DEVICE_FINISH_ON_OTHER_DEVICE_SHEET_TITLE" = "Завершіть зв'язування на іншому пристрої";
 
-/* Message for a sheet indicating that a newly linked device failed to sync messages. */
-"LINK_NEW_DEVICE_SYNC_FAILED_MESSAGE" = "Your device was successfully linked, but your messages could not be transferred.";
-
-/* Title for a sheet indicating that a newly linked device failed to sync messages. */
-"LINK_NEW_DEVICE_SYNC_FAILED_TITLE" = "Message Sync Failed";
-
-/* On a progress modal indicating the percent complete the sync process is. Embeds {{ formatted percentage }} */
-"LINK_NEW_DEVICE_SYNC_PROGRESS_PERCENT" = "%1$@ complete";
-
-/* Title for a progress modal indicating the sync progress */
-"LINK_NEW_DEVICE_SYNC_PROGRESS_TITLE" = "Syncing Messages…";
+/* Subheading for 'Link New Device' navigation */
+"LINK_NEW_DEVICE_SUBTITLE" = "Зіскануйте QR-код, щоб зв'язати новий пристрій.";
 
 /* Navigation title when scanning QR code to add new device. */
 "LINK_NEW_DEVICE_TITLE" = "Зв'язати новий пристрій";
@@ -4084,65 +4063,11 @@
 /* A button shown in a banner when you tap the 'New Chat' icon at the top of the list of chats. Tapping it opens a website with more details. */
 "LINKED_DEVICE_MANAGE_CONTACTS_LEARN_MORE" = "Подробиці";
 
-/* Bullet point about downloads on the linked devices education sheet. Embeds {{ %1$@ iPad download link, %2$@ desktop download link }} */
-"LINKED_DEVICES_EDUCATION_POINT_DOWNLOADS" = "Перейдіть на сторінку %1$@, щоб установити застосунок для iPad, або на сторінку %2$@, щоб установити програму для комп'ютера.";
-
-/* Bullet point about message sync on the linked devices education sheet */
-"LINKED_DEVICES_EDUCATION_POINT_MESSAGES" = "Після зв'язування повідомлення в Signal будуть синхронізуватися з застосунком Signal на вашому мобільному телефоні.";
-
-/* Bullet point about privacy on the linked devices education sheet */
-"LINKED_DEVICES_EDUCATION_POINT_PRIVACY" = "Обмін повідомленнями на зв'язаних пристроях завжди конфіденційний";
-
-/* Title for the linked device education sheet */
-"LINKED_DEVICES_EDUCATION_TITLE" = "Signal на комп'ютері або iPad";
-
-/* Text that appears where the linked device list would be indicating that there are no linked devices. */
-"LINKED_DEVICES_EMPTY_STATE" = "Зв'язаних пристроїв немає";
-
-/* Description for header of the linked devices list */
-"LINKED_DEVICES_HEADER_DESCRIPTION" = "Користуйтеся застосунком Signal на комп'ютері чи iPad. Ваші повідомлення буде синхронізовано на зв'язаних пристроях.";
-
-/* Description for header of the linked devices list when Link and Sync is disabled */
-"LINKED_DEVICES_HEADER_DESCRIPTION_LINK_AND_SYNC_DISABLED" = "Користуйтеся застосунком Signal на комп'ютері або iPad.";
-
-/* Footer text below the list of currently-linked devices */
-"LINKED_DEVICES_LIST_FOOTER" = "Повідомлення й інформацію про чати захищено наскрізним шифруванням на всіх пристроях";
-
-/* Title above the list of currently-linked devices */
-"LINKED_DEVICES_LIST_TITLE" = "Зв’язані пристрої";
-
-/* Button title for renaming a linked device */
-"LINKED_DEVICES_RENAME_BUTTON" = "Rename";
-
-/* Message on a sheet indicating the device rename attempt received an error. */
-"LINKED_DEVICES_RENAME_FAILURE_MESSAGE" = "Unable to change device name. Try again later.";
-
-/* Message on a toast indicating the device was renamed. */
-"LINKED_DEVICES_RENAME_SUCCESS_MESSAGE" = "Device name updated";
-
-/* Title for the screen for renaming a linked device */
-"LINKED_DEVICES_RENAME_TITLE" = "Edit Device Name";
-
 /* Menu item and navbar title for the device manager */
 "LINKED_DEVICES_TITLE" = "Зв’язані пристрої";
 
 /* Alert Title */
 "LINKING_DEVICE_FAILED_TITLE" = "Не вдалося зв'язати пристрій";
-
-/* Progress label when the message loading has nearly completed during the device linking process */
-"LINKING_SYNCING_FINALIZING" = "Finalizing message transfer…";
-
-/* Footer text when loading messages during linking process. */
-"LINKING_SYNCING_FOOTER" = "Messages and chat info are protected by end-to-end encryption, including the sync process.";
-
-/* Title shown when loading messages during linking process */
-"LINKING_SYNCING_MESSAGES_TITLE" = "Синхронізація повідомлень";
-
-/* Progress label when the message loading has not yet started during the device linking process */
-"LINKING_SYNCING_PREPARING_TO_DOWNLOAD" = "Preparing to download…";
-
-/* Label below the progress bar when loading messages during linking process */
-"LINKING_SYNCING_TIMING_INFO" = "This may take a few minutes depending on the size of your message history";
 
 /* Body for local network permission action sheet */
 "LOCAL_NETWORK_PERMISSION_ACTION_SHEET_BODY" = "Для перенесення акаунту Signal обом пристроям необхідно надати доступ до локальної мережі.";
@@ -4177,23 +4102,20 @@
 /* Title for the 'long text message' view. */
 "LONG_TEXT_VIEW_TITLE" = "Повідомлення";
 
-/* Title for error sheet shown when the max video length is recorded with the in-app camera */
-"MAX_VIDEO_RECORDING_LENGTH_ALERT" = "Досягнуто максимальної тривалості відео";
-
 /* nav bar button item */
 "MEDIA_DETAIL_VIEW_ALL_MEDIA_BUTTON" = "Усі медіафайли";
 
 /* Title for the button that discards all edits in media editor. */
-"MEDIA_EDITOR_CLEAR_ALL" = "Скасувати все";
+"MEDIA_EDITOR_CLEAR_ALL" = "Очистити все";
 
 /* Media Editor: Title for the button in 'Discard Changes' confirmation prompt. */
-"MEDIA_EDITOR_DISCARD_ALL_BUTTON" = "Відхилити зміни";
+"MEDIA_EDITOR_DISCARD_ALL_BUTTON" = "Скасувати зміни";
 
 /* Media Editor: Message for the 'Discard Changes' confirmation prompt. */
-"MEDIA_EDITOR_DISCARD_ALL_CONFIRMATION_MESSAGE" = "Усі зміни цього фото зникнуть";
+"MEDIA_EDITOR_DISCARD_ALL_CONFIRMATION_MESSAGE" = "Усі зміни до цього фото буде скасовано";
 
 /* Media Editor: Title for the 'Discard Changes' confirmation prompt. */
-"MEDIA_EDITOR_DISCARD_ALL_CONFIRMATION_TITLE" = "Відхилити зміни?";
+"MEDIA_EDITOR_DISCARD_ALL_CONFIRMATION_TITLE" = "Скасувати зміни?";
 
 /* Title for the button that resets photo to its initial state. */
 "MEDIA_EDITOR_RESET" = "Скинути";
@@ -4274,22 +4196,22 @@
 "MESSAGE_ACTION_DELETE_SELECTED_MESSAGES" = "Видалити вибрані повідомлення";
 
 /* Action sheet button title */
-"MESSAGE_ACTION_DETAILS" = "Докладніше";
+"MESSAGE_ACTION_DETAILS" = "Детальніше";
 
 /* Action sheet edit message accessibility label */
 "MESSAGE_ACTION_EDIT_MESSAGE" = "Редагування повідомлення";
 
 /* Label for button to compose a new email. */
-"MESSAGE_ACTION_EMAIL_NEW_MAIL_MESSAGE" = "Новий електронний лист";
+"MESSAGE_ACTION_EMAIL_NEW_MAIL_MESSAGE" = "Новий лист";
 
 /* Error show when user tries to send email without email being configured. */
-"MESSAGE_ACTION_ERROR_EMAIL_NOT_CONFIGURED" = "Електронну пошту не налаштовано.";
+"MESSAGE_ACTION_ERROR_EMAIL_NOT_CONFIGURED" = "Електронна пошта не налаштована.";
 
 /* Action sheet button title */
 "MESSAGE_ACTION_FORWARD_MESSAGE" = "Переслати це повідомлення";
 
 /* Action sheet button title */
-"MESSAGE_ACTION_FORWARD_SELECTED_MESSAGES" = "Переслати вибрані повідомлення";
+"MESSAGE_ACTION_FORWARD_SELECTED_MESSAGES" = "Переслати обрані повідомлення";
 
 /* A label for a button that will open an address in Apple Maps. \"Maps\" is a proper noun referring to the Apple Maps app, and should be translated as such. */
 "MESSAGE_ACTION_LINK_OPEN_ADDRESS_APPLE_MAPS" = "Відкрити у Картах";
@@ -4298,7 +4220,7 @@
 "MESSAGE_ACTION_LINK_OPEN_ADDRESS_GOOGLE_MAPS" = "Відкрити в Картах Google";
 
 /* Label for button to open a group invite. */
-"MESSAGE_ACTION_LINK_OPEN_GROUP_INVITE" = "Відкрити запрошення в групу";
+"MESSAGE_ACTION_LINK_OPEN_GROUP_INVITE" = "Відкрити запрошення до групи";
 
 /* Label for button to open a link. */
 "MESSAGE_ACTION_LINK_OPEN_LINK" = "Відкрити посилання";
@@ -4316,22 +4238,22 @@
 "MESSAGE_ACTION_PHONE_NUMBER_CALL" = "Виклик";
 
 /* Label for button to make a FaceTime audio call to a phone number. */
-"MESSAGE_ACTION_PHONE_NUMBER_FACETIME_AUDIO" = "Аудіовиклик у FaceTime";
+"MESSAGE_ACTION_PHONE_NUMBER_FACETIME_AUDIO" = "Аудіовиклик FaceTime";
 
 /* Label for button to make a FaceTime video call to a phone number. */
-"MESSAGE_ACTION_PHONE_NUMBER_FACETIME_VIDEO" = "Відеовиклик у FaceTime";
+"MESSAGE_ACTION_PHONE_NUMBER_FACETIME_VIDEO" = "Відеовиклик FaceTime";
 
 /* Label for button to send a text message a phone number. */
-"MESSAGE_ACTION_PHONE_NUMBER_SMS" = "Надіслати текстове повідомлення";
+"MESSAGE_ACTION_PHONE_NUMBER_SMS" = "Відправити текстове повідомлення";
 
 /* Action sheet button title */
 "MESSAGE_ACTION_REPLY" = "Відповісти на це повідомлення";
 
 /* Action sheet accessibility label */
-"MESSAGE_ACTION_SELECT_MESSAGE" = "Вибрати кілька";
+"MESSAGE_ACTION_SELECT_MESSAGE" = "Вибрати Декілька";
 
 /* Action sheet button title */
-"MESSAGE_ACTION_SHARE_MEDIA" = "Поділитися медіафайлами";
+"MESSAGE_ACTION_SHARE_MEDIA" = "Поділитися медіа";
 
 /* Action sheet accessibility label */
 "MESSAGE_ACTION_SPEAK_MESSAGE" = "Озвучити повідомлення";
@@ -4382,7 +4304,7 @@
 "MESSAGE_METADATA_VIEW_MESSAGE_STATUS_READ" = "Хто прочитав:";
 
 /* Status label for messages which are sending. */
-"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SENDING" = "Надсилання одержувачу";
+"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SENDING" = "Надсилається до";
 
 /* Status label for messages which are sent. */
 "MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SENT" = "Кому надіслано:";
@@ -4391,10 +4313,10 @@
 "MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SKIPPED" = "Кому не доставлено:";
 
 /* Status label for messages which are uploading. */
-"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_UPLOADING" = "Вивантаження";
+"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_UPLOADING" = "Завантаження";
 
 /* Status label for messages which are viewed. */
-"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_VIEWED" = "Хто переглянув:";
+"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_VIEWED" = "Переглянули";
 
 /* On the 'message metadata' view, if a message never disappears, this text is shown as a fallback. */
 "MESSAGE_METADATA_VIEW_NEVER_DISAPPEARS" = "Ніколи";
@@ -4439,7 +4361,7 @@
 "MESSAGE_REQUEST_BLOCK_CONVERSATION_TITLE_FORMAT" = "Заблокувати %1$@?";
 
 /* Action sheet message to confirm blocking a group via a message request. */
-"MESSAGE_REQUEST_BLOCK_GROUP_MESSAGE" = "Ви покинете цю групу й більше не отримуватимете від неї повідомлень і оновлень.";
+"MESSAGE_REQUEST_BLOCK_GROUP_MESSAGE" = "Ви покинете цю групу і більше не будете отримувати повідомлення або оновлення.";
 
 /* Action sheet title to confirm blocking a group via a message request. Embeds {{group name}} */
 "MESSAGE_REQUEST_BLOCK_GROUP_TITLE_FORMAT" = "Заблокувати і покинути групу %1$@?";
@@ -4466,10 +4388,10 @@
 "MESSAGE_REQUEST_NAME_COLLISION_BANNER_LABEL" = "Ця людина має таке ж ім'я, як і ваш інший контакт";
 
 /* A header string informing the user about name collisions in a message request */
-"MESSAGE_REQUEST_NAME_COLLISON_HEADER" = "Якщо ви не впевнені, хто надіслав запит, перегляньте ці контакти й вчиніть як пропонується.";
+"MESSAGE_REQUEST_NAME_COLLISON_HEADER" = "Якщо ви не впевнені, від кого надійшов запит, перегляньте контакти нижче та прийміть рішення.";
 
 /* A title string for a view that allows a user to review name collisions for an incoming message request */
-"MESSAGE_REQUEST_NAME_COLLISON_TITLE" = "Перегляньте запит";
+"MESSAGE_REQUEST_NAME_COLLISON_TITLE" = "Переглянути запит";
 
 /* A button that updates a known contact's information to resolve a name collision */
 "MESSAGE_REQUEST_NAME_COLLISON_UPDATE_CONTACT_ACTION" = "Оновити контакт";
@@ -4520,10 +4442,10 @@
 "MESSAGE_REQUEST_VIEW_NEW_CONTACT_PROMPT_FORMAT" = "Ви хочете, щоб користувач %1$@ писав вам повідомлення й бачив ваше ім'я та фото? Користувач не знатиме, що ви побачили його повідомлення, поки ви не приймете запит.";
 
 /* A prompt asking if the user wants to accept a group invite. */
-"MESSAGE_REQUEST_VIEW_NEW_GROUP_PROMPT" = "Приєднатися до цієї групи й поділитися іменем і фото з її учасниками? Вони не знатимуть, що ви бачили їхні повідомлення, поки ви не приймете запрошення.";
+"MESSAGE_REQUEST_VIEW_NEW_GROUP_PROMPT" = "Приєднатися до цієї групи та поділитися своїм ім’ям та фото з її учасниками? Вони не знатимуть, що ви бачили їхні повідомлення, поки ви не приймете.";
 
 /* A prompt asking if the user wants to accept a group invite. */
-"MESSAGE_REQUEST_VIEW_NEW_GROUP_PROMPT_V2" = "Приєднатися до групи? Учасники не дізнаються, що ви бачили їхні повідомлення, поки ви не приймете запрошення.";
+"MESSAGE_REQUEST_VIEW_NEW_GROUP_PROMPT_V2" = "Приєднатись до групи? Вони не дізнаються, що ви бачили їх повідомлення, допоки ви не приймете запит.";
 
 /* A prompt asking if the user wants to accept a conversation invite from a person whom they previously removed. Embeds {{contact name}}. */
 "MESSAGE_REQUEST_VIEW_REMOVED_CONTACT_PROMPT_FORMAT" = "Дозволити користувачу %1$@ надсилати вам повідомлення та ділитись ім'ям і фото з цим користувачем? Раніше ви вилучили цей контакт.";
@@ -4559,7 +4481,7 @@
 "MESSAGE_STATUS_FAILED_SHORT" = "Не вдалося";
 
 /* Label indicating that a message was only sent to some recipients. */
-"MESSAGE_STATUS_PARTIALLY_SENT" = "Надіслано не всім, торкніться для інформації";
+"MESSAGE_STATUS_PARTIALLY_SENT" = "Частково надіслано, торкніться для деталей";
 
 /* Label indicating that a message send was paused. */
 "MESSAGE_STATUS_PENDING" = "Надсилання припинено";
@@ -4613,7 +4535,7 @@
 "MISSED_CALL_BLOCKED_SYSTEM_SETTINGS_SHEET_TITLE" = "%1$@ — заблокований контакт у параметрах телефону";
 
 /* info message text in conversation view (use Apple's name for 'Focus') */
-"MISSED_CALL_FOCUS_MODE" = "Пропущено виклик у режимі «Зосередження»";
+"MISSED_CALL_FOCUS_MODE" = "Пропущений виклик у режимі «Фокус»";
 
 /* info message text in conversation view */
 "MISSED_VIDEO_CALL" = "Пропущений відеовиклик";
@@ -4622,25 +4544,25 @@
 "MISSED_VOICE_CALL" = "Пропущений аудіовиклик";
 
 /* Alert body */
-"MISSING_CAMERA_PERMISSION_MESSAGE" = "Для відеовикликів у Signal надайте застосунку доступ до камери в параметрах iOS.";
+"MISSING_CAMERA_PERMISSION_MESSAGE" = "Щоб робити відеовиклики в Signal, надайте програмі доступ до камери в налаштуваннях iOS.";
 
 /* Alert title */
 "MISSING_CAMERA_PERMISSION_TITLE" = "Signal потребує доступу до камери.";
 
 /* Alert body indicating the user has denied location permissions */
-"MISSING_LOCATION_PERMISSION_MESSAGE" = "Доступ можна надати в параметрах iOS.";
+"MISSING_LOCATION_PERMISSION_MESSAGE" = "Ви можете надати доступ у налаштуваннях iOS.";
 
 /* Alert title indicating the user has denied location permissions */
 "MISSING_LOCATION_PERMISSION_TITLE" = "Для використання цієї функції Signal потребує доступу до геопозиції.";
 
 /* Alert body when user has previously denied media library access */
-"MISSING_MEDIA_LIBRARY_PERMISSION_MESSAGE" = "Доступ можна надати в параметрах iOS.";
+"MISSING_MEDIA_LIBRARY_PERMISSION_MESSAGE" = "Ви можете надати доступ у налаштуваннях iOS.";
 
 /* Alert title when user has previously denied media library access */
 "MISSING_MEDIA_LIBRARY_PERMISSION_TITLE" = "Для використання цієї функції Signal потребує доступу до ваших фото.";
 
 /* An error shown as the title of an alert when try to link a new device & the user is already at the limit. */
-"MULTIDEVICE_PAIRING_MAX_DESC" = "Ви не можете зв'язати більше пристроїв.";
+"MULTIDEVICE_PAIRING_MAX_DESC" = "Ви не можете під’єднати більше пристроїв.";
 
 /* A recovery suggestion shown as the body of an alert when try to link a new device & the user is already at the limit. */
 "MULTIDEVICE_PAIRING_MAX_RECOVERY" = "Ви досягли максимальної кількості пристроїв, які можна прив’язати до свого акаунта. Вилучте один із них та спробуйте знову.";
@@ -4730,16 +4652,16 @@
 "NEW_GROUP_CREATE_BUTTON" = "Створити";
 
 /* Error indicating that a new group could not be created. */
-"NEW_GROUP_CREATION_FAILED" = "Не вдалося створити нову групу.";
+"NEW_GROUP_CREATION_FAILED" = "Не можливо створити нову групу.";
 
 /* Error indicating that a new group could not be created due to network connectivity problems. */
-"NEW_GROUP_CREATION_FAILED_DUE_TO_NETWORK" = "Не вдалося створити нову групу. Перевірте з'єднання з інтернетом і спробуйте ще раз.";
+"NEW_GROUP_CREATION_FAILED_DUE_TO_NETWORK" = "Не вдалось створити нову групу. Перевірте ваше підключення до інтернету і спробуйте ще раз.";
 
 /* Message for error alert indicating that a group name is required. */
-"NEW_GROUP_CREATION_MISSING_NAME_ALERT_MESSAGE" = "Назву групи зазначати обов'язково.";
+"NEW_GROUP_CREATION_MISSING_NAME_ALERT_MESSAGE" = "Ім'я групи обов'язково.";
 
 /* Title for error alert indicating that a group name is required. */
-"NEW_GROUP_CREATION_MISSING_NAME_ALERT_TITLE" = "Група не має назви";
+"NEW_GROUP_CREATION_MISSING_NAME_ALERT_TITLE" = "Відсутнє Ім'я Групи";
 
 /* Used in place of the group name when a group has not yet been named. */
 "NEW_GROUP_DEFAULT_TITLE" = "Нова група";
@@ -4748,13 +4670,13 @@
 "NEW_GROUP_MESSAGE_NOTIFICATION_TITLE" = "%1$@ у «%2$@»";
 
 /* The title for the 'name new group' view. */
-"NEW_GROUP_NAME_GROUP_VIEW_TITLE" = "Назвіть цю групу";
+"NEW_GROUP_NAME_GROUP_VIEW_TITLE" = "Ім'я групи";
 
 /* a title for the selected section of the 'recipient picker' view. */
 "NEW_GROUP_NON_CONTACTS_SECTION_TITLE" = "Інші користувачі";
 
 /* The title for the 'select members for new group' view. */
-"NEW_GROUP_SELECT_MEMBERS_VIEW_TITLE" = "Учасники";
+"NEW_GROUP_SELECT_MEMBERS_VIEW_TITLE" = "Вибрати Учасників";
 
 /* notification title. Embeds {{ %1%@ author name, %2%@ group name}} */
 "NEW_GROUP_STORY_REPLY_NOTIFICATION_TITLE" = "%1$@, чат «%2$@» · Історія";
@@ -4850,7 +4772,7 @@
 "NOTIFICATION_BODY_INCOMING_MESSAGE_REQUEST" = "Запит на повідомлення";
 
 /* Lock screen notification text presented after user powers on their device without unlocking. Embeds {{device model}} (either 'iPad' or 'iPhone') */
-"NOTIFICATION_BODY_PHONE_LOCKED_FORMAT" = "Поки ваш %1$@ перезапускався, вам могли надійти повідомлення.";
+"NOTIFICATION_BODY_PHONE_LOCKED_FORMAT" = "Поки ваш %1$@ перезапускався, ви могли одержати повідомлення.";
 
 /* Body for notification permission action sheet */
 "NOTIFICATION_PERMISSION_ACTION_SHEET_BODY" = "Щоб отримувати сповіщення про нові повідомлення:";
@@ -4862,10 +4784,10 @@
 "NOTIFICATION_PERMISSION_ACTION_SHEET_STEP_THREE" = "Увімкніть «Дозволити сповіщення»";
 
 /* Second step for notification permission action sheet */
-"NOTIFICATION_PERMISSION_ACTION_SHEET_STEP_TWO" = "Торкніться «Сповіщень»";
+"NOTIFICATION_PERMISSION_ACTION_SHEET_STEP_TWO" = "Торкніться Сповіщення";
 
 /* Title for notification permission action sheet */
-"NOTIFICATION_PERMISSION_ACTION_SHEET_TITLE" = "Увімкніть сповіщення";
+"NOTIFICATION_PERMISSION_ACTION_SHEET_TITLE" = "Увімкніть Сповіщення";
 
 /* Snooze action text for contact permission reminder megaphone */
 "NOTIFICATION_PERMISSION_NOT_NOW_ACTION" = "Не зараз";
@@ -4874,7 +4796,7 @@
 "NOTIFICATION_PERMISSION_REMINDER_MEGAPHONE_ACTION" = "Увімкнути";
 
 /* Body for notification permission reminder megaphone */
-"NOTIFICATION_PERMISSION_REMINDER_MEGAPHONE_BODY" = "Ніколи не пропускайте повідомлення від своїх контактів і груп.";
+"NOTIFICATION_PERMISSION_REMINDER_MEGAPHONE_BODY" = "Ніколи не пропускайте повідомлення від ваших контактів та груп.";
 
 /* Title for notification permission reminder megaphone */
 "NOTIFICATION_PERMISSION_REMINDER_MEGAPHONE_TITLE" = "Увімкнути сповіщення?";
@@ -4886,7 +4808,7 @@
 "NOTIFICATIONS_ERROR_TITLE" = "Не вдалося відобразити сповіщення";
 
 /* No comment provided by engineer. */
-"NOTIFICATIONS_FOOTER_WARNING" = "Можливі дії: «Прочитати», «Відповісти» і «Передзвонити».";
+"NOTIFICATIONS_FOOTER_WARNING" = "Можливі дії: «Прочитано», «Відповісти» та «Передзвонити».";
 
 /* No comment provided by engineer. */
 "NOTIFICATIONS_NONE" = "Без імені й вмісту";
@@ -4907,10 +4829,10 @@
 "NOTIFICATIONS_SHOW" = "Показувати";
 
 /* Label for the 'ok' button. */
-"OK" = "ОК";
+"OK" = "Гаразд";
 
 /* Label for the 'create new pin' button when reglock is disabled during onboarding. */
-"ONBOARDING_2FA_CREATE_NEW_PIN" = "Створити новий PIN-код";
+"ONBOARDING_2FA_CREATE_NEW_PIN" = "Створити Новий PIN-код";
 
 /* Button asking if the user would like to enter an alphanumeric PIN */
 "ONBOARDING_2FA_ENTER_ALPHANUMERIC" = "Ввести буквено-цифровий PIN-код";
@@ -4919,7 +4841,7 @@
 "ONBOARDING_2FA_ENTER_NUMERIC" = "Ввести цифровий PIN-код";
 
 /* Label for the 'forgot 2FA PIN' link in the 'onboarding 2FA' view. */
-"ONBOARDING_2FA_FORGOT_PIN_LINK" = "Потрібна допомога?";
+"ONBOARDING_2FA_FORGOT_PIN_LINK" = "Потрібна Допомога?";
 
 /* Label indicating that the 2fa pin is invalid in the 'onboarding 2fa' view. */
 "ONBOARDING_2FA_INVALID_PIN" = "Неправильний PIN-код";
@@ -4934,7 +4856,7 @@
 "ONBOARDING_2FA_SKIP_PIN_ENTRY_MESSAGE" = "Якщо ви забули свій PIN-код, то можете створити новий. Ви можете зареєструвати й використовувати акаунт, але ви втратите частину збережених налаштувань, як-от інформацію профілю.";
 
 /* Title for the skip pin entry action sheet during onboarding. */
-"ONBOARDING_2FA_SKIP_PIN_ENTRY_TITLE" = "Не вводити PIN-код?";
+"ONBOARDING_2FA_SKIP_PIN_ENTRY_TITLE" = "Пропустити Введення PIN-коду?";
 
 /* button indicating that the user will register their ipad */
 "ONBOARDING_MODE_SWITCH_BUTTON_PROVISIONING" = "Зареєструвати iPad";
@@ -4943,7 +4865,7 @@
 "ONBOARDING_MODE_SWITCH_BUTTON_REGISTERING" = "Зв'язати iPhone";
 
 /* explanation to the user they're switching from linking to registering flow */
-"ONBOARDING_MODE_SWITCH_EXPLANATION_PROVISIONING" = "Якщо ви натиснете «Зареєструвати iPad», то зможете створити абсолютно новий акаунт Signal або перенести на цей iPad уже наявний акаунт. Після цього Signal буде деактивовано на інших пристроях, де він зареєстрований на цей номер телефону.";
+"ONBOARDING_MODE_SWITCH_EXPLANATION_PROVISIONING" = "Натискання «Зареєструвати iPad» дозволить вам створити абсолютно новий акаунт Signal або перенести на цей iPad наявний. Це відключить Signal на будь-якому іншому пристрої, де він зареєстрований на той же номер телефону.";
 
 /* explanation to the user they're switching from registering to linking flow */
 "ONBOARDING_MODE_SWITCH_EXPLANATION_REGISTERING" = "Натиснувши «Зв'язати iPhone», ви зможете зв'язати свій телефон з наявним акаунтом. Загалом ми не рекомендуємо зв'язувати телефон, оскільки це обмежить певні можливості, як-от дзвінки.";
@@ -4952,13 +4874,13 @@
 "ONBOARDING_MODE_SWITCH_TITLE_PROVISIONING" = "Зареєструвати цей iPad";
 
 /* header text indicating to the user they're switching from registering to linking flow */
-"ONBOARDING_MODE_SWITCH_TITLE_REGISTERING" = "Зв'язати цей iPhone";
+"ONBOARDING_MODE_SWITCH_TITLE_REGISTERING" = "Прив'язати iPhone";
 
 /* warning to the user that registering an ipad is not recommended */
-"ONBOARDING_MODE_SWITCH_WARNING_PROVISIONING" = "Якщо ви зареєструєте цей iPad, то Signal буде деактивовано на інших пристроях, де він зареєстрований на цей номер телефону.";
+"ONBOARDING_MODE_SWITCH_WARNING_PROVISIONING" = "Реєстрація цього iPad відключить Signal на будь-якому іншому пристрої, де він зареєстрований на той же номер телефону.";
 
 /* warning to the user that linking a phone is not recommended */
-"ONBOARDING_MODE_SWITCH_WARNING_REGISTERING" = "Ми не рекомендуємо вам зв'язувати iPhone, оскільки це обмежить його основну функціональність.";
+"ONBOARDING_MODE_SWITCH_WARNING_REGISTERING" = "Прив'язка вашого iPhone не рекомендована і обмежить основну функціональність.";
 
 /* Description of the 'Contacts' permission in the 'onboarding permissions' view. */
 "ONBOARDING_PERMISSIONS_CONTACTS_DESCRIPTION" = "Знаходьте своїх знайомих. Ваші контакти зашифровані, тому сервіс Signal їх не бачить.";
@@ -4988,7 +4910,7 @@
 "ONBOARDING_PHONE_NUMBER_PLACEHOLDER" = "Ваш номер телефону";
 
 /* Label indicating that registration has been ratelimited. Embeds {{remaining time string}}. */
-"ONBOARDING_PHONE_NUMBER_RATE_LIMIT_WARNING_FORMAT" = "Будь ласка, зачекайте кілька хвилин перед наступною спробою. (%1$@)";
+"ONBOARDING_PHONE_NUMBER_RATE_LIMIT_WARNING_FORMAT" = "Будь ласка, зачекайте декілька хвилин перед наступною спробою. (%1$@)";
 
 /* Label indicating that the phone number is invalid in the 'onboarding phone number' view. */
 "ONBOARDING_PHONE_NUMBER_VALIDATION_WARNING" = "Такого номера не існує. Введіть дійсний номер телефону, щоб зареєструватися.";
@@ -4997,7 +4919,7 @@
 "ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_EXPLANATION" = "Ви використали всі спроби введення PIN-коду, але все одно можете отримати доступ до свого акаунту Signal, якщо створите новий PIN-код. З міркувань конфіденційності та безпеки ваш акаунт буде відновлено без збереженої інформації профілю й налаштувань.";
 
 /* Label for the 'learn more' link when reglock is disabled in the 'onboarding pin attempts exhausted' view. */
-"ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_LEARN_MORE" = "Докладніше про PIN-коди";
+"ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_LEARN_MORE" = "Дізнатися більше про PIN-коди";
 
 /* Title of the 'onboarding pin attempts exhausted' view when reglock is disabled. */
 "ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_TITLE" = "Неправильний PIN-код";
@@ -5005,20 +4927,17 @@
 /* Explanation of the 'onboarding pin attempts exhausted' view when it is unknown if reglock is enabled. */
 "ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_WITH_UNKNOWN_REGLOCK_EXPLANATION" = "У вас закінчилися спроби введення PIN-коду, але ви все одно можете отримати доступ до свого акаунту Signal, підтвердивши номер телефону. Для вашої конфіденційності та безпеки акаунт буде відновлено без збереженої інформації профілю і налаштувань.";
 
-/* Button for restoring or transferring account in the 'onboarding splash' view. */
-"ONBOARDING_SPLASH_RESTORE_OR_TRANSFER_BUTTON_TITLE" = "Відновити або перенести акаунт";
-
 /* Link to the 'terms and privacy policy' in the 'onboarding splash' view. */
 "ONBOARDING_SPLASH_TERM_AND_PRIVACY_POLICY" = "Умови надання послуг і Політика конфіденційності";
 
 /* Title of the 'onboarding splash' view. */
-"ONBOARDING_SPLASH_TITLE" = "Не відмовляйте собі в конфіденційності.\nБудьте собою в кожному повідомленні.";
+"ONBOARDING_SPLASH_TITLE" = "Візьміть конфіденційність з собою.\nБудьте собою в кожному повідомленні.";
 
 /* Label for the link that lets users change their phone number in the onboarding views. */
 "ONBOARDING_VERIFICATION_BACK_LINK" = "Неправильний номер?";
 
 /* Label for button to perform verification with a phone call. */
-"ONBOARDING_VERIFICATION_CALL_ME_BUTTON" = "Подзвоніть мені";
+"ONBOARDING_VERIFICATION_CALL_ME_BUTTON" = "Подзвони мені";
 
 /* Format string for button counting down time until phone call verification can be performed. Embeds {{time remaining}}. */
 "ONBOARDING_VERIFICATION_CALL_ME_COUNTDOWN_FORMAT" = "Подзвоніть мені через %1$@";
@@ -5075,7 +4994,7 @@
 "OTHER_UPDATED_DISAPPEARING_MESSAGES_CONFIGURATION" = "Користувач %1$@ встановив таймер тимчасових повідомлень: %2$@.";
 
 /* Label warning the user that the Signal service may be down. */
-"OUTAGE_WARNING" = "У Signal виникли технічні проблеми. Ми робимо все можливе, щоб якнайшвидше відновити роботу.";
+"OUTAGE_WARNING" = "Наразі в Signal виникли технічні неполадки. Ми намагаємося відновити сервіс якомога швидше.";
 
 /* Label for action link when the user has an outdated payment client */
 "OUTDATED_PAYMENT_CLIENT_ACTION_TITLE" = "Оновити зараз";
@@ -5117,19 +5036,19 @@
 "PAYMENTS_CURRENCY_UNKNOWN" = "?";
 
 /* Label for 'defragmentation' payments. */
-"PAYMENTS_DEFRAGMENTATION_PAYMENT" = "Комісія за округлення койнів";
+"PAYMENTS_DEFRAGMENTATION_PAYMENT" = "Плата за очищення монет";
 
 /* Status indicator for incoming payments which failed. */
-"PAYMENTS_FAILURE_INCOMING_FAILED" = "Платіж не пройшов";
+"PAYMENTS_FAILURE_INCOMING_FAILED" = "Не вдалося";
 
 /* Status indicator for incoming payments which failed to verify. */
-"PAYMENTS_FAILURE_INCOMING_VALIDATION_FAILED" = "Неналежний платіж";
+"PAYMENTS_FAILURE_INCOMING_VALIDATION_FAILED" = "Неправильний";
 
 /* Status indicator for invalid payments which could not be processed. */
-"PAYMENTS_FAILURE_INVALID" = "Неналежний платіж";
+"PAYMENTS_FAILURE_INVALID" = "Хибний";
 
 /* Status indicator for outgoing payments which failed. */
-"PAYMENTS_FAILURE_OUTGOING_FAILED" = "Платіж не пройшов";
+"PAYMENTS_FAILURE_OUTGOING_FAILED" = "Не вдалося";
 
 /* Status indicator for outgoing payments which failed due to insufficient funds. */
 "PAYMENTS_FAILURE_OUTGOING_INSUFFICIENT_FUNDS" = "Недостатньо коштів";
@@ -5138,7 +5057,7 @@
 "PAYMENTS_FAILURE_OUTGOING_NOTIFICATION_SEND_FAILED" = "Не вдалося надіслати підтвердження платежу одержувачеві";
 
 /* Status indicator for outgoing payments which failed to verify. */
-"PAYMENTS_FAILURE_OUTGOING_VALIDATION_FAILED" = "Неналежний платіж";
+"PAYMENTS_FAILURE_OUTGOING_VALIDATION_FAILED" = "Неправильний";
 
 /* Payments in-chat message shown if a payment fails to send, bottom half. */
 "PAYMENTS_IN_CHAT_FAILURE_MESSAGE_BOTTOM" = "Натисніть, щоб переглянути подробиці";
@@ -5213,34 +5132,34 @@
 "PAYMENTS_NEW_PAYMENT_ADD_MEMO" = "Додати примітку";
 
 /* Format for the 'balance' indicator. Embeds {{ the current payments balance }}. */
-"PAYMENTS_NEW_PAYMENT_BALANCE_FORMAT" = "Наявний баланс: %1$@";
+"PAYMENTS_NEW_PAYMENT_BALANCE_FORMAT" = "Доступний баланс: %1$@";
 
 /* Label for the 'confirm payment' button. */
 "PAYMENTS_NEW_PAYMENT_CONFIRM_PAYMENT_BUTTON" = "Підтвердити платіж";
 
 /* Title for the 'confirm payment' ui in the 'send payment' UI. */
-"PAYMENTS_NEW_PAYMENT_CONFIRM_PAYMENT_TITLE" = "Сплатити";
+"PAYMENTS_NEW_PAYMENT_CONFIRM_PAYMENT_TITLE" = "Переказати";
 
 /* Format for currency amounts in the 'send payment' UI. Embeds {{ %1$@ the current payments balance, %2$@ the currency indicator }}. */
-"PAYMENTS_NEW_PAYMENT_CURRENCY_FORMAT" = "%1$@ %2$@";
+"PAYMENTS_NEW_PAYMENT_CURRENCY_FORMAT" = "%1$@%2$@";
 
 /* Indicates that a payment failed due to a connectivity failure. */
-"PAYMENTS_NEW_PAYMENT_ERROR_CONNECTIVITY_FAILURE" = "Не вдалось з'єднатися з сервісом";
+"PAYMENTS_NEW_PAYMENT_ERROR_CONNECTIVITY_FAILURE" = "Не вдалось з'єднатись з сервісом";
 
 /* Indicates that a payment failed due to insufficient funds. */
-"PAYMENTS_NEW_PAYMENT_ERROR_INSUFFICIENT_FUNDS" = "У вас не вистачає MOB на балансі для здійснення цього платежу.";
+"PAYMENTS_NEW_PAYMENT_ERROR_INSUFFICIENT_FUNDS" = "У вас не вистачає грошей на балансі для завершення цього платежу.";
 
 /* Indicates that a payment failed due to insufficient funds. Embeds {{ current balance }}. */
-"PAYMENTS_NEW_PAYMENT_ERROR_INSUFFICIENT_FUNDS_FORMAT" = "У вас не вистачає MOB на балансі для здійснення цього платежу. Ваш поточний баланс — %1$@.";
+"PAYMENTS_NEW_PAYMENT_ERROR_INSUFFICIENT_FUNDS_FORMAT" = "У вас не вистачає грошей на балансі для завершення цього платежу. Ваш поточний баланс — %1$@.";
 
 /* Indicates that a payment failed due to being invalid. */
-"PAYMENTS_NEW_PAYMENT_ERROR_INVALID_TRANSACTION" = "Неналежна трансакція";
+"PAYMENTS_NEW_PAYMENT_ERROR_INVALID_TRANSACTION" = "Неправильна транзакція";
 
 /* Indicates that a payment failed due to an outdated client. */
-"PAYMENTS_NEW_PAYMENT_ERROR_OUTDATED_CLIENT" = "Щоб користуватися платежами, оновіть Signal.";
+"PAYMENTS_NEW_PAYMENT_ERROR_OUTDATED_CLIENT" = "Оновіть Signal для використання платежів.";
 
 /* Indicates that an outgoing payment could not be verified in a timely way. */
-"PAYMENTS_NEW_PAYMENT_ERROR_OUTGOING_VERIFICATION_TAKING_TOO_LONG" = "Платіж ще не підтверджено";
+"PAYMENTS_NEW_PAYMENT_ERROR_OUTGOING_VERIFICATION_TAKING_TOO_LONG" = "Платіж ще не верифіковано";
 
 /* Indicates that a payment failed because the payments lock attempt was cancelled. */
 "PAYMENTS_NEW_PAYMENT_ERROR_PAYMENTS_LOCK_AUTH_CANCELLED" = "Автентифікація захисту платежів була скасована.";
@@ -5249,7 +5168,7 @@
 "PAYMENTS_NEW_PAYMENT_ERROR_PAYMENTS_LOCK_AUTH_FAILURE" = "Помилка з автентифікацією захисту платежів.";
 
 /* Indicates that an unknown error occurred while sending a payment or payment request. */
-"PAYMENTS_NEW_PAYMENT_ERROR_UNKNOWN" = "Не вдалося здійснити платіж. Перевірте з'єднання й спробуйте знову.";
+"PAYMENTS_NEW_PAYMENT_ERROR_UNKNOWN" = "Не вдалось завершити платіж. Перевірте з'єднання та спробуйте пізніше.";
 
 /* Label for the 'payment estimated fee' indicator. */
 "PAYMENTS_NEW_PAYMENT_ESTIMATED_FEE" = "Комісія мережі";
@@ -5258,7 +5177,7 @@
 "PAYMENTS_NEW_PAYMENT_FIAT_CONVERSION_FORMAT" = "Приблизно %1$@";
 
 /* Label for the 'invalid amount' button. */
-"PAYMENTS_NEW_PAYMENT_INVALID_AMOUNT" = "Неприпустимий баланс";
+"PAYMENTS_NEW_PAYMENT_INVALID_AMOUNT" = "Неправильний баланс";
 
 /* Format for the 'message character count indicator' for the 'new payment or payment request' view. Embeds {{ %1$@ the number of characters in the message, %2$@ the maximum number of characters in the message }}. */
 "PAYMENTS_NEW_PAYMENT_MESSAGE_COUNT_FORMAT" = "%1$@ / %2$@";
@@ -5267,25 +5186,25 @@
 "PAYMENTS_NEW_PAYMENT_MESSAGE_PLACEHOLDER" = "Примітка";
 
 /* Label for the 'new payment' button. */
-"PAYMENTS_NEW_PAYMENT_PAY_BUTTON" = "Сплатити";
+"PAYMENTS_NEW_PAYMENT_PAY_BUTTON" = "Переказати";
 
 /* Label for the 'total payment amount' indicator. */
 "PAYMENTS_NEW_PAYMENT_PAYMENT_TOTAL" = "Загальний баланс";
 
 /* Indicator that a new payment is being processed in the 'send payment' UI. */
-"PAYMENTS_NEW_PAYMENT_PROCESSING" = "Опрацювання";
+"PAYMENTS_NEW_PAYMENT_PROCESSING" = "Обробка";
 
 /* Format for the 'payment recipient amount' indicator. Embeds {{ the name of the recipient of the payment }}. */
-"PAYMENTS_NEW_PAYMENT_RECIPIENT_AMOUNT_FORMAT" = "Одержувач: %1$@";
+"PAYMENTS_NEW_PAYMENT_RECIPIENT_AMOUNT_FORMAT" = "До %1$@";
 
 /* Label for the payments notification banner for a single payment notification. */
 "PAYMENTS_NOTIFICATION_BANNER_1" = "1 нове сповіщення про платіж";
 
 /* Format for the payments notification banner for a single payment notification with details. Embeds: {{ %1$@ the name of the user who sent you the payment, %2$@ the amount of the payment }}. */
-"PAYMENTS_NOTIFICATION_BANNER_1_WITH_DETAILS_FORMAT" = "Користувач %1$@ надіслав вам %2$@";
+"PAYMENTS_NOTIFICATION_BANNER_1_WITH_DETAILS_FORMAT" = "%1$@ переказав вам %2$@";
 
 /* Format for the payments notification banner for multiple payment notifications. Embeds: {{ the number of unread payment notifications }}. */
-"PAYMENTS_NOTIFICATION_BANNER_N_FORMAT" = "Нових сповіщень про платежі: %1$@";
+"PAYMENTS_NOTIFICATION_BANNER_N_FORMAT" = "Нових сповіщень про платіж: %1$@";
 
 /* Payment status context with contact name, failed. Embeds {{ Name of receiving contact }} */
 "PAYMENTS_PAYMENT_STATUS_IN_CHAT_PAYMENT_TO" = "Одержувач платежу: %1$@";
@@ -5300,16 +5219,16 @@
 "PAYMENTS_PAYMENT_STATUS_IN_CHAT_YOU_SENT" = "Ви надіслали користувачу %1$@";
 
 /* Status indicator for incoming payments which are complete. */
-"PAYMENTS_PAYMENT_STATUS_LONG_INCOMING_COMPLETE" = "Платіж здійснено";
+"PAYMENTS_PAYMENT_STATUS_LONG_INCOMING_COMPLETE" = "Платіж завершено";
 
 /* Status indicator for incoming payments which have not yet been verified. */
-"PAYMENTS_PAYMENT_STATUS_LONG_INCOMING_UNVERIFIED" = "Не підтверджено";
+"PAYMENTS_PAYMENT_STATUS_LONG_INCOMING_UNVERIFIED" = "Не підтверджені";
 
 /* Status indicator for incoming payments which have been verified. */
-"PAYMENTS_PAYMENT_STATUS_LONG_INCOMING_VERIFIED" = "Підтверджено";
+"PAYMENTS_PAYMENT_STATUS_LONG_INCOMING_VERIFIED" = "Завірено";
 
 /* Status indicator for outgoing payments which are complete. */
-"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_COMPLETE" = "Платіж здійснено";
+"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_COMPLETE" = "Платіж завершено";
 
 /* Status indicator for outgoing payments which are being sent. */
 "PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_SENDING" = "Надсилаємо…";
@@ -5318,28 +5237,28 @@
 "PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_SENT" = "Надіслано";
 
 /* Status indicator for outgoing payments which have not yet been submitted. */
-"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_UNSUBMITTED" = "Триває підготовка";
+"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_UNSUBMITTED" = "Готуються";
 
 /* Status indicator for outgoing payments which have been submitted but not yet verified. */
-"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_UNVERIFIED" = "Не підтверджено";
+"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_UNVERIFIED" = "Не підтверджені";
 
 /* Status indicator for outgoing payments which have been verified but not yet sent. */
-"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_VERIFIED" = "Підтверджено";
+"PAYMENTS_PAYMENT_STATUS_LONG_OUTGOING_VERIFIED" = "Завірено";
 
 /* Status indicator for payments which had an unknown failure. */
 "PAYMENTS_PAYMENT_STATUS_LONG_UNKNOWN" = "Невідома помилка";
 
 /* Status indicator for incoming payments which are complete. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_INCOMING_COMPLETE" = "Здійснено";
+"PAYMENTS_PAYMENT_STATUS_SHORT_INCOMING_COMPLETE" = "Виконати";
 
 /* Status indicator for incoming payments which have not yet been verified. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_INCOMING_UNVERIFIED" = "Не підтверджено";
+"PAYMENTS_PAYMENT_STATUS_SHORT_INCOMING_UNVERIFIED" = "Не підтверджені";
 
 /* Status indicator for incoming payments which have been verified. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_INCOMING_VERIFIED" = "Підтверджено";
+"PAYMENTS_PAYMENT_STATUS_SHORT_INCOMING_VERIFIED" = "Завірено";
 
 /* Status indicator for outgoing payments which are complete. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_COMPLETE" = "Здійснено";
+"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_COMPLETE" = "Виконати";
 
 /* Status indicator for outgoing payments which are being sent. */
 "PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_SENDING" = "Надсилаємо…";
@@ -5348,13 +5267,13 @@
 "PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_SENT" = "Надіслано";
 
 /* Status indicator for outgoing payments which have not yet been submitted. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_UNSUBMITTED" = "Триває підготовка";
+"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_UNSUBMITTED" = "Готуються";
 
 /* Status indicator for outgoing payments which have been submitted but not yet verified. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_UNVERIFIED" = "Не підтверджено";
+"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_UNVERIFIED" = "Не підтверджені";
 
 /* Status indicator for outgoing payments which have been verified but not yet sent. */
-"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_VERIFIED" = "Підтверджено";
+"PAYMENTS_PAYMENT_STATUS_SHORT_OUTGOING_VERIFIED" = "Завірено";
 
 /* Status indicator for payments which had an unknown failure. */
 "PAYMENTS_PAYMENT_STATUS_SHORT_UNKNOWN" = "Невідома помилка";
@@ -5366,13 +5285,13 @@
 "PAYMENTS_PREVIEW_TEXT_UNKNOWN" = "Невідомий платіж";
 
 /* Message for error alert indicating that a given user cannot receive payments because of a pending message request for a recipient that they have sent messages to. */
-"PAYMENTS_RECIPIENT_MISSING_PROFILE_KEY_MESSAGE_W_MESSAGES" = "Щоб ви могли надіслати цьому користувачеві платіж, він повинен схвалити ваш запит на повідомлення.";
+"PAYMENTS_RECIPIENT_MISSING_PROFILE_KEY_MESSAGE_W_MESSAGES" = "Для відправки платежу цьому користувачу, йому потрібно схвалити ваш запит на відправку повідомлень.";
 
 /* Message for error alert indicating that a given user cannot receive payments because of a pending message request for a recipient that they have not sent message to. */
-"PAYMENTS_RECIPIENT_MISSING_PROFILE_KEY_MESSAGE_WO_MESSAGES" = "Щоб ви могли надіслати цьому користувачеві платіж, він повинен схвалити ваш запит на повідомлення. Надішліть йому повідомлення для створення такого запиту.";
+"PAYMENTS_RECIPIENT_MISSING_PROFILE_KEY_MESSAGE_WO_MESSAGES" = "Для відправки платежу цьому користувачу, йому потрібно схвалити ваш запит на відправку повідомлень. Надішліть йому повідомлення для створення запиту на відправку повідомлень.";
 
 /* Title for error alert indicating that a given user cannot receive payments because of a pending message request. */
-"PAYMENTS_RECIPIENT_MISSING_PROFILE_KEY_TITLE" = "Неможливо надіслати платіж";
+"PAYMENTS_RECIPIENT_MISSING_PROFILE_KEY_TITLE" = "Неможливо відправити платіж";
 
 /* The label for the 'send request' button in alerts and action sheets. */
 "PAYMENTS_RECIPIENT_PAYMENTS_NOT_ENABLED_BUTTON" = "Надіслати запит";
@@ -5387,7 +5306,7 @@
 "PAYMENTS_THREAD_PREVIEW_TEXT" = "💳 Платіж";
 
 /* Label for 'transfer out' payments. */
-"PAYMENTS_TRANSFER_OUT_PAYMENT" = "Переказ іншому користувачу";
+"PAYMENTS_TRANSFER_OUT_PAYMENT" = "Переказ коштів";
 
 /* Indicator for unidentified incoming payments. */
 "PAYMENTS_UNIDENTIFIED_PAYMENT_INCOMING" = "Отриманий платіж";
@@ -5396,13 +5315,13 @@
 "PAYMENTS_UNIDENTIFIED_PAYMENT_OUTGOING" = "Надісланий платіж";
 
 /* Label for unknown payments. */
-"PAYMENTS_UNKNOWN_PAYMENT" = "Неприпустимий платіж";
+"PAYMENTS_UNKNOWN_PAYMENT" = "Хибний платіж";
 
 /* The alert message if user tries to exit a task without saving changes. */
-"PENDING_CHANGES_ACTION_SHEET_MESSAGE" = "Хочете відхилити ці зміни?";
+"PENDING_CHANGES_ACTION_SHEET_MESSAGE" = "Відхилити ці зміни?";
 
 /* The alert title if user tries to exit a task without saving changes. */
-"PENDING_CHANGES_ACTION_SHEET_TITLE" = "Зміни не збережено";
+"PENDING_CHANGES_ACTION_SHEET_TITLE" = "Незбережені зміни";
 
 /* Title of 'accept member request to join group' button. */
 "PENDING_GROUP_MEMBERS_ACCEPT_REQUEST_BUTTON" = "Додати в групу";
@@ -5420,22 +5339,22 @@
 "PENDING_GROUP_MEMBERS_NO_PENDING_MEMBER_REQUESTS" = "Немає нерозглянутих запитів на приєднання.";
 
 /* Label indicating that a group has no pending members. */
-"PENDING_GROUP_MEMBERS_NO_PENDING_MEMBERS" = "Запрошень немає.";
+"PENDING_GROUP_MEMBERS_NO_PENDING_MEMBERS" = "Немає запрошень.";
 
 /* Message indicating that a request to join the group was successfully approved. Embeds {{ the name of the approved user }}. */
-"PENDING_GROUP_MEMBERS_REQUEST_APPROVED_FORMAT" = "Додано користувача %1$@.";
+"PENDING_GROUP_MEMBERS_REQUEST_APPROVED_FORMAT" = "Додано «%1$@».";
 
 /* Label for the 'view requests' button in the pending member requests banner. */
 "PENDING_GROUP_MEMBERS_REQUEST_BANNER_VIEW_REQUESTS" = "Переглянути запити";
 
 /* Message indicating that a request to join the group was successfully denied. Embeds {{ the name of the denied user }}. */
-"PENDING_GROUP_MEMBERS_REQUEST_DENIED_FORMAT" = "Запит користувача %1$@ відхилено.";
+"PENDING_GROUP_MEMBERS_REQUEST_DENIED_FORMAT" = "Відхилено «%1$@».";
 
 /* Title of 'revoke invite' button. */
-"PENDING_GROUP_MEMBERS_REVOKE_INVITE_1_BUTTON" = "Відкликати запрошення";
+"PENDING_GROUP_MEMBERS_REVOKE_INVITE_1_BUTTON" = "Відкликати Запрошення";
 
 /* Format for title of 'revoke invite' confirmation alert. Embeds {{ the name of the invited group member. }}. */
-"PENDING_GROUP_MEMBERS_REVOKE_LOCAL_INVITE_CONFIRMATION_TITLE_1_FORMAT" = "Відкликати запрошення користувача %1$@ в групу?";
+"PENDING_GROUP_MEMBERS_REVOKE_LOCAL_INVITE_CONFIRMATION_TITLE_1_FORMAT" = "Відкликати запрошення в групу для \"%1$@\"?";
 
 /* Footer for the 'invites by other group members' section of the 'member requests and invites' view. */
 "PENDING_GROUP_MEMBERS_SECTION_FOOTER_INVITES_FROM_OTHER_MEMBERS" = "Інформація про людей, яких запросили інші учасники групи, не показується. Інформація запрошеного стане доступна для учасників групи в разі прийняття запрошення. Запрошені побачать повідомлення в групі тільки після приєднання.";
@@ -5444,22 +5363,22 @@
 "PENDING_GROUP_MEMBERS_SECTION_FOOTER_PENDING_MEMBER_REQUESTS_FORMAT" = "Це список людей, які хочуть приєднатися до групи «%1$@» за посиланням.";
 
 /* Title for the 'invalid invites' section of the 'member requests and invites' view. */
-"PENDING_GROUP_MEMBERS_SECTION_TITLE_INVALID_INVITES" = "Недійсні запрошення";
+"PENDING_GROUP_MEMBERS_SECTION_TITLE_INVALID_INVITES" = "Хибні запрошення";
 
 /* Title for the 'invites by other group members' section of the 'member requests and invites' view. */
-"PENDING_GROUP_MEMBERS_SECTION_TITLE_INVITES_FROM_OTHER_MEMBERS" = "Запрошення інших користувачів";
+"PENDING_GROUP_MEMBERS_SECTION_TITLE_INVITES_FROM_OTHER_MEMBERS" = "Запрошені іншими";
 
 /* Title for the 'people you invited' section of the 'member requests and invites' view. */
-"PENDING_GROUP_MEMBERS_SECTION_TITLE_PEOPLE_YOU_INVITED" = "Ваші запрошення";
+"PENDING_GROUP_MEMBERS_SECTION_TITLE_PEOPLE_YOU_INVITED" = "Запрошені вами";
 
 /* Label for view-once messages that have invalid content. */
-"PER_MESSAGE_EXPIRATION_INVALID_CONTENT" = "Помилка опрацювання вхідного повідомлення";
+"PER_MESSAGE_EXPIRATION_INVALID_CONTENT" = "Помилка при обробці вхідного повідомлення";
 
 /* inbox cell and notification text for an already viewed view-once media message. */
 "PER_MESSAGE_EXPIRATION_NOT_VIEWABLE" = "Одноразовий медіафайл";
 
 /* Label for outgoing view-once messages. */
-"PER_MESSAGE_EXPIRATION_OUTGOING_MESSAGE" = "Медіафайл";
+"PER_MESSAGE_EXPIRATION_OUTGOING_MESSAGE" = "Медіа";
 
 /* inbox cell and notification text for a view-once photo. */
 "PER_MESSAGE_EXPIRATION_PHOTO_PREVIEW" = "Одноразове фото";
@@ -5489,7 +5408,7 @@
 "PHONE_NUMBER_DISCOVERABILITY_NOBODY_DESCRIPTION" = "Крім людей, яким ви напишете самі й з якими ви вже маєте спільний чат, ніхто не побачить, що ви зареєстровані в Signal.";
 
 /* A format for a label showing an example phone number. Embeds {{the example phone number}}. */
-"PHONE_NUMBER_EXAMPLE_FORMAT" = "Приклад: %1$@";
+"PHONE_NUMBER_EXAMPLE_FORMAT" = "Зразок: %1$@";
 
 /* A user friendly name for the 'everybody' phone number sharing mode. */
 "PHONE_NUMBER_SHARING_EVERYBODY" = "Усі";
@@ -5522,7 +5441,7 @@
 "PHONE_NUMBER_TYPE_MOBILE" = "Мобільний";
 
 /* Label for 'Other' phone numbers. */
-"PHONE_NUMBER_TYPE_OTHER" = "Інший";
+"PHONE_NUMBER_TYPE_OTHER" = "Інші";
 
 /* Label for 'Other FAX' phone numbers. */
 "PHONE_NUMBER_TYPE_OTHER_FAX" = "Інший факс";
@@ -5543,7 +5462,7 @@
 "PHOTO_CAPTURE_UNABLE_TO_CAPTURE_IMAGE" = "Неможливо зробити знімок.";
 
 /* alert title */
-"PHOTO_CAPTURE_UNABLE_TO_INITIALIZE_CAMERA" = "Не вдалося налаштувати камеру.";
+"PHOTO_CAPTURE_UNABLE_TO_INITIALIZE_CAMERA" = "Не вдалося настроїти камеру.";
 
 /* Button label for opening the chat on a sheet presented from photo capture view indicating that a username QR code was found. */
 "PHOTO_CAPTURE_USERNAME_QR_CODE_FOUND_CTA" = "До чату";
@@ -5564,22 +5483,22 @@
 "PIN_ACTION" = "Закріпити";
 
 /* Error body indicating that the attempt to change a PIN failed. */
-"PIN_CHANGE_ERROR_MESSAGE" = "Не вдалося створити новий PIN-код. Поточний PIN-код вимкнено. Перевірте з'єднання й спробуйте ще раз.";
+"PIN_CHANGE_ERROR_MESSAGE" = "Не вдалось створити новий PIN. Поточний PIN вимкнено. Перевірте з'єднання та спробуйте ще.";
 
 /* Error title indicating that the attempt to change a PIN failed. */
-"PIN_CHANGE_ERROR_TITLE" = "Не вдалося змінити PIN-код";
+"PIN_CHANGE_ERROR_TITLE" = "Не вдалось змінити PIN";
 
 /* Label indicating the user must use at least 4 characters */
 "PIN_CREATION_ALPHANUMERIC_HINT" = "Мінімальна довжина PIN-коду — 4 символи";
 
 /* Title of the 'pin creation' recreation view. */
-"PIN_CREATION_CHANGING_TITLE" = "Зміна PIN-коду";
+"PIN_CREATION_CHANGING_TITLE" = "Змінити PIN-код";
 
 /* Title of the 'pin creation' confirmation view. */
 "PIN_CREATION_CONFIRM_TITLE" = "Підтвердьте PIN-код";
 
 /* The explanation of confirmation in the 'pin creation' view. */
-"PIN_CREATION_CONFIRMATION_EXPLANATION" = "Введіть PIN-код, який ви щойно створили.";
+"PIN_CREATION_CONFIRMATION_EXPLANATION" = "Введіть PIN-код, який ви тільки що створили.";
 
 /* Button asking if the user would like to create an alphanumeric PIN */
 "PIN_CREATION_CREATE_ALPHANUMERIC" = "Створити буквено-цифровий PIN-код";
@@ -5594,10 +5513,10 @@
 "PIN_CREATION_DISABLE_CONFIRMATION_MESSAGE" = "Якщо ви вимкнете PIN-код, то в разі повторної реєстрації в Signal усі ваші дані буде втрачено. Щоб цього уникнути, їх необхідно перенести зі старого пристрою з iOS. З вимкненим PIN-кодом неможливо ввімкнути блокування реєстрації.";
 
 /* Title of the 'pin disable' action sheet. */
-"PIN_CREATION_DISABLE_CONFIRMATION_TITLE" = "Увага";
+"PIN_CREATION_DISABLE_CONFIRMATION_TITLE" = "Попередження";
 
 /* The explanation in the 'pin creation' view. */
-"PIN_CREATION_EXPLANATION" = "PIN-коди забезпечують шифрування інформації, що зберігається в Signal, щоб отримати до неї доступ могли тільки ви. У разі перевстановлення Signal ви зможете відновити свій профіль, налаштування й контакти. Щоб відкрити застосунок, PIN-код не потрібен.";
+"PIN_CREATION_EXPLANATION" = "PIN-коди зберігають інформацію в Signal зашифрованою, тому тільки ви можете отримати до неї доступ. Ваш профіль, налаштування та контакти буде відновлено, коли ви встановите застосунок знов. PIN-код не потрібен, щоб відкрити застосунок.";
 
 /* Learn more action on the pin creation view */
 "PIN_CREATION_LEARN_MORE" = "Детальніше про PIN-коди";
@@ -5609,13 +5528,13 @@
 "PIN_CREATION_LEARN_MORE_TITLE" = "Про PIN-коди Signal";
 
 /* Label indicating that the attempted PIN does not match the first PIN */
-"PIN_CREATION_MISMATCH_ERROR" = "PIN-коди не збігаються. Введіть їх ще раз.";
+"PIN_CREATION_MISMATCH_ERROR" = "PIN-коди не співпадають. Спробуйте ще раз.";
 
 /* Error body indicating that the attempt to create a PIN failed due to network issues. */
-"PIN_CREATION_NO_NETWORK_ERROR_MESSAGE" = "Перевірте з'єднання та спробуйте ще раз.";
+"PIN_CREATION_NO_NETWORK_ERROR_MESSAGE" = "Перевірте з'єднання та спробуйте ще.";
 
 /* Error title indicating that the attempt to create a PIN failed due to network issues. */
-"PIN_CREATION_NO_NETWORK_ERROR_TITLE" = "Немає з'єднання з мережею";
+"PIN_CREATION_NO_NETWORK_ERROR_TITLE" = "Немає інтернет-з'єднання";
 
 /* Label indicating the user must use at least 4 digits */
 "PIN_CREATION_NUMERIC_HINT" = "Мінімальна довжина PIN-коду — 4 цифри";
@@ -5627,7 +5546,7 @@
 "PIN_CREATION_PIN_PROGRESS" = "Створення PIN-коду…";
 
 /* The re-creation explanation in the 'pin creation' view. */
-"PIN_CREATION_RECREATION_EXPLANATION" = "Ви можете змінити PIN-код, якщо цей пристрій зареєстровано.";
+"PIN_CREATION_RECREATION_EXPLANATION" = "Ви можете змінити свій PIN-код, поки цей пристрій зареєстровано.";
 
 /* Action of the 'pin disable' reglock action sheet. */
 "PIN_CREATION_REGLOCK_CONFIRMATION_ACTION" = "Вимкнути";
@@ -5648,10 +5567,10 @@
 "PIN_CREATION_SKIP" = "Вимкнути PIN-код";
 
 /* Title of the 'pin creation' view. */
-"PIN_CREATION_TITLE" = "Створення PIN-коду";
+"PIN_CREATION_TITLE" = "Створити PIN-код";
 
 /* Label indicating that the attempted PIN is too weak */
-"PIN_CREATION_WEAK_ERROR" = "Придумайте надійніший PIN-код";
+"PIN_CREATION_WEAK_ERROR" = "Виберіть більш надійний PIN-код";
 
 /* If your attempted PIN is too weak, you'll see an error message. This is the text on the error dialog. */
 "PIN_CREATION_WEAK_ERROR_MESSAGE" = "Завдяки PIN-коду ваші дані зберігаються в Signal зашифрованими, щоб тільки ви мали до них доступ. Для максимального захисту створіть надійний PIN-код.";
@@ -5660,7 +5579,7 @@
 "PIN_DISABLE_ERROR_MESSAGE" = "Не вдалося вимкнути PIN-код. Ми нагадаємо про це пізніше.";
 
 /* Error title indicating that the attempt to disable a PIN failed. */
-"PIN_DISABLE_ERROR_TITLE" = "Не вдалося вимкнути PIN-код";
+"PIN_DISABLE_ERROR_TITLE" = "Помилка вимкнення PIN";
 
 /* If the user is re-registering, they need to enter their PIN to restore all their data. In some cases, they can skip this entry and lose some data. This text is shown on a button that lets them begin to do this. */
 "PIN_ENTER_EXISTING_SKIP" = "Пропустити PIN-код";
@@ -5669,7 +5588,7 @@
 "PIN_RECREATION_ERROR_TITLE" = "Не вдалося створити PIN-код";
 
 /* Error body indicating that the attempt to recreate a PIN failed. */
-"PIN_RECRETION_ERROR_MESSAGE" = "Не вдалося створити PIN-код. Перевірте з'єднання та спробуйте ще раз.";
+"PIN_RECRETION_ERROR_MESSAGE" = "Не вдалось створити PIN. Перевірте з'єднання та спробуйте ще.";
 
 /* The explanation for the 'pin reminder' dialog. */
 "PIN_REMINDER_EXPLANATION" = "Щоб ви запам'ятали свій PIN-код, ми періодично проситимемо вас його вводити. Згодом це ставатиметься рідше.";
@@ -5678,7 +5597,7 @@
 "PIN_REMINDER_FORGOT_PIN" = "Забули PIN-код?";
 
 /* Action text for PIN reminder megaphone */
-"PIN_REMINDER_MEGAPHONE_ACTION" = "Підтвердьте PIN-код";
+"PIN_REMINDER_MEGAPHONE_ACTION" = "Підтвердити PIN-код";
 
 /* Body for PIN reminder megaphone */
 "PIN_REMINDER_MEGAPHONE_BODY" = "Періодично ми проситимемо вас підтверджувати PIN-код, щоб ви його не забували.";
@@ -5690,7 +5609,7 @@
 "PIN_REMINDER_MEGAPHONE_TITLE" = "Підтвердьте свій PIN-код Signal";
 
 /* Toast indicating that we'll ask you for your PIN again tomorrow. */
-"PIN_REMINDER_MEGAPHONE_TOMORROW_TOAST" = "Завтра ми нагадаємо знов.";
+"PIN_REMINDER_MEGAPHONE_TOMORROW_TOAST" = "Ми нагадаємо знову завтра.";
 
 /* Toast indicating that we'll ask you for your PIN again in 2 weeks. */
 "PIN_REMINDER_MEGAPHONE_TWO_WEEK_TOAST" = "Через кілька тижнів ми нагадаємо знов.";
@@ -5699,40 +5618,40 @@
 "PIN_REMINDER_MEGAPHONE_WEEK_TOAST" = "Через тиждень ми нагадаємо знов.";
 
 /* Label indicating that the attempted PIN does not match the user's PIN */
-"PIN_REMINDER_MISMATCH_ERROR" = "Неправильний PIN-код. Введіть код ще раз.";
+"PIN_REMINDER_MISMATCH_ERROR" = "Невірний PIN-код, спробуйте ще раз.";
 
 /* The title for the 'pin reminder' dialog. */
 "PIN_REMINDER_TITLE" = "Введіть свій PIN-код Signal";
 
 /* Label indicating that the attempted PIN is too short */
-"PIN_REMINDER_TOO_SHORT_ERROR" = "Мінімальна довжина PIN-коду — 4 цифри";
+"PIN_REMINDER_TOO_SHORT_ERROR" = "ПІН повинен містити щонайменше 4 цифри.";
 
 /* An explanation that you have already pinned the maximum number of conversations. */
 "PINNED_CONVERSATION_LIMIT" = "Ви можете закріпити до 4-х чатів.";
 
 /* The title for pinned conversation section on the conversation list */
-"PINNED_SECTION_TITLE" = "Закріплені";
+"PINNED_SECTION_TITLE" = "Закріплено";
 
 /* Action text for PIN megaphone when user doesn't have a PIN */
-"PINS_MEGAPHONE_ACTION" = "Створіть PIN-код";
+"PINS_MEGAPHONE_ACTION" = "Створити PIN-код";
 
 /* Body for PIN megaphone when user doesn't have a PIN */
-"PINS_MEGAPHONE_BODY" = "Завершіть створення PIN-коду Signal.";
+"PINS_MEGAPHONE_BODY" = "Завершіть створення Signal PIN.";
 
 /* Title for PIN megaphone when user doesn't have a PIN */
 "PINS_MEGAPHONE_TITLE" = "Створіть PIN-код";
 
 /* Toast indicating that a PIN has been created. */
-"PINS_MEGAPHONE_TOAST" = "PIN-код створено. Його можна змінити в налаштуваннях.";
+"PINS_MEGAPHONE_TOAST" = "PIN-код створено. Ви можете змінити його в налаштуваннях.";
 
 /* Accessibility label for button to start media playback */
-"PLAY_BUTTON_ACCESSABILITY_LABEL" = "Відтворити медіафайл";
+"PLAY_BUTTON_ACCESSABILITY_LABEL" = "Відтворити медіа";
 
 /* Badge indicating that the user is verified. */
 "PRIVACY_IDENTITY_IS_VERIFIED_BADGE" = "Перевірено";
 
 /* Button that shows the 'scan with camera' view. */
-"PRIVACY_TAP_TO_SCAN" = "Торкніться, щоб сканувати";
+"PRIVACY_TAP_TO_SCAN" = "Натисніть, щоб сканувати";
 
 /* Button that lets user mark another user's identity as unverified. */
 "PRIVACY_UNVERIFY_BUTTON" = "Позначити як неперевірений";
@@ -5744,19 +5663,19 @@
 "PRIVACY_VERIFICATION_FAILED_MISMATCHED_SAFETY_NUMBERS_IN_CLIPBOARD" = "Цифри у вашому буфері обміну не схожі на вірний код безпеки для цієї розмови.";
 
 /* Alert body for user error */
-"PRIVACY_VERIFICATION_FAILED_NO_SAFETY_NUMBERS_IN_CLIPBOARD" = "Signal не зміг знайти коду безпеки у вашому буфері обміну. Ви правильно його скопіювали?";
+"PRIVACY_VERIFICATION_FAILED_NO_SAFETY_NUMBERS_IN_CLIPBOARD" = "Signal не зміг знайти код безпеки у вашому буфері обміну. Ви правильно його скопіювали?";
 
 /* Alert body when verifying with {{contact name}} */
-"PRIVACY_VERIFICATION_FAILED_THEY_HAVE_WRONG_KEY_FOR_ME" = "Кожна пара користувачів Signal має унікальний код безпеки. Переконайтеся, що в користувача %1$@ показано *ваш* унікальний код безпеки.";
+"PRIVACY_VERIFICATION_FAILED_THEY_HAVE_WRONG_KEY_FOR_ME" = "Кожна пара користувачів Signal має різні пари кодів безпеки. Переконайтеся, що в %1$@ показує такий ж код безпеки, що й у *вас*.";
 
 /* alert body */
-"PRIVACY_VERIFICATION_FAILED_WITH_OLD_LOCAL_VERSION" = "Ваша версія Signal застаріла. Для перевірки коду безпеки необхідно оновити застосунок.";
+"PRIVACY_VERIFICATION_FAILED_WITH_OLD_LOCAL_VERSION" = "Ваша версія Signal застаріла. Перед верифікацією необхідно оновитися.";
 
 /* alert body */
-"PRIVACY_VERIFICATION_FAILED_WITH_OLD_REMOTE_VERSION" = "Ваш співрозмовник користується застарілою версією Signal. Для перевірки коду безпеки йому необхідно оновити застосунок.";
+"PRIVACY_VERIFICATION_FAILED_WITH_OLD_REMOTE_VERSION" = "Ваш співрозмовник користується застарілою версією Signal. Перед верифікацією необхідно оновитися.";
 
 /* alert body */
-"PRIVACY_VERIFICATION_FAILURE_INVALID_QRCODE" = "Схоже, що зісканований код — це не код безпеки. Чи використовуєте ви й ваш співрозмовник найновішу версію Signal?";
+"PRIVACY_VERIFICATION_FAILURE_INVALID_QRCODE" = "Відсканований код не схожий на код безпеки. Ви обидва користуєтеся останньою версією Signal?";
 
 /* Navbar title */
 "PRIVACY_VERIFICATION_TITLE" = "Перевірка коду безпеки";
@@ -5813,7 +5732,7 @@
 "PROFILE_BIO_VIEW_TITLE" = "Про контакт";
 
 /* Title for the profile bio view. Embeds {{ the number of characters that can be added to the profile bio without hitting the length limit }}. */
-"PROFILE_BIO_VIEW_TITLE_FORMAT" = "Про себе (%1$@)";
+"PROFILE_BIO_VIEW_TITLE_FORMAT" = "Про (%1$@)";
 
 /* The copy rendered in a conversation when someone in your address book changes their profile name. Embeds {contact name}, {old profile name}, {new profile name} */
 "PROFILE_NAME_CHANGE_SYSTEM_CONTACT_FORMAT" = "Користувач %1$@ змінив ім'я профілю з %2$@ на %3$@.";
@@ -5858,7 +5777,7 @@
 "PROFILE_VIEW_ERROR_FAMILY_NAME_TOO_LONG" = "Ваше прізвище задовге.";
 
 /* Error message shown when user tries to update profile without a given name */
-"PROFILE_VIEW_ERROR_GIVEN_NAME_REQUIRED" = "Зазначати ім'я обов'язково.";
+"PROFILE_VIEW_ERROR_GIVEN_NAME_REQUIRED" = "Ім'я є обов'язковим.";
 
 /* Error message shown when user tries to update profile with a given name that is too long. */
 "PROFILE_VIEW_ERROR_GIVEN_NAME_TOO_LONG" = "Ваше ім'я задовге.";
@@ -5870,7 +5789,7 @@
 "PROFILE_VIEW_GIVEN_NAME_DEFAULT_TEXT" = "Ім'я (обов'язково)";
 
 /* Error shown when the user tries to update their profile when the app is not connected to the internet. */
-"PROFILE_VIEW_NO_CONNECTION" = "Профіль можна оновити лише за наявності з'єднання з інтернетом.";
+"PROFILE_VIEW_NO_CONNECTION" = "Профіль може бути оновлено лише за наявності підключення до інтернету.";
 
 /* Description of the user profile. */
 "PROFILE_VIEW_PROFILE_DESCRIPTION" = "Ваш профіль і зміни в ньому бачать ваші співрозмовники, контакти й групи.";
@@ -5900,7 +5819,7 @@
 "PROXY_SETTINGS_TITLE" = "Проксі";
 
 /* Notification action button title */
-"PUSH_MANAGER_MARKREAD" = "Прочитати";
+"PUSH_MANAGER_MARKREAD" = "Прочитано";
 
 /* Notification action button title for 'react with thumbs up.' */
 "PUSH_MANAGER_REACT_WITH_THUMBS_UP" = "👍";
@@ -5909,7 +5828,7 @@
 "PUSH_MANAGER_REPLY" = "Відповісти";
 
 /* Title of alert shown when push tokens sync job succeeds. */
-"PUSH_REGISTER_SUCCESS" = "Ви успішно заново зареєстрували токен для отримання push-сповіщень.";
+"PUSH_REGISTER_SUCCESS" = "Успішна перереєстрація для одержання push-сповіщень.";
 
 /* Indicates the author of a quoted message. Embeds {{the author's name or phone number}}. */
 "QUOTED_REPLY_AUTHOR_INDICATOR_FORMAT" = "%1$@";
@@ -5933,7 +5852,7 @@
 "QUOTED_REPLY_STORY_AUTHOR_INDICATOR_FORMAT" = "%1$@ · Історія";
 
 /* Indicates this message is a quoted reply to an attachment of unknown type. */
-"QUOTED_REPLY_TYPE_ATTACHMENT" = "Вкладення";
+"QUOTED_REPLY_TYPE_ATTACHMENT" = "Долучення";
 
 /* Indicates this message is a quoted reply to an audio file. */
 "QUOTED_REPLY_TYPE_AUDIO" = "Аудіо";
@@ -5963,7 +5882,7 @@
 "RAISED_HANDS_TOAST_YOUR_HAND_MESSAGE" = "Ви підняли руку";
 
 /* The header used to indicate All reactions to a given message. Embeds {{number of reactions}} */
-"REACTION_DETAIL_ALL_FORMAT" = "Усі · %1$@";
+"REACTION_DETAIL_ALL_FORMAT" = "Всі · %1$@";
 
 /* notification body. Embeds {{reaction emoji}} */
 "REACTION_INCOMING_NOTIFICATION_BODY_FORMAT" = "Реакція на ваше повідомлення: %1$@";
@@ -6002,7 +5921,7 @@
 "REACTION_INCOMING_NOTIFICATION_TO_VOICE_MESSAGE_BODY_FORMAT" = "Реакція на ваше голосове повідомлення: %1$@";
 
 /* Pressing this button marks a thread as read */
-"READ_ACTION" = "Прочитати";
+"READ_ACTION" = "Прочитано";
 
 /* The title for a context menu item that blocks a recipient from your recipient picker list. */
 "RECIPIENT_CONTEXT_MENU_BLOCK_TITLE" = "Заблокувати";
@@ -6011,7 +5930,7 @@
 "RECIPIENT_CONTEXT_MENU_REMOVE_TITLE" = "Видалити";
 
 /* Error message indicating that a user can't be selected. */
-"RECIPIENT_PICKER_ERROR_USER_CANNOT_BE_SELECTED" = "Користувача неможливо обрати.";
+"RECIPIENT_PICKER_ERROR_USER_CANNOT_BE_SELECTED" = "Користувач не може бути обраний.";
 
 /* Alert text. Shown after selecting a phone number that isn't valid. */
 "RECIPIENT_PICKER_INVALID_NUMBER_MESSAGE" = "%1$@ не користується Signal. Спробуйте ще раз із дійсним номером телефону.";
@@ -6029,10 +5948,10 @@
 "RECIPIENT_PICKER_INVITE_TITLE" = "Запросити в Signal";
 
 /* Alert title explaining what happens if you forget your 'two-factor auth pin'. */
-"REGISTER_2FA_FORGOT_PIN_ALERT_TITLE" = "Потрібна допомога?";
+"REGISTER_2FA_FORGOT_PIN_ALERT_TITLE" = "Потрібна Допомога?";
 
 /* Alert body for a forgotten SVR (V2) PIN */
-"REGISTER_2FA_FORGOT_SVR_PIN_ALERT_MESSAGE" = "Ваш PIN-код — це створений вами цифровий або буквено-цифровий код, який містить мінімум 4 символи. Якщо ви забули PIN-код, вам доведеться зачекати 7 днів, після чого повторно зареєструвати свій акаунт.";
+"REGISTER_2FA_FORGOT_SVR_PIN_ALERT_MESSAGE" = "Ваш PIN - це код з 4+ символів, створений вами, який може бути цифровим або буквенно-цифровим. Якщо ви не зможете згадати свій PIN-код, вам доведеться почекати 7 днів, щоб зареєструватися наново.";
 
 /* Alert body for a forgotten SVR (V2) PIN when the user doesn't have reglock and they cannot necessarily create a new PIN */
 "REGISTER_2FA_FORGOT_SVR_PIN_WITHOUT_REGLOCK_ALERT_MESSAGE" = "Ваш PIN-код — це створений вами цифровий або буквено-цифровий код, який містить принаймні 4 символи. Якщо ви не можете згадати свій PIN-код, ви зможете зареєструватися і користуватися своїм акаунтом, але втратите деякі збережені налаштування, наприклад інформацію профілю.";
@@ -6050,13 +5969,13 @@
 "REGISTER_RATE_LIMITING_ALERT" = "Забагато спроб. Зачекайте кілька хвилин і спробуйте знову.";
 
 /* No comment provided by engineer. */
-"REGISTER_RATE_LIMITING_BODY" = "Забагато спроб. Зачекайте хвилину й спробуйте знову.";
+"REGISTER_RATE_LIMITING_BODY" = "Забагато спроб. Зачекайте хвилину і спробуйте знову.";
 
 /* No comment provided by engineer. */
-"REGISTER_RATE_LIMITING_ERROR" = "Забагато спроб. Зачекайте хвилину й спробуйте знову.";
+"REGISTER_RATE_LIMITING_ERROR" = "Забагато спроб. Зачекайте хвилину і спробуйте знову.";
 
 /* Title of alert shown when push tokens sync job fails. */
-"REGISTRATION_BODY" = "Не вдалося заново зареєструвати токен для отримання push-сповіщень.";
+"REGISTRATION_BODY" = "Не вдалося заново зареєструватися для одержання push-сповіщень.";
 
 /* During (re)registration, users may need to update their app to continue. They'll be presented with an alert if this is the case, prompting them to update. This is the action button on that alert. */
 "REGISTRATION_CANNOT_CONTINUE_WITHOUT_UPDATING_APP_ACTION" = "Оновити";
@@ -6080,7 +5999,7 @@
 "REGISTRATION_DEVICE_TRANSFER_CHOICE_TITLE" = "Перенесення акаунту й повідомлень";
 
 /* Placeholder text for the phone number textfield */
-"REGISTRATION_ENTERNUMBER_DEFAULT_TEXT" = "Введіть номер";
+"REGISTRATION_ENTERNUMBER_DEFAULT_TEXT" = "Уведіть номер";
 
 /* Registration Lock can prevent users from registering in some cases, and they'll have to wait. This is the description on that screen, explaining what's going on. Embeds {{ duration }}, such as \"7 days\". */
 "REGISTRATION_LOCK_TIMEOUT_DESCRIPTION_FORMAT" = "Для захисту вашої конфіденційності та безпеки ваш акаунт було заблоковано. Ви зможете заново зареєструвати цей номер телефону без PIN-коду після такого періоду бездіяльності в акаунті: %1$@. Увесь вміст буде видалено.";
@@ -6107,7 +6026,7 @@
 "REGISTRATION_PHONE_NUMBER_TITLE" = "Ваш номер телефону";
 
 /* Message for confirmation alert when requesting a voice code during phone number registration. */
-"REGISTRATION_PHONE_NUMBER_VOICE_CODE_ALERT_MESSAGE" = "Is your phone number above correct?";
+"REGISTRATION_PHONE_NUMBER_VOICE_CODE_ALERT_MESSAGE" = "Вам зателефонують, щоб підтвердити цей номер. Чи правильно вказаний номер телефону вище?";
 
 /* Label for the phone number textfield */
 "REGISTRATION_PHONENUMBER_BUTTON" = "Номер телефону";
@@ -6152,25 +6071,13 @@
 "REGISTRATION_PROFILE_SETUP_TITLE" = "Створіть профіль";
 
 /* Error shown if an SMS/call service provider is permanently unable to send a verification code to the provided number. */
-"REGISTRATION_PROVIDER_FAILURE_MESSAGE_PERMANENT" = "Signal не може надіслати SMS-повідомлення з кодом через проблеми з оператором SMS.";
+"REGISTRATION_PROVIDER_FAILURE_MESSAGE_PERMANENT" = "Через зовнішній збій Signal не може надіслати SMS-код на ваш номер.";
 
 /* Error shown if an SMS/call service provider is temporarily unable to send a verification code to the provided number. */
-"REGISTRATION_PROVIDER_FAILURE_MESSAGE_TRANSIENT" = "Signal не вдалося надіслати SMS-повідомлення з кодом через проблеми з оператором SMS. Спробуйте зареєструватися через кілька годин.";
+"REGISTRATION_PROVIDER_FAILURE_MESSAGE_TRANSIENT" = "Через зовнішній збій Signal не вдалося надіслати SMS-код на ваш номер. Будь ласка, спробуйте ще раз пізніше.";
 
 /* No comment provided by engineer. */
-"REGISTRATION_RESTRICTED_MESSAGE" = "Щоб надсилати повідомлення, необхідно зареєструватися.";
-
-/* Title for screen containing QR code that users scan with their old phone when they want to transfer/restore their message history to a new device. */
-"REGISTRATION_SCAN_QR_CODE_TITLE" = "Scan this code with your old phone";
-
-/* Tutorial text describing the first step to scanning the restore/transfer QR code with your old phone: opening Signal */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_OPEN_SIGNAL" = "Open Signal on your old device";
-
-/* Tutorial text describing the third step to scanning the restore/transfer QR code with your old phone: scan the code */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_SCAN" = "Scan this code with the camera";
-
-/* Tutorial text describing the second step to scanning the restore/transfer QR code with your old phone: tap the camera icon */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_TAP_CAMERA" = "Tap the camera icon";
+"REGISTRATION_RESTRICTED_MESSAGE" = "Перед тим, як надсилати повідомлення, слід зареєструватися.";
 
 /* Button when sending a verification code via sms failed, but resending via voice call might succeed. */
 "REGISTRATION_SMS_CODE_FAILED_TRY_VOICE_BUTTON" = "Аудіовиклик";
@@ -6227,10 +6134,10 @@
 "REMOVE_PREVIEW" = "Прибрати попередній вигляд";
 
 /* The title for the 'replace group admin' view. */
-"REPLACE_ADMIN_VIEW_TITLE" = "Оберіть нового адміністратора";
+"REPLACE_ADMIN_VIEW_TITLE" = "Виберіть Нового Адміністратора";
 
 /* No comment provided by engineer. */
-"REREGISTER_FOR_PUSH" = "Перереєструвати токен для push-сповіщень";
+"REREGISTER_FOR_PUSH" = "Перереєструвати Push-сповіщення";
 
 /* If the user is re-registering, they may need to enter their PIN to restore all their data. If they enter the incorrect PIN, they will be shown a warning. In some cases (such as for this string), the user has the option to skip PIN entry and will lose some data. Embeds {{ number of attempts }}, such as \"3 attempts\". */
 "REREGISTER_INVALID_PIN_WARNING_SKIPPABLE_FORMAT" = "Ви маєте ще %1$@. Якщо спроби закінчаться, ви зможете створити новий PIN-код. Ви зможете зареєструватися і користуватися своїм акаунтом, але втратите деякі збережені налаштування, наприклад інформацію профілю.";
@@ -6245,7 +6152,7 @@
 "RETRY_BUTTON_TEXT" = "Повторити";
 
 /* Button to return to current group call */
-"RETURN_CALL_PILL_BUTTON" = "Повернутися";
+"RETURN_CALL_PILL_BUTTON" = "Повернутись";
 
 /* Text for a toast confirming that ringing has been turned off for a call. */
 "RING_OFF_CONFIRMATION_TOAST_LABEL" = "Дзвінок вимкнено";
@@ -6254,10 +6161,10 @@
 "RING_ON_CONFIRMATION_TOAST_LABEL" = "Дзвінок увімкнено";
 
 /* button title to confirm adding a recipient when their safety number has recently changed */
-"SAFETY_NUMBER_CHANGED_CONFIRM_ADD_MEMBER_ACTION" = "Усе одно додати";
+"SAFETY_NUMBER_CHANGED_CONFIRM_ADD_MEMBER_ACTION" = "Все одно додати";
 
 /* alert button text to confirm placing an outgoing call after the recipients Safety Number has changed. */
-"SAFETY_NUMBER_CHANGED_CONFIRM_CALL_ACTION" = "Усе одно подзвонити";
+"SAFETY_NUMBER_CHANGED_CONFIRM_CALL_ACTION" = "Усе одно зателефонувати";
 
 /* button title to confirm sending to a recipient whose safety number recently changed */
 "SAFETY_NUMBER_CHANGED_CONFIRM_SEND_ACTION" = "Усе одно надіслати";
@@ -6269,16 +6176,16 @@
 "SAFETY_NUMBER_CONFIRMATION_PREVIOUSLY_VERIFIED" = "Раніше було позначено як перевірений";
 
 /* Title for the 'safety number confirmation' view */
-"SAFETY_NUMBER_CONFIRMATION_TITLE" = "Зміни коду безпеки";
+"SAFETY_NUMBER_CONFIRMATION_TITLE" = "Змінені коди безпеки";
 
 /* Text explaining that the given contact has had their safety number verified. */
 "SAFETY_NUMBER_CONFIRMATION_VERIFIED" = "Перевірено";
 
 /* View safety number action for the 'safety number confirmation' view */
-"SAFETY_NUMBER_CONFIRMATION_VIEW_ACTION" = "Переглянути";
+"SAFETY_NUMBER_CONFIRMATION_VIEW_ACTION" = "Детальніше";
 
 /* Snippet to share {{safety number}} with a friend. sent e.g. via SMS */
-"SAFETY_NUMBER_SHARE_FORMAT" = "Наш код безпеки в Signal:\n%1$@";
+"SAFETY_NUMBER_SHARE_FORMAT" = "Наш код безпеки Signal:\n%1$@";
 
 /* Action sheet heading */
 "SAFETY_NUMBERS_ACTIONSHEET_TITLE" = "Змінився код безпеки користувача %1$@. Можливо, його варто перевірити.";
@@ -6332,31 +6239,31 @@
 "SCAN_QR_CODE_VIEW_TITLE" = "Зіскануйте QR-код";
 
 /* Indicates a delay of zero seconds, and that 'screen lock activity' will timeout immediately. */
-"SCREEN_LOCK_ACTIVITY_TIMEOUT_NONE" = "Миттєве блокування";
+"SCREEN_LOCK_ACTIVITY_TIMEOUT_NONE" = "Миттєво";
 
 /* Indicates that an unknown error occurred while using Touch ID/Face ID/Phone Passcode. */
 "SCREEN_LOCK_ENABLE_UNKNOWN_ERROR" = "Немає доступу до автентифікації.";
 
 /* Indicates that Touch ID/Face ID/Phone Passcode authentication failed. */
-"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_FAILED" = "Не вдалося здійснити автентифікацію.";
+"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_FAILED" = "Невдала автентифікація.";
 
 /* Indicates that Touch ID/Face ID/Phone Passcode is 'locked out' on this device due to authentication failures. */
 "SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_LOCKOUT" = "Забагато невдалих спроб автентифікації. Спробуйте пізніше.";
 
 /* Indicates that Touch ID/Face ID/Phone Passcode are not available on this device. */
-"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_NOT_AVAILABLE" = "Щоб використовувати блокування екрана, в параметрах iOS необхідно активувати код доступу.";
+"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_NOT_AVAILABLE" = "Щоб екран блокування працював, ви повинні ввести код доступу в налаштуваннях iOS.";
 
 /* Indicates that Touch ID/Face ID/Phone Passcode is not configured on this device. */
-"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_NOT_ENROLLED" = "Щоб використовувати блокування екрана, в параметрах iOS необхідно активувати код доступу.";
+"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_NOT_ENROLLED" = "Щоб екран блокування працював, ви повинні ввести код доступу в налаштуваннях iOS.";
 
 /* Indicates that Touch ID/Face ID/Phone Passcode passcode is not set. */
-"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_PASSCODE_NOT_SET" = "Щоб використовувати блокування екрана, в параметрах iOS необхідно активувати код доступу.";
+"SCREEN_LOCK_ERROR_LOCAL_AUTHENTICATION_PASSCODE_NOT_SET" = "Щоб екран блокування працював, ви повинні ввести код доступу в налаштуваннях iOS.";
 
 /* Description of how and why Signal iOS uses Touch ID/Face ID/Phone Passcode to unlock 'screen lock'. */
-"SCREEN_LOCK_REASON_UNLOCK_SCREEN_LOCK" = "Пройдіть автентифікацію, щоб відкрити Signal.";
+"SCREEN_LOCK_REASON_UNLOCK_SCREEN_LOCK" = "Автентифікуйтеся, щоб відкрити Signal.";
 
 /* Title for alert indicating that screen lock could not be unlocked. */
-"SCREEN_LOCK_UNLOCK_FAILED" = "Не вдалося здійснити автентифікацію";
+"SCREEN_LOCK_UNLOCK_FAILED" = "Невдала автентифікація";
 
 /* Label for button on lock screen that lets users unlock Signal. */
 "SCREEN_LOCK_UNLOCK_SIGNAL" = "Розблокувати Signal";
@@ -6365,7 +6272,7 @@
 "SEARCH_BY_NAME_OR_USERNAME_OR_NUMBER_PLACEHOLDER_TEXT" = "Ім'я, ім'я користувача або номер";
 
 /* Placeholder text indicating the user can search for contacts by name or phone number. */
-"SEARCH_BYNAMEORNUMBER_PLACEHOLDER_TEXT" = "Пошук імені або номера";
+"SEARCH_BYNAMEORNUMBER_PLACEHOLDER_TEXT" = "Пошук за іменем чи номером";
 
 /* placeholder text in an empty search field */
 "SEARCH_FIELD_PLACE_HOLDER_TEXT" = "Пошук";
@@ -6381,6 +6288,9 @@
 
 /* section header for search results that match a message in a conversation */
 "SEARCH_SECTION_MESSAGES" = "Повідомлення";
+
+/* alert title */
+"SECONDARY_DEVICE_ERROR_FETCHING_LINKING_CODE" = "Не вдалось отримати код прив'язки";
 
 /* Message for error alert indicating that re-linking failed because the account did not match. */
 "SECONDARY_LINKING_ERROR_DIFFERENT_ACCOUNT_MESSAGE" = "Щоб зв'язати цей пристрій з іншим акаунтом, спочатку потрібно скинути налаштування пристрою. Ви точно хочете видалити всю історію (повідомлення, вкладення, виклики тощо)? Видалення буде незворотне.";
@@ -6398,31 +6308,22 @@
 "SECONDARY_LINKING_ERROR_OBSOLETE_LINKED_DEVICE_TITLE" = "Версія не підтримується";
 
 /* alert message for outdated linking device */
-"SECONDARY_LINKING_ERROR_OLD_VERSION_MESSAGE" = "На іншому пристрої використовується застаріла версія Signal, яка не підтримує сканування QR-кодів з iPad. Установіть найновішу версію Signal і спробуйте ще раз.";
+"SECONDARY_LINKING_ERROR_OLD_VERSION_MESSAGE" = "На іншому пристрої працює стара версія Signal, яка не підтримує сканування QR-кодів iPad. Будь ласка, встановіть останню версію Signal і спробуйте ще раз.";
 
 /* alert title for outdated linking device */
-"SECONDARY_LINKING_ERROR_OLD_VERSION_TITLE" = "Оновіть пристрій, який здійснює сканування";
+"SECONDARY_LINKING_ERROR_OLD_VERSION_TITLE" = "Обновіть Скануючий Пристрій";
 
 /* alert title */
-"SECONDARY_LINKING_ERROR_WAITING_FOR_SCAN" = "Не вдалося зв'язати пристрій";
-
-/* Title for action sheet when secondary device fails to sync messages. */
-"SECONDARY_LINKING_SYNCING_ERROR_TITLE" = "Error transferring your messages";
-
-/* Message for action sheet when secondary device fails to sync messages due to network error. */
-"SECONDARY_LINKING_SYNCING_NETWORK_ERROR_MESSAGE" = "Your messages could not be transferred. Check your internet connection and try again.";
-
-/* Message for action sheet when secondary device fails to sync messages due to an unspecified error. */
-"SECONDARY_LINKING_SYNCING_OTHER_ERROR_MESSAGE" = "Your messages could not be transferred due to an error. Try again by re-linking this device.";
+"SECONDARY_LINKING_ERROR_WAITING_FOR_SCAN" = "Не вдалося прив'язати ваш пристрій";
 
 /* header text when this device is being added as a secondary */
-"SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME" = "Дайте назву цьому пристрою";
+"SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME" = "Виберіть ім'я для цього пристрою";
 
 /* label text */
 "SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME_EXPLANATION" = "Ви побачите цю назву у «Зв'язаних пристроях».";
 
 /* text field placeholder */
-"SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME_PLACEHOLDER" = "Дайте назву";
+"SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME_PLACEHOLDER" = "Виберіть ім'я";
 
 /* body text while displaying a QR code which, when scanned, will link this device. */
 "SECONDARY_ONBOARDING_COMPLETE_LINKING_PROCESS" = "Завершіть зв'язування";
@@ -6437,16 +6338,13 @@
 "SECONDARY_ONBOARDING_INSTALL_PRIMARY_FIRST_BODY" = "Перейдіть в App Store на телефоні, встановіть Signal і пройдіть процес реєстрації. Після цього ви зможете зв'язати свій iPad з тим самим акаунтом.";
 
 /* alert title */
-"SECONDARY_ONBOARDING_INSTALL_PRIMARY_FIRST_TITLE" = "Установіть Signal на телефон";
+"SECONDARY_ONBOARDING_INSTALL_PRIMARY_FIRST_TITLE" = "Встановіть Signal на Ваш Телефон";
 
 /* body text while displaying a QR code which, when scanned, will link this device. */
 "SECONDARY_ONBOARDING_SCAN_CODE_BODY" = "У застосунку Signal на телефоні натисніть на фотографію свого профілю, щоб відкрити налаштування. Потім натисніть «Зв'язані пристрої» і «Зв'язати новий пристрій» і зіскануйте цей код:";
 
 /* Link text for page with troubleshooting info shown on the QR scanning screen */
-"SECONDARY_ONBOARDING_SCAN_CODE_HELP_TEXT" = "Тут поради про зв'язування iPad";
-
-/* Text for a button offering to refresh the QR code to link an iPad. */
-"SECONDARY_ONBOARDING_SCAN_CODE_REFRESH_CODE_BUTTON" = "Refresh code";
+"SECONDARY_ONBOARDING_SCAN_CODE_HELP_TEXT" = "Отримайте допомогу у прив'язці вашого iPad тут";
 
 /* header text while displaying a QR code which, when scanned, will link this device. */
 "SECONDARY_ONBOARDING_SCAN_CODE_TITLE" = "Зіскануйте цей QR-код телефоном";
@@ -6467,13 +6365,13 @@
 "SEND_BUTTON_TITLE" = "Надіслати";
 
 /* notification body */
-"SEND_FAILED_NOTIFICATION_BODY" = "Ваше повідомлення не вдалося надіслати.";
+"SEND_FAILED_NOTIFICATION_BODY" = "Ваше повідомлення не вдалось відправити.";
 
 /* Alert body after invite failed */
-"SEND_INVITE_FAILURE" = "Не вдалося надіслати запрошення, надішліть ще раз пізніше.";
+"SEND_INVITE_FAILURE" = "Не вдалося надіслати запрошення, спробуйте пізніше.";
 
 /* alert action, confirming the user wants to exit the media flow and abandon any photos they've taken */
-"SEND_MEDIA_CONFIRM_ABANDON_ALBUM" = "Не зберігати медіафайл";
+"SEND_MEDIA_CONFIRM_ABANDON_ALBUM" = "Ніколи Не Зберігати Медіа";
 
 /* alert action when the user decides not to cancel the media flow after all. */
 "SEND_MEDIA_RETURN_TO_CAMERA" = "Повернутися до камери";
@@ -6482,7 +6380,7 @@
 "SEND_MEDIA_TURN_OFF_MM_BUTTON" = "Вимкнути";
 
 /* In-app camera: message for the prompt to turn off multi-mode that will cause previously taken photos to be discarded. */
-"SEND_MEDIA_TURN_OFF_MM_MESSAGE" = "Усі зняті фото і відео буде видалено.";
+"SEND_MEDIA_TURN_OFF_MM_MESSAGE" = "Ви втратите усі зроблені фото та відео.";
 
 /* In-app camera: title for the prompt to turn off multi-mode that will cause previously taken photos to be discarded. */
 "SEND_MEDIA_TURN_OFF_MM_TITLE" = "Вимкнути мультирежим?";
@@ -6548,10 +6446,10 @@
 "SESSION_SWITCHOVER_EVENT" = "%2$@ володіє номером %1$@";
 
 /* Title for the wallpaper choose from photos option */
-"SET_WALLPAPER_CHOOSE_PHOTO" = "Обрати з фотографій";
+"SET_WALLPAPER_CHOOSE_PHOTO" = "Обрати з Фотографій";
 
 /* Title for the wallpaper presets section */
-"SET_WALLPAPER_PRESETS" = "Готові шпалери";
+"SET_WALLPAPER_PRESETS" = "Шаблони";
 
 /* Title for the set wallpaper settings view. */
 "SET_WALLPAPER_TITLE" = "Обрати шпалери";
@@ -6586,6 +6484,9 @@
 /* Table footer for the 'censorship circumvention' section shown when the app is connected to the Signal service. */
 "SETTINGS_ADVANCED_CENSORSHIP_CIRCUMVENTION_FOOTER_WEBSOCKET_CONNECTED" = "В обході цензури немає потреби. З'єднання з Signal уже встановлено.";
 
+/* No comment provided by engineer. */
+"SETTINGS_ADVANCED_DEBUGLOG" = "Вести журнал налагодження";
+
 /* Label for the 'advanced pin settings' button. */
 "SETTINGS_ADVANCED_PIN_SETTINGS" = "Керування PIN-кодом";
 
@@ -6596,13 +6497,13 @@
 "SETTINGS_ADVANCED_PINS_DISABLE_PIN_ACTION" = "Вимкнути PIN-код";
 
 /* No comment provided by engineer. */
-"SETTINGS_ADVANCED_PINS_ENABLE_PIN_ACTION" = "Увімкнути PIN-код";
+"SETTINGS_ADVANCED_PINS_ENABLE_PIN_ACTION" = "Ввімкнути PIN";
 
 /* No comment provided by engineer. */
 "SETTINGS_ADVANCED_SUBMIT_DEBUGLOG" = "Надіслати журнал налагодження";
 
 /* No comment provided by engineer. */
-"SETTINGS_ADVANCED_VIEW_ERROR_LOG" = "Журнал помилок";
+"SETTINGS_ADVANCED_VIEW_ERROR_LOG" = "Журнали Помилок";
 
 /* Information on sheet about changing the app icon - first line */
 "SETTINGS_APP_ICON_EDUCATION_APP_NAME" = "Назва застосунку «Signal» відображатиметься на головному екрані, у сповіщеннях і в бібліотеці програм.";
@@ -6641,7 +6542,7 @@
 "SETTINGS_BLOCK_LIST_NO_CONTACTS" = "У вас немає контактів у Signal.";
 
 /* A label that indicates the user's search has no matching results. */
-"SETTINGS_BLOCK_LIST_NO_SEARCH_RESULTS" = "Нічого не знайдено";
+"SETTINGS_BLOCK_LIST_NO_SEARCH_RESULTS" = "Немає результатів пошуку";
 
 /* Label for the block list section of the settings view */
 "SETTINGS_BLOCK_LIST_TITLE" = "Заблоковані";
@@ -6653,7 +6554,7 @@
 "SETTINGS_CALLING_HIDES_IP_ADDRESS_PREFERENCE_TITLE_DETAIL" = "Ретранслювати всі виклики через сервер Signal, щоб не розкривати контактам своєї IP-адреси. Увімкнення цієї функції знизить якість викликів.";
 
 /* Label for the 'edit phone number' button in the 'change phone number' views. */
-"SETTINGS_CHANGE_PHONE_NUMBER_BACK_TO_EDIT_BUTTON" = "Змінити номер";
+"SETTINGS_CHANGE_PHONE_NUMBER_BACK_TO_EDIT_BUTTON" = "Редагувати номер";
 
 /* Label for button in settings views to change phone number */
 "SETTINGS_CHANGE_PHONE_NUMBER_BUTTON" = "Змінити номер телефону";
@@ -6662,13 +6563,16 @@
 "SETTINGS_CHANGE_PHONE_NUMBER_CONFIRM_BUTTON" = "Змінити номер";
 
 /* Format for the description text in the 'change phone number splash' view. Embeds: {{ %1$@ the old phone number, %2$@ the new phone number }}. */
-"SETTINGS_CHANGE_PHONE_NUMBER_CONFIRM_DESCRIPTION_FORMAT" = "Ви за крок від зміни свого номера телефону з %1$@ на %2$@.\n\nПерш ніж завершити процедуру зміни, переконайтеся, що цей номер правильний:";
+"SETTINGS_CHANGE_PHONE_NUMBER_CONFIRM_DESCRIPTION_FORMAT" = "Ви збираєтеся змінити свій номер телефона з %1$@ на %2$@.\n\nПеред продовженням переконайтеся, що нижчевказаний номер телефону вірний.";
 
 /* Label for the 'country code' row in the 'change phone number' settings. */
 "SETTINGS_CHANGE_PHONE_NUMBER_COUNTRY_CODE_FIELD" = "Код країни";
 
 /* Format for the 'country code' in the 'change phone number' settings. Embeds: {{ %1$@ the numeric country code prefix, %2$@ the country code abbreviation }}. */
 "SETTINGS_CHANGE_PHONE_NUMBER_COUNTRY_CODE_FORMAT" = "%1$@ (%2$@)";
+
+/* Format for 'example phone numbers' in the 'change phone number' settings. Embeds: {{ the example phone number }} */
+"SETTINGS_CHANGE_PHONE_NUMBER_EXAMPLE_PHONE_NUMBER_FORMAT" = "Зразок: %1$@";
 
 /* Title for the 'new phone number' section in the 'change phone number' settings. */
 "SETTINGS_CHANGE_PHONE_NUMBER_NEW_PHONE_NUMBER_SECTION_TITLE" = "Ваш новий номер";
@@ -6737,13 +6641,13 @@
 "SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_DONT_TRANSFER" = "Не переносити";
 
 /* Body for the alert confirming whether the user wants transfer their payments balance before deleting their account. Embeds: {{ the current payment balance }}. */
-"SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_MESSAGE_FORMAT" = "На вашому балансі %1$@. Якщо ви не перекажете ці кошти на адресу іншого гаманця перед видаленням акаунту, то остаточно їх утратите.";
+"SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_MESSAGE_FORMAT" = "На вашому балансі: %1$@. Якщо ви не перекажете ваші кошти на адресу іншого гаманця перед видаленням свого акаунту, ви втратите їх назавжди.";
 
 /* Title for the alert confirming whether the user wants transfer their payments balance before deleting their account. */
-"SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_TITLE" = "Перенести залишок коштів?";
+"SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_TITLE" = "Перенести баланс платежів?";
 
 /* Button for transferring the user's payments balance before deleting their account. */
-"SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_TRANSFER" = "Перенести залишок";
+"SETTINGS_DELETE_ACCOUNT_PAYMENTS_BALANCE_ALERT_TRANSFER" = "Перенести баланс";
 
 /* Label for 'delete data' button. */
 "SETTINGS_DELETE_DATA_BUTTON" = "Видалити усі дані";
@@ -6821,7 +6725,7 @@
 "SETTINGS_NOTIFICATION_BADGE_COUNT_INCLUDES_MUTED_CONVERSATIONS" = "Враховувати чати з вимкненими сповіщеннями";
 
 /* table section header */
-"SETTINGS_NOTIFICATION_BADGE_COUNT_TITLE" = "Лічильник сповіщень";
+"SETTINGS_NOTIFICATION_BADGE_COUNT_TITLE" = "Кількість непрочитаних повідомлень";
 
 /* table section footer */
 "SETTINGS_NOTIFICATION_CONTENT_DESCRIPTION" = "Сповіщення про виклики та повідомлення з'являються, коли телефон замкнено.";
@@ -6854,7 +6758,7 @@
 "SETTINGS_PAYMENTS_ADD_MONEY" = "Додати кошти";
 
 /* Explanation of the process for adding money in the 'add money' settings view. */
-"SETTINGS_PAYMENTS_ADD_MONEY_DESCRIPTION" = "Щоб додати кошти, надішліть MobileCoin на адресу свого гаманця. Почніть трансакцію у своєму обліковому записі на біржі, що підтримує MobileCoin, і зіскануйте QR-код або скопіюйте адресу свого гаманця.";
+"SETTINGS_PAYMENTS_ADD_MONEY_DESCRIPTION" = "Щоб додати кошти — надішліть MobileCoin на адресу вашого гаманця. Розпочніть платіж з вашого облікового запису на біржі, що підтримує MobileCoin, зіскануйте QR-код, а потім скопіюйте адресу вашого гаманця.";
 
 /* Indicator that the payments wallet address has been copied to the pasteboard. */
 "SETTINGS_PAYMENTS_ADD_MONEY_WALLET_ADDRESS_COPIED" = "Адресу гаманця скопійовано";
@@ -6863,22 +6767,22 @@
 "SETTINGS_PAYMENTS_ALL_RECORDS" = "Усі платежі";
 
 /* Format string for the 'local balance converted into local currency' indicator. Embeds: {{ %1$@ the local balance in the local currency, %2$@ the local currency code, %3$@ the date the currency conversion rate was obtained. }}.. */
-"SETTINGS_PAYMENTS_BALANCE_CONVERSION_FORMAT" = "%1$@ %2$@ станом на %3$@";
+"SETTINGS_PAYMENTS_BALANCE_CONVERSION_FORMAT" = "%1$@ %2$@ у %3$@";
 
 /* Error message indicating that payments could not be activated because the feature is not currently available. */
-"SETTINGS_PAYMENTS_CANNOT_ACTIVATE_PAYMENTS_KILL_SWITCH" = "Платежі у Signal більше не доступні. Ви й досі можете переказувати кошти для обміну, але більше не можете надсилати та отримувати платежі та поповнювати рахунок.";
+"SETTINGS_PAYMENTS_CANNOT_ACTIVATE_PAYMENTS_KILL_SWITCH" = "Платежі у Signal більше недоступні. Ви все ще можете переказати кошти на обмін, але більше не зможете надсилати та отримувати платежі, поповнювати рахунок.";
 
 /* Error message indicating that payments could not be deactivated because the current balance is unavailable. */
-"SETTINGS_PAYMENTS_CANNOT_DEACTIVATE_PAYMENTS_NO_BALANCE" = "Неможливо вимкнути платежі, оскільки невідомий залишок на вашому рахунку. Перевірте з'єднання та повторіть спробу.";
+"SETTINGS_PAYMENTS_CANNOT_DEACTIVATE_PAYMENTS_NO_BALANCE" = "Неможливо вимкнути платежі оскільки ваш баланс недоступний. Перевірте з'єднання та спробуйте ще.";
 
 /* Error message indicating that a payment could not be sent because the current balance is unavailable. */
-"SETTINGS_PAYMENTS_CANNOT_SEND_PAYMENT_NO_BALANCE" = "Неможливо здійснити платіж, оскільки невідомий залишок на вашому рахунку. Перевірте з'єднання та повторіть спробу.";
+"SETTINGS_PAYMENTS_CANNOT_SEND_PAYMENT_NO_BALANCE" = "Неможливо завершити платіж оскільки ваш баланс недоступний. Перевірте з'єднання та спробуйте ще.";
 
 /* Error message indicating that payments cannot be sent because the feature is not currently available. */
-"SETTINGS_PAYMENTS_CANNOT_SEND_PAYMENTS_KILL_SWITCH" = "Платежі у Signal більше не доступні. Ви й досі можете переказувати кошти для обміну, але більше не можете надсилати та отримувати платежі та поповнювати рахунок.";
+"SETTINGS_PAYMENTS_CANNOT_SEND_PAYMENTS_KILL_SWITCH" = "Платежі у Signal більше недоступні. Ви все ще можете переказати кошти на обмін, але більше не зможете надсилати та отримувати платежі, поповнювати рахунок.";
 
 /* Error message indicating that you cannot transfer into your payments wallet because the feature is not currently available. */
-"SETTINGS_PAYMENTS_CANNOT_TRANSFER_IN_KILL_SWITCH" = "Платежі у Signal більше не доступні. Ви й досі можете переказувати кошти для обміну, але більше не можете надсилати та отримувати платежі та поповнювати рахунок.";
+"SETTINGS_PAYMENTS_CANNOT_TRANSFER_IN_KILL_SWITCH" = "Платежі у Signal більше недоступні. Ви все ще можете переказати кошти на обмін, але більше не зможете надсилати та отримувати платежі, поповнювати рахунок.";
 
 /* Message for the 'currency conversions info' alert. */
 "SETTINGS_PAYMENTS_CURRENCY_CONVERSIONS_INFO_ALERT_MESSAGE" = "Курси обміну валют приблизні та можуть не відображати остаточну суму.";
@@ -6887,16 +6791,16 @@
 "SETTINGS_PAYMENTS_CURRENCY_VIEW_SECTION_ALL_CURRENCIES" = "Усі валюти";
 
 /* Label for 'transfer balance' button in the 'deactivate payments' settings. */
-"SETTINGS_PAYMENTS_DEACTIVATE_AFTER_TRANSFERRING_BALANCE" = "Перевести залишок коштів";
+"SETTINGS_PAYMENTS_DEACTIVATE_AFTER_TRANSFERRING_BALANCE" = "Перевести кошти, що залишились на балансі";
 
 /* Label for the 'deactivate payments' button in the payment settings. */
-"SETTINGS_PAYMENTS_DEACTIVATE_BUTTON" = "Деактивувати";
+"SETTINGS_PAYMENTS_DEACTIVATE_BUTTON" = "Вимкнути";
 
 /* Label for 'deactivate payments' button in the app settings. */
 "SETTINGS_PAYMENTS_DEACTIVATE_PAYMENTS" = "Вимкнути платежі";
 
 /* Description for the 'deactivate payments confirmation' UI in the payment settings. */
-"SETTINGS_PAYMENTS_DEACTIVATE_PAYMENTS_CONFIRM_DESCRIPTION" = "Ви не зможете ні надсилати, ні отримувати MobileCoin у Signal, якщо деактивуєте платежі.";
+"SETTINGS_PAYMENTS_DEACTIVATE_PAYMENTS_CONFIRM_DESCRIPTION" = "Ви не зможете відправляти або отримувати Mobilecoin у Signal, якщо вимкнете платежі.";
 
 /* Title for the 'deactivate payments confirmation' UI in the payment settings. */
 "SETTINGS_PAYMENTS_DEACTIVATE_PAYMENTS_CONFIRM_TITLE" = "Вимкнути платежі?";
@@ -6911,16 +6815,16 @@
 "SETTINGS_PAYMENTS_DEACTIVATE_WITHOUT_TRANSFER_CONFIRM_DESCRIPTION" = "Баланс залишиться в гаманці, прив'язаному до Signal, якщо ви вирішите знов увімкнути платежі.";
 
 /* Title for the 'deactivate payments confirmation' UI in the payment settings. */
-"SETTINGS_PAYMENTS_DEACTIVATE_WITHOUT_TRANSFER_CONFIRM_TITLE" = "Деактивувати без переведення коштів?";
+"SETTINGS_PAYMENTS_DEACTIVATE_WITHOUT_TRANSFER_CONFIRM_TITLE" = "Вимкнути без переводу коштів?";
 
 /* Label for 'deactivate payments without transferring balance' button in the 'deactivate payments' settings. */
-"SETTINGS_PAYMENTS_DEACTIVATE_WITHOUT_TRANSFERRING_BALANCE" = "Деактивувати без переведення";
+"SETTINGS_PAYMENTS_DEACTIVATE_WITHOUT_TRANSFERRING_BALANCE" = "Вимкнути без переводу коштів?";
 
 /* Error indicating that payments could not be deactivated in the payments settings. */
-"SETTINGS_PAYMENTS_DEACTIVATION_FAILED" = "Не вдалося деактивувати платежі";
+"SETTINGS_PAYMENTS_DEACTIVATION_FAILED" = "Платежі не вдалось вимкнути";
 
 /* Label for the 'payments details' view of the app settings. */
-"SETTINGS_PAYMENTS_DETAIL_VIEW_TITLE" = "Докладніше";
+"SETTINGS_PAYMENTS_DETAIL_VIEW_TITLE" = "Деталі";
 
 /* Label for the 'enable payments' button in the 'payments not enabled' alert. */
 "SETTINGS_PAYMENTS_ENABLE_ACTION" = "Увімкнути платежі";
@@ -6929,28 +6833,28 @@
 "SETTINGS_PAYMENTS_ENABLE_PAYMENTS_LOCK_PROMPT" = "Захист платежів";
 
 /* Description for the 'About MobileCoin' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_ABOUT_MOBILECOIN_DESCRIPTION" = "MobileCoin — нова цифрова валюта підвищеної конфіденційності.";
+"SETTINGS_PAYMENTS_HELP_CARD_ABOUT_MOBILECOIN_DESCRIPTION" = "MobileCoin — нова цифрова валюта, що має на меті конфіденційність.";
 
 /* Title for the 'About MobileCoin' help card in the payments settings. */
 "SETTINGS_PAYMENTS_HELP_CARD_ABOUT_MOBILECOIN_TITLE" = "Про MobileCoin";
 
 /* Description for the 'Adding to your wallet' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_ADDING_TO_YOUR_WALLET_DESCRIPTION" = "Ви можете додавати кошти для використання в Signal, надсилаючи MobileCoin на адресу свого гаманця.";
+"SETTINGS_PAYMENTS_HELP_CARD_ADDING_TO_YOUR_WALLET_DESCRIPTION" = "Ви можете додавати кошти для використання у Signal надсилаючи MobileCoin на адресу вашого гаманця.";
 
 /* Title for the 'Adding to your wallet' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_ADDING_TO_YOUR_WALLET_TITLE" = "Як додавати кошти";
+"SETTINGS_PAYMENTS_HELP_CARD_ADDING_TO_YOUR_WALLET_TITLE" = "Додавання коштів";
 
 /* Description for the 'Cashing Out' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_CASHING_OUT_DESCRIPTION" = "Вивести MobileCoin можна на біржі, яка підтримує MobileCoin. Просто здійсніть переказ на свій рахунок на такій біржі.";
+"SETTINGS_PAYMENTS_HELP_CARD_CASHING_OUT_DESCRIPTION" = "Ви можете вивести MobileCoin у будь-який час на біржах, які підтримують MobileCoin. Лише здійсніть переказ коштів на свій рахунок на такій біржі.";
 
 /* Title for the 'Cashing Out' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_CASHING_OUT_TITLE" = "Як виводити кошти";
+"SETTINGS_PAYMENTS_HELP_CARD_CASHING_OUT_TITLE" = "Виведення коштів";
 
 /* Label for button in the 'Save Passphrase' help card in the payments settings. */
 "SETTINGS_PAYMENTS_HELP_CARD_SAVE_PASSPHRASE_BUTTON" = "Збережіть свою фразу";
 
 /* Description for the 'Save Passphrase' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_SAVE_PASSPHRASE_DESCRIPTION" = "Кодова фраза — це ще один спосіб відновлення платіжного профілю.";
+"SETTINGS_PAYMENTS_HELP_CARD_SAVE_PASSPHRASE_DESCRIPTION" = "Кодова фраза надає ще один спосіб відновити баланс.";
 
 /* Title for the 'Save Passphrase' help card in the payments settings. */
 "SETTINGS_PAYMENTS_HELP_CARD_SAVE_PASSPHRASE_TITLE" = "Збережіть свою фразу";
@@ -6959,10 +6863,10 @@
 "SETTINGS_PAYMENTS_HELP_CARD_UPDATE_PIN_BUTTON" = "Оновити PIN-код";
 
 /* Description for the 'Update PIN' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_UPDATE_PIN_DESCRIPTION" = "Якщо у вас велика сума на рахунку, рекомендуємо створити буквено-цифровий PIN-код для надійнішого захисту акаунту.";
+"SETTINGS_PAYMENTS_HELP_CARD_UPDATE_PIN_DESCRIPTION" = "Якщо ви маєте високий баланс, пропонуємо створити буквено-цифровий PIN-код для більшої безпеки вашого акаунту.";
 
 /* Title for the 'Update PIN' help card in the payments settings. */
-"SETTINGS_PAYMENTS_HELP_CARD_UPDATE_PIN_TITLE" = "Оновіть PIN-код";
+"SETTINGS_PAYMENTS_HELP_CARD_UPDATE_PIN_TITLE" = "Оновити ваш PIN-код";
 
 /* Indicator that the payments wallet address is invalid. */
 "SETTINGS_PAYMENTS_INVALID_WALLET_ADDRESS" = "Неправильна адреса гаманця";
@@ -6971,19 +6875,19 @@
 "SETTINGS_PAYMENTS_LOCK_SWITCH_LABEL" = "Захист платежів";
 
 /* Message indicating that there is no payment activity to display in the payment settings. */
-"SETTINGS_PAYMENTS_NO_ACTIVITY_INDICATOR" = "Останнім часом не було ніяких трансакцій";
+"SETTINGS_PAYMENTS_NO_ACTIVITY_INDICATOR" = "Жодної активності останнім часом.";
 
 /* Message for the 'payments not enabled' alert. */
-"SETTINGS_PAYMENTS_NOT_ENABLED_ALERT_MESSAGE" = "Бажаєте активувати платежі?";
+"SETTINGS_PAYMENTS_NOT_ENABLED_ALERT_MESSAGE" = "Бажаєте увімкнути платежі?";
 
 /* Title for the 'payments not enabled' alert. */
 "SETTINGS_PAYMENTS_NOT_ENABLED_ALERT_TITLE" = "Платежі не ввімкнено";
 
 /* Message for the 'payments not registered' alert. */
-"SETTINGS_PAYMENTS_NOT_REGISTERED_ALERT_MESSAGE" = "Перереєструйтеся, щоб надсилати платежі.";
+"SETTINGS_PAYMENTS_NOT_REGISTERED_ALERT_MESSAGE" = "Перереєструватися для надіслання платежів.";
 
 /* Title for the 'payments not registered' alert. */
-"SETTINGS_PAYMENTS_NOT_REGISTERED_ALERT_TITLE" = "Ви не зареєстровані";
+"SETTINGS_PAYMENTS_NOT_REGISTERED_ALERT_TITLE" = "Не зареєстровано";
 
 /* Label for 'activate' button in the 'payments opt-in' view in the app settings. */
 "SETTINGS_PAYMENTS_OPT_IN_ACTIVATE_BUTTON" = "Увімкнути платежі";
@@ -6992,7 +6896,7 @@
 "SETTINGS_PAYMENTS_OPT_IN_ACTIVATED_TOAST" = "Платежі ввімкнено.";
 
 /* Message for the 'payments opt-in' view in the app settings. */
-"SETTINGS_PAYMENTS_OPT_IN_MESSAGE" = "Використовуйте Signal, щоб здійснювати перекази й отримувати MobileCoin — нову цифрову валюту підвищеної конфіденційності. Активуйте, щоб почати.";
+"SETTINGS_PAYMENTS_OPT_IN_MESSAGE" = "Використовуйте Signal для переказу та отримання MobileCoin — нової цифрової валюти, націленої на безпеку. Увімкніть, щоб почати.";
 
 /* Label for 'activate' button in the 'payments opt-in' view in the app settings. */
 "SETTINGS_PAYMENTS_OPT_IN_REACTIVATE_BUTTON" = "Активувати платежі знов";
@@ -7010,7 +6914,7 @@
 "SETTINGS_PAYMENTS_PASSPHRASE_DISCARD_CONFIRMATION_TITLE" = "Продовжити без збереження?";
 
 /* Explanation of the 'payments passphrase' in the 'view payments passphrase' settings. */
-"SETTINGS_PAYMENTS_PASSPHRASE_EXPLANATION" = "Після перевстановлення Signal ваш баланс буде автоматично відновлено, якщо ви підтвердите свій PIN-код Signal. Відновити баланс можна також за допомогою кодової фрази — вона унікальна й складається з 24 слів. Запишіть її та зберігайте в надійному місці.";
+"SETTINGS_PAYMENTS_PASSPHRASE_EXPLANATION" = "Ваш баланс автоматично відновиться, коли ви встановите Signal знов та підтвердите PIN-код. Ви можете відновити ваш баланс за використання кодової фрази, яка складається з 24 слів і яку знаєте лише ви. Запишіть її та зберігайте у надійному місці.";
 
 /* Explanation of the 'payments passphrase' when there is a balance. */
 "SETTINGS_PAYMENTS_PASSPHRASE_EXPLANATION_FROM_BALANCE" = "Ви маєте баланс! Час зберегти кодову фразу — ключ із 24 слів, за допомогою якого можна відновити свій баланс.";
@@ -7031,7 +6935,7 @@
 "SETTINGS_PAYMENTS_PAYMENT_DETAILS_RECEIVED" = "Отримано";
 
 /* Format for indicator that you received a payment in the payment details view in the app settings. Embeds: {{ the user who sent you the payment }}. */
-"SETTINGS_PAYMENTS_PAYMENT_DETAILS_RECEIVED_FORMAT" = "Отримано від користувача %1$@";
+"SETTINGS_PAYMENTS_PAYMENT_DETAILS_RECEIVED_FORMAT" = "Отримано від %1$@";
 
 /* Label for the sender in the payment details view in the app settings. */
 "SETTINGS_PAYMENTS_PAYMENT_DETAILS_SENDER" = "Відправник";
@@ -7040,7 +6944,7 @@
 "SETTINGS_PAYMENTS_PAYMENT_DETAILS_SENDER_ATTEMPTED" = "Спроба";
 
 /* Format for the sender info in the payment details view in the app settings. Embeds {{ %1$@ the name of the sender of the payment, %2$@ the date the transaction was sent }}. */
-"SETTINGS_PAYMENTS_PAYMENT_DETAILS_SENDER_FORMAT" = "%1$@, %2$@";
+"SETTINGS_PAYMENTS_PAYMENT_DETAILS_SENDER_FORMAT" = "%1$@ о %2$@";
 
 /* Format for indicator that you sent a payment in the payment details view in the app settings. Embeds: {{ the user who you sent the payment to }}. */
 "SETTINGS_PAYMENTS_PAYMENT_DETAILS_SENDING_FORMAT" = "Надсилаємо користувачеві %1$@";
@@ -7055,22 +6959,22 @@
 "SETTINGS_PAYMENTS_PAYMENT_DETAILS_STATUS" = "Стан";
 
 /* Footer string for the status section of the payment details view in the app settings. */
-"SETTINGS_PAYMENTS_PAYMENT_DETAILS_STATUS_FOOTER" = "Інформацію про трансакцію, зокрема суму платежу й час трансакції, включено до книги обліку MobileCoin.";
+"SETTINGS_PAYMENTS_PAYMENT_DETAILS_STATUS_FOOTER" = "Деталі транзакції, зокрема сума платежу та час транзакції, є частиною особового рахунку MobileCoin.";
 
 /* Footer string for the status section of the payment details view in the app settings for defragmentation transactions. */
-"SETTINGS_PAYMENTS_PAYMENT_DETAILS_STATUS_FOOTER_DEFRAGMENTATION" = "«Плата за округлення койнів» стягується, коли ваші койни неможливо згрупувати для здійснення трансакції. Округлення дасть вам змогу продовжити надсилати платежі.";
+"SETTINGS_PAYMENTS_PAYMENT_DETAILS_STATUS_FOOTER_DEFRAGMENTATION" = "«Плата за очищення монет» стягується, коли ваші монети неможливо об'єднати для завершення транзакції. Очищення дозволить надсилати платежі далі.";
 
 /* Message for the 'insufficient balance for payment' alert. Embeds: {{ The current payments balance }}. */
-"SETTINGS_PAYMENTS_PAYMENT_INSUFFICIENT_BALANCE_ALERT_MESSAGE_FORMAT" = "У вас не вистачає MOB на балансі для здійснення цього платежу. Ваш поточний баланс — %1$@.";
+"SETTINGS_PAYMENTS_PAYMENT_INSUFFICIENT_BALANCE_ALERT_MESSAGE_FORMAT" = "У вас не вистачає грошей на балансі для завершення цього платежу. Ваш поточний баланс — %1$@.";
 
 /* Title for the 'insufficient balance for payment' alert. */
 "SETTINGS_PAYMENTS_PAYMENT_INSUFFICIENT_BALANCE_ALERT_TITLE" = "Недостатньо коштів";
 
 /* Format string for the sender of an incoming payment. Embeds: {{ the name of the sender of the payment}}. */
-"SETTINGS_PAYMENTS_PAYMENT_USER_INCOMING_FORMAT" = "Від користувача %1$@";
+"SETTINGS_PAYMENTS_PAYMENT_USER_INCOMING_FORMAT" = "Від %1$@";
 
 /* Format string for the recipient of an outgoing payment. Embeds: {{ the name of the recipient of the payment}}. */
-"SETTINGS_PAYMENTS_PAYMENT_USER_OUTGOING_FORMAT" = "Одержувач: %1$@";
+"SETTINGS_PAYMENTS_PAYMENT_USER_OUTGOING_FORMAT" = "До %1$@";
 
 /* Message indicating that payments have been disabled in the app settings. */
 "SETTINGS_PAYMENTS_PAYMENTS_DISABLED_TOAST" = "Платежі вимкнено.";
@@ -7127,7 +7031,7 @@
 "SETTINGS_PAYMENTS_PAYMENTS_OUTDATED_TITLE_UPDATE" = "Необхідне оновлення";
 
 /* Label for the 'all payments' mode of the 'all payment records' section of the app settings. */
-"SETTINGS_PAYMENTS_PAYMENTS_TYPE_ALL" = "Усі";
+"SETTINGS_PAYMENTS_PAYMENTS_TYPE_ALL" = "Всі";
 
 /* Label for the 'incoming payments' mode of the 'all payment records' section of the app settings. */
 "SETTINGS_PAYMENTS_PAYMENTS_TYPE_INCOMING" = "Отримано";
@@ -7139,22 +7043,22 @@
 "SETTINGS_PAYMENTS_RECENT_PAYMENTS" = "Недавні платежі";
 
 /* Description for the 'record payments passphrase to disable pin' UI in the app settings. */
-"SETTINGS_PAYMENTS_RECORD_PASSPHRASE_DISABLE_PIN_DESCRIPTION" = "Перед вимкненням PIN-коду ви повинні записати кодову фразу для свого платіжного профілю, щоб мати змогу відновити його.";
+"SETTINGS_PAYMENTS_RECORD_PASSPHRASE_DISABLE_PIN_DESCRIPTION" = "Перед вимкненням PIN-коду ви маєте створити кодову фразу, щоб упевнитись, що ви зможете відновити свій платіжний профіль.";
 
 /* Label for the 'record recovery passphrase' button in the 'record payments passphrase to disable pin' UI in the app settings. */
 "SETTINGS_PAYMENTS_RECORD_PASSPHRASE_DISABLE_PIN_RECORD_PASSPHRASE" = "Записати кодову фразу";
 
 /* Title for the 'record payments passphrase to disable pin' UI in the app settings. */
-"SETTINGS_PAYMENTS_RECORD_PASSPHRASE_DISABLE_PIN_TITLE" = "Запишіть кодову фразу для платіжного профілю";
+"SETTINGS_PAYMENTS_RECORD_PASSPHRASE_DISABLE_PIN_TITLE" = "Записати кодову фразу для платежів";
 
 /* Label for the current balance in the 'deactivate payments' settings. */
-"SETTINGS_PAYMENTS_REMAINING_BALANCE" = "Залишок коштів";
+"SETTINGS_PAYMENTS_REMAINING_BALANCE" = "Баланс на рахунку";
 
 /* Label for 'restore payments' button in the payments settings. */
 "SETTINGS_PAYMENTS_RESTORE_PAYMENTS_BUTTON" = "Відновити профіль";
 
 /* Explanation of the 'review payments passphrase' step of the 'restore payments wallet' views. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_COMPLETE_EXPLANATION" = "Перевірте, чи правильно ви ввели кодову фразу.";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_COMPLETE_EXPLANATION" = "Переконайтесь, що ви правильно ввели фразу.";
 
 /* Title for the 'review payments passphrase' step of the 'restore payments wallet' views. */
 "SETTINGS_PAYMENTS_RESTORE_WALLET_COMPLETE_TITLE" = "Підтвердження кодової фрази";
@@ -7166,16 +7070,16 @@
 "SETTINGS_PAYMENTS_RESTORE_WALLET_ENTER_MANUALLY" = "Ввести вручну";
 
 /* Error indicating that 'restore payments wallet failed' in the app payments settings. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_FAILED" = "Відновлення не вдалося";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_FAILED" = "Відновлення не вдалось";
 
 /* Message for the 'invalid payments wallet passphrase' error alert in the app payments settings. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_INVALID_PASSPHRASE_MESSAGE" = "Ця кодова фраза неправильна.";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_INVALID_PASSPHRASE_MESSAGE" = "Це хибна кодова фраза.";
 
 /* Title for the 'invalid payments wallet passphrase' error alert in the app payments settings. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_INVALID_PASSPHRASE_TITLE" = "Неправильна фраза";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_INVALID_PASSPHRASE_TITLE" = "Хибна фраза";
 
 /* Label for the 'restore passphrase from pasteboard' button in the 'restore payments wallet from passphrase' view. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_PASTE_FROM_PASTEBOARD" = "Вставити з буфера обміну";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_PASTE_FROM_PASTEBOARD" = "Вставити з буферу обміну";
 
 /* Format for the placeholder text in the 'restore payments wallet from pasteboard' view of the app settings. */
 "SETTINGS_PAYMENTS_RESTORE_WALLET_PASTE_PLACEHOLDER" = "Кодова фраза";
@@ -7187,22 +7091,22 @@
 "SETTINGS_PAYMENTS_RESTORE_WALLET_SPLASH_EXPLANATION" = "Ваша кодова фраза унікальна й складається з 24 слів. Вона необхідна для відновлення платіжного профілю.";
 
 /* Title for the first step of the 'restore payments wallet' views. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_SPLASH_TITLE" = "Введення кодової фрази";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_SPLASH_TITLE" = "Введіть кодову фразу";
 
 /* Title for the 'restore payments wallet' view of the app settings. */
 "SETTINGS_PAYMENTS_RESTORE_WALLET_TITLE" = "Кодова фраза";
 
 /* Format for the instructions for the 'enter word' step of the 'restore payments wallet' views. Embeds {{ the index of the current word }}. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_INSTRUCTIONS_FORMAT" = "Введіть слово %1$@";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_INSTRUCTIONS_FORMAT" = "Увести слово %1$@";
 
 /* Error indicating that the user has entered an invalid payments passphrase in the 'restore payments wallet' views. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_INVALID_PASSPHRASE" = "Неправильна кодова фраза.";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_INVALID_PASSPHRASE" = "Хибна кодова фраза.";
 
 /* Error indicating that the user has entered an invalid word in the 'enter word' step of the 'restore payments wallet' views. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_INVALID_WORD" = "Ви зробили в цьому слові помилку.";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_INVALID_WORD" = "Слово введене неправильно.";
 
 /* Title for the 'enter word' step of the 'restore payments wallet' views. */
-"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_TITLE" = "Введення кодової фрази";
+"SETTINGS_PAYMENTS_RESTORE_WALLET_WORD_TITLE" = "Введіть кодову фразу";
 
 /* Title for the first step of the 'save payments passphrase' views. */
 "SETTINGS_PAYMENTS_SAVE_PASSPHRASE_START_TITLE" = "Зберегти кодову фразу";
@@ -7214,7 +7118,7 @@
 "SETTINGS_PAYMENTS_SCAN_QR_INVALID_PUBLIC_ADDRESS" = "Неправильна адреса";
 
 /* Label for 'scan payment address QR code' view in the payment settings. */
-"SETTINGS_PAYMENTS_SCAN_QR_TITLE" = "Сканування QR-коду";
+"SETTINGS_PAYMENTS_SCAN_QR_TITLE" = "Сканувати QR-код";
 
 /* Caption for footer label beneath the payments lock privacy toggle for a biometry type that is unknown. */
 "SETTINGS_PAYMENTS_SECURITY_DETAIL" = "Вимагати код доступу або Touch ID для переказу коштів.";
@@ -7247,25 +7151,25 @@
 "SETTINGS_PAYMENTS_TITLE" = "Платежі";
 
 /* Error indicating that it is not valid to send yourself a payment. */
-"SETTINGS_PAYMENTS_TRANSFER_OUT_CANNOT_SEND_TO_SELF" = "Ви не можете здійснювати перекази на власний гаманець Signal. Введіть адресу гаманця зі свого облікового запису на підтримуваній біржі.";
+"SETTINGS_PAYMENTS_TRANSFER_OUT_CANNOT_SEND_TO_SELF" = "Ви не можете переказувати на власну адресу гаманцю Signal. Введіть адресу гаманця з вашого акаунту, на яку можна здійснити платіж.";
 
 /* Footer of the 'transfer currency out' view in the payment settings. */
-"SETTINGS_PAYMENTS_TRANSFER_OUT_FOOTER" = "Переказ MobileCoin можна здійснити як переказ на адресу гаманця, надану біржею. Адреса гаманця складається з цифр і літер і зазвичай зазначається під QR-кодом.";
+"SETTINGS_PAYMENTS_TRANSFER_OUT_FOOTER" = "Ви можете переказувати MobileCoin платежем на адресу гаманця, що його було надано біржею. Адреса гаманця — це рядок цифр та літер, який зазвичай розміщується під QR-кодом.";
 
 /* Error indicating that MobileCoin public address is not valid. */
-"SETTINGS_PAYMENTS_TRANSFER_OUT_INVALID_PUBLIC_ADDRESS" = "Перевірте адресу гаманця, на який ви переказуєте кошти, і повторіть переказ.";
+"SETTINGS_PAYMENTS_TRANSFER_OUT_INVALID_PUBLIC_ADDRESS" = "Перевірте адресу гаманця, на який намагаєтесь переказати кошти, і спробуйте ще раз.";
 
 /* Title for error alert indicating that MobileCoin public address is not valid. */
 "SETTINGS_PAYMENTS_TRANSFER_OUT_INVALID_PUBLIC_ADDRESS_TITLE" = "Неправильна адреса";
 
 /* Placeholder text for the address text field in the 'transfer currency out' settings view. */
-"SETTINGS_PAYMENTS_TRANSFER_OUT_PLACEHOLDER" = "Кому: зіскануйте або введіть адресу гаманця";
+"SETTINGS_PAYMENTS_TRANSFER_OUT_PLACEHOLDER" = "До: відскануйте або введіть адресу гаманця";
 
 /* Label for 'transfer currency out' view in the payment settings. */
-"SETTINGS_PAYMENTS_TRANSFER_OUT_TITLE" = "Переказ для обміну";
+"SETTINGS_PAYMENTS_TRANSFER_OUT_TITLE" = "Перекажіть для обміну";
 
 /* Label for the 'transfer to exchange' button in the payment settings. */
-"SETTINGS_PAYMENTS_TRANSFER_TO_EXCHANGE" = "Переказати для обміну";
+"SETTINGS_PAYMENTS_TRANSFER_TO_EXCHANGE" = "Перекажіть для обміну";
 
 /* Message indicating that 'payments passphrase review' is complete. */
 "SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COMPLETE_TOAST" = "Встановлення кодової фрази завершено.";
@@ -7274,13 +7178,13 @@
 "SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM" = "Підтвердити";
 
 /* Format for the explanation of the 'confirm payments passphrase word' step in the 'view payments passphrase' settings, indicating that the user needs to enter two words from their payments passphrase. Embeds: {{ %1$@ the index of the first word, %2$@ the index of the second word }}. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_EXPLANATION_FORMAT" = "Введіть слова %1$@ та %2$@ зі своєї кодової фрази.";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_EXPLANATION_FORMAT" = "Введіть слова %1$@ та %2$@ з вашої кодової фрази.";
 
 /* Error indicating that at least one word of the payments passphrase is not correct in the 'view payments passphrase' views. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_INVALID_WORD" = "Одне слово неправильне. Введіть слова ще раз.";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_INVALID_WORD" = "Неправильне слово. Спробуйте ще.";
 
 /* Error indicating that all words of the payments passphrase are not correct in the 'view payments passphrase' views. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_INVALID_WORDS" = "Обидва слова неправильні. Введіть їх ще раз.";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_INVALID_WORDS" = "Обидва слова неправильні. Спробуйте ще.";
 
 /* Format for the placeholder text in the 'confirm payments passphrase' view of the app settings. Embeds: {{ the index of the word }}. */
 "SETTINGS_PAYMENTS_VIEW_PASSPHRASE_CONFIRM_PLACEHOLDER_FORMAT" = "Слово %1$@";
@@ -7292,25 +7196,25 @@
 "SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPIED_TO_CLIPBOARD" = "Кодову фразу скопійовано";
 
 /* Label for the 'copy to clipboard' button in the 'view payments passphrase' views. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPY_TO_CLIPBOARD" = "Копіювати в буфер обміну";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPY_TO_CLIPBOARD" = "Копіювати до буферу обміну";
 
 /* Message for the 'copy recovery passphrase to clipboard confirm' alert in the payment settings. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPY_TO_CLIPBOARD_CONFIRM_MESSAGE" = "Якщо ви хочете зберегти кодову фразу в цифровому форматі, оберіть захищений і надійний носій.";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPY_TO_CLIPBOARD_CONFIRM_MESSAGE" = "Якщо ви оберете цифровий спосіб збереження кодової фрази — упевніться, що вона надійно зберігається у місці, якому ви довіряєте.";
 
 /* Title for the 'copy recovery passphrase to clipboard confirm' alert in the payment settings. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPY_TO_CLIPBOARD_CONFIRM_TITLE" = "Копіювати в буфер обміну?";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_COPY_TO_CLIPBOARD_CONFIRM_TITLE" = "Копіювати до буферу обміну?";
 
 /* Label for 'see passphrase again' button in the 'view payments passphrase' view of the app settings. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_SEE_PASSPHRASE_AGAIN" = "Показати кодову фразу ще раз";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_SEE_PASSPHRASE_AGAIN" = "Подивитись кодову фразу ще раз";
 
 /* Title for the first step of the 'view payments passphrase' views. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_START_TITLE" = "Перегляд кодової фрази";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_START_TITLE" = "Огляд кодової фрази";
 
 /* Title for the 'view payments passphrase' view of the app settings. */
 "SETTINGS_PAYMENTS_VIEW_PASSPHRASE_TITLE" = "Кодова фраза";
 
 /* Header text for the 'review payments passphrase words' step in the 'view payments passphrase' settings. */
-"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_WORDS_EXPLANATION" = "Запишіть ці 24 слова в такому ж порядку. Збережіть цей список слів у надійному місці.";
+"SETTINGS_PAYMENTS_VIEW_PASSPHRASE_WORDS_EXPLANATION" = "Запишіть наступні 24 слова одне за одним. Зберігайте записане у надійному місці.";
 
 /* Footer text for the 'review payments passphrase words' step in the 'view payments passphrase' settings. */
 "SETTINGS_PAYMENTS_VIEW_PASSPHRASE_WORDS_FOOTER_2" = "Не передавайте цей список нікому";
@@ -7361,7 +7265,7 @@
 "SETTINGS_PIN_REMINDER_SWITCH_LABEL" = "Нагадувати PIN-код";
 
 /* Footer for the 'PINs' section of the privacy settings. */
-"SETTINGS_PINS_FOOTER" = "PIN-коди забезпечують шифрування інформації, що зберігається в Signal, щоб отримати до неї доступ могли тільки ви. Якщо ви забудете PIN-код, відновити його неможливо. PIN-код дасть вам змогу відновити акаунт, налаштування й контакти в разі перевстановлення Signal.";
+"SETTINGS_PINS_FOOTER" = "PIN-коди забезпечують шифрування інформації, що зберігається в Signal, щоб отримати до неї доступ могли тільки ви. Ваш PIN-код неможливо відновити. Ваш акаунт, налаштування та контакти відновляться, коли ви знову встановите Signal.";
 
 /* Label for the 'pins' item of the privacy settings when the user does have a pin. */
 "SETTINGS_PINS_ITEM" = "Змінити PIN-код";
@@ -7376,7 +7280,7 @@
 "SETTINGS_PRIVACY_ADVANCED_FOOTER" = "Налаштування обходу цензури, проксі-сервера, ретранслювання викликів і засекречених відправників.";
 
 /* Title for the advanced privacy settings */
-"SETTINGS_PRIVACY_ADVANCED_TITLE" = "Додаткові налаштування";
+"SETTINGS_PRIVACY_ADVANCED_TITLE" = "Додаткові функції";
 
 /* Short table cell label */
 "SETTINGS_PRIVACY_CALLKIT_SYSTEM_CALL_LOG_PREFERENCE_TITLE" = "Показувати виклики в «Недавніх»";
@@ -7403,10 +7307,10 @@
 "SETTINGS_REGISTRATION_LOCK_TURN_ON_TITLE" = "Увімкнути блокування реєстрації?";
 
 /* Label for re-link button. */
-"SETTINGS_RELINK_BUTTON" = "Зв'язати повторно";
+"SETTINGS_RELINK_BUTTON" = "Повторно прив'язати";
 
 /* Label for re-registration button. */
-"SETTINGS_REREGISTER_BUTTON" = "Перереєструватися";
+"SETTINGS_REREGISTER_BUTTON" = "Перереєструватись";
 
 /* Label for the 'screen lock activity timeout' setting of the privacy settings. */
 "SETTINGS_SCREEN_LOCK_ACTIVITY_TIMEOUT" = "Затримка блокування екрана";
@@ -7415,7 +7319,7 @@
 "SETTINGS_SCREEN_LOCK_SWITCH_LABEL" = "Блокування екрана";
 
 /* No comment provided by engineer. */
-"SETTINGS_SCREEN_SECURITY" = "Приховувати екран у перемикачі програм";
+"SETTINGS_SCREEN_SECURITY" = "Приховувати екран у перемикачі застосунків";
 
 /* Footer for table section */
 "SETTINGS_SECTION_FOOTER_CALLING" = "Показувати виклики в списку викликів телефона, на вкладці «Недавні».";
@@ -7427,7 +7331,7 @@
 "SETTINGS_SECTION_TITLE_CALLING" = "Здійснення викликів";
 
 /* Section footer */
-"SETTINGS_SECURITY_DETAIL" = "Використовувати Touch ID, Face ID або код допуску iOS для розблокування Signal.";
+"SETTINGS_SECURITY_DETAIL" = "Використовувати Touch ID, Face ID або код допуску пристрою для розблокування Signal.";
 
 /* Section footer */
 "SETTINGS_SECURITY_DETAIL_FACEID" = "Використовувати Face ID для розблокування Signal.";
@@ -7436,7 +7340,7 @@
 "SETTINGS_SECURITY_DETAIL_OPTICID" = "Використовувати Optic ID для розблокування Signal.";
 
 /* Section footer */
-"SETTINGS_SECURITY_DETAIL_PASSCODE" = "Використовувати код допуску iOS для розблокування Signal.";
+"SETTINGS_SECURITY_DETAIL_PASSCODE" = "Використовувати код доступу пристрою для розблокування Signal.";
 
 /* Section footer */
 "SETTINGS_SECURITY_DETAIL_TOUCHID" = "Використовувати Touch ID для розблокування Signal.";
@@ -7448,7 +7352,7 @@
 "SETTINGS_SENT_MEDIA_QUALITY_SECTION_FOOTER" = "Надсилання медіафайлів високої якості споживатиме більше трафіку.";
 
 /* The title for the photos and videos section in the sent media quality settings. */
-"SETTINGS_SENT_MEDIA_QUALITY_SECTION_TITLE" = "Фото і відео";
+"SETTINGS_SENT_MEDIA_QUALITY_SECTION_TITLE" = "Фото та відео";
 
 /* Setting for enabling & disabling iOS contact sharing. */
 "SETTINGS_SHARING_SUGGESTIONS" = "Ділитися контактами з iOS";
@@ -7469,7 +7373,7 @@
 "SETTINGS_UNIDENTIFIED_DELIVERY_SECTION_TITLE" = "Заcекречений відправник";
 
 /* switch label */
-"SETTINGS_UNIDENTIFIED_DELIVERY_SHOW_INDICATORS" = "Показувати значок стану";
+"SETTINGS_UNIDENTIFIED_DELIVERY_SHOW_INDICATORS" = "Показувати іконку стану";
 
 /* switch label */
 "SETTINGS_UNIDENTIFIED_DELIVERY_UNRESTRICTED_ACCESS" = "Дозволити від усіх";
@@ -7493,19 +7397,19 @@
 "SHARE_EXTENSION_LOADING" = "Завантаження…";
 
 /* Message indicating that the share extension cannot be used until the user has registered in the main app. */
-"SHARE_EXTENSION_NOT_REGISTERED_MESSAGE" = "Запустіть Signal, щоб зареєструватися.";
+"SHARE_EXTENSION_NOT_REGISTERED_MESSAGE" = "Запустити Signal щоб зареєструватись.";
 
 /* Title indicating that the share extension cannot be used until the user has registered in the main app. */
 "SHARE_EXTENSION_NOT_REGISTERED_TITLE" = "Ви не зареєстровані";
 
 /* Message indicating that the share extension cannot be used until the main app has been launched at least once. */
-"SHARE_EXTENSION_NOT_YET_MIGRATED_MESSAGE" = "Запустіть Signal, щоб оновити застосунок або зареєструватися.";
+"SHARE_EXTENSION_NOT_YET_MIGRATED_MESSAGE" = "Запустити Signal щоб оновити або зареєструватись.";
 
 /* Title indicating that the share extension cannot be used until the main app has been launched at least once. */
-"SHARE_EXTENSION_NOT_YET_MIGRATED_TITLE" = "Застосунок не готовий до роботи";
+"SHARE_EXTENSION_NOT_YET_MIGRATED_TITLE" = "Не готовий";
 
 /* Alert title */
-"SHARE_EXTENSION_SENDING_FAILURE_TITLE" = "Неможливо надіслати вкладення";
+"SHARE_EXTENSION_SENDING_FAILURE_TITLE" = "Неможливо надіслати додаток";
 
 /* Send progress for share extension. Embeds {{ %1$@ number of attachments uploaded, %2$@ total number of attachments}} */
 "SHARE_EXTENSION_SENDING_IN_PROGRESS_FORMAT" = "Завантаження %1$@ з %2$@…";
@@ -7514,13 +7418,13 @@
 "SHARE_EXTENSION_SENDING_IN_PROGRESS_TITLE" = "Завантаження…";
 
 /* Shown when trying to share content to a Signal user for the share extension. Followed by failure details. */
-"SHARE_EXTENSION_UNABLE_TO_BUILD_ATTACHMENT_ALERT_TITLE" = "Неможливо підготувати вкладення";
+"SHARE_EXTENSION_UNABLE_TO_BUILD_ATTACHMENT_ALERT_TITLE" = "Неможливо підготувати додаток";
 
 /* Title for the 'share extension' view. */
-"SHARE_EXTENSION_VIEW_TITLE" = "Надіслати в Signal";
+"SHARE_EXTENSION_VIEW_TITLE" = "Поділитись у Signal";
 
 /* Title of alert indicating sharing suggestions failed to deactivate */
-"SHARING_SUGGESTIONS_DISABLE_ERROR" = "Не вдалося деактивувати пропонованих одержувачів.";
+"SHARING_SUGGESTIONS_DISABLE_ERROR" = "Не вдалось вимкнути пропозиції поширення.";
 
 /* Action sheet item */
 "SHOW_SAFETY_NUMBER_ACTION" = "Показати код безпеки";
@@ -7547,25 +7451,25 @@
 "SOUNDS_NONE" = "Жодного";
 
 /* Text for toast presented after spam verification has been completed */
-"SPAM_CAPTCHA_COMPLETED_TOAST" = "Перевірку пройдено.";
+"SPAM_CAPTCHA_COMPLETED_TOAST" = "Підтвердження особи завершено.";
 
 /* Message for confirmation dialog confirming to ignore verification. */
-"SPAM_CAPTCHA_DISMISS_CONFIRMATION_MESSAGE" = "Якщо ви відмовитеся від проходження перевірки, то, можливо, не отримуватимете повідомлень від інших людей і не зможете надсилати свої повідомлення.";
+"SPAM_CAPTCHA_DISMISS_CONFIRMATION_MESSAGE" = "Якщо ви вирішите продовжити без підтвердження особи, ви можете не отримати повідомлення від інших людей, та не зможете відправити власні повідомлення.";
 
 /* Title for confirmation dialog confirming to ignore verification. */
-"SPAM_CAPTCHA_DISMISS_CONFIRMATION_TITLE" = "Продовжити без перевірки?";
+"SPAM_CAPTCHA_DISMISS_CONFIRMATION_TITLE" = "Продовжити без підтвердження?";
 
 /* Body for action sheet explaining captcha requirement. */
 "SPAM_CAPTCHA_SHEET_BODY" = "Просимо вас пройти перевірку. Це необхідно для запобігання поширенню спаму в Signal.\n\nВи зможете продовжити спілкування після перевірки. Усі зупинені повідомлення буде надіслано автоматично.";
 
 /* Title for action sheet explaining captcha requirement. */
-"SPAM_CAPTCHA_SHEET_TITLE" = "Пройдіть перевірку, щоб продовжити спілкування";
+"SPAM_CAPTCHA_SHEET_TITLE" = "Підтвердити для продовження спілкування";
 
 /* Action to skip verification */
-"SPAM_CAPTCHA_SKIP_VERIFICATION_ACTION" = "Не проходити перевірку";
+"SPAM_CAPTCHA_SKIP_VERIFICATION_ACTION" = "Не підтверджувати";
 
 /* Title for the captcha view controller */
-"SPAM_CAPTCHA_VIEW_CONTROLLER" = "Пройдіть перевірку";
+"SPAM_CAPTCHA_VIEW_CONTROLLER" = "Завершити підтвердження особи";
 
 /* Text for a toast confirming that the speakerphone has been turned off for a call. */
 "SPEAKERPHONE_OFF_CONFIRMATION_TOAST_LABEL" = "Динамік вимкнено";
@@ -7673,13 +7577,13 @@
 "STORIES_NO_RECENT_MESSAGES" = "Нових історій поки що немає.";
 
 /* The subtitle when this story has no replies */
-"STORIES_NO_REPLIES_SUBTITLE" = "Усі учасники можуть бачити відповіді";
+"STORIES_NO_REPLIES_SUBTITLE" = "Усі учасники групового чату можуть переглядати відповіді";
 
 /* Indicates that this story has no replies yet */
 "STORIES_NO_REPLIES_YET" = "Відповідей ще немає";
 
 /* Indicates that this story has no views yet */
-"STORIES_NO_VIEWS_YET" = "Переглядів ще немає";
+"STORIES_NO_VIEWS_YET" = "Ще немає переглядів";
 
 /* Section footer for the 'replies & reactions' section in stories settings */
 "STORIES_REPLIES_AND_REACTIONS_FOOTER" = "Дозвольте глядачам ваших історій реагувати й відповідати на них.";
@@ -7817,10 +7721,10 @@
 "STORY_REPLY_REACTION_THIRD_PERSON" = "Реакція на історію";
 
 /* placeholder text for replying to a story */
-"STORY_REPLY_TEXT_FIELD_PLACEHOLDER" = "Відповідь";
+"STORY_REPLY_TEXT_FIELD_PLACEHOLDER" = "Відповісти";
 
 /* Button for replying to a group story with no existing replies. */
-"STORY_REPLY_TO_GROUP_BUTTON" = "Відповідь групі";
+"STORY_REPLY_TO_GROUP_BUTTON" = "Відповісти на історію групи";
 
 /* placeholder text for replying to a group story */
 "STORY_REPLY_TO_GROUP_TEXT_FIELD_PLACEHOLDER" = "Відповісти на історію групи";
@@ -7913,7 +7817,7 @@
 "SUCCESSFUL_VERIFICATION_DESCRIPTION" = "Ваші коди безпеки з користувачем %1$@ збігаються. Ви можете позначити цей контакт як перевірений.";
 
 /* No comment provided by engineer. */
-"SUCCESSFUL_VERIFICATION_TITLE" = "Коди безпеки збігаються!";
+"SUCCESSFUL_VERIFICATION_TITLE" = "Коди безпеки збіглись!";
 
 /* Header of support description field */
 "SUPPORT_CONTACT_US_HEADER" = "Зв'яжіться з нами";
@@ -7922,10 +7826,10 @@
 "SUPPORT_DESCRIPTION_PLACEHOLDER" = "Поясніть, що сталося";
 
 /* Default prompt for user description in support email requests */
-"SUPPORT_EMAIL_DEFAULT_DESCRIPTION" = "Опишіть вашу проблему: ";
+"SUPPORT_EMAIL_DEFAULT_DESCRIPTION" = "Опишіть проблему, що виникла: ";
 
 /* Message for alert dialog presented when a support email failed to send */
-"SUPPORT_EMAIL_ERROR_ALERT_DESCRIPTION" = "Будь ласка, надішліть імейл у службу підтримки на адресу support@signal.org";
+"SUPPORT_EMAIL_ERROR_ALERT_DESCRIPTION" = "Будь ласка, надішліть запит на підтримку до support@signal.org";
 
 /* Localized label for support request email filter string. Embeds {{filter text}}. */
 "SUPPORT_EMAIL_FILTER_LABEL_FORMAT" = "Фільтр: %1$@";
@@ -7934,25 +7838,25 @@
 "SUPPORT_EMAIL_HARDWARE_LABEL_FORMAT" = "Пристрій: %1$@";
 
 /* Localized label for support request email HID string (e.g. 12,1). Embeds {{hid text}}. */
-"SUPPORT_EMAIL_HID_LABEL_FORMAT" = "HID: %1$@";
+"SUPPORT_EMAIL_HID_LABEL_FORMAT" = "ЛІП: %1$@";
 
 /* Localized divider for support request emails internal information */
-"SUPPORT_EMAIL_INFO_DIVIDER" = "--- Інформація для служби підтримки ---";
+"SUPPORT_EMAIL_INFO_DIVIDER" = "--- Допоміжна інформація ---";
 
 /* Localized label for support request email iOS Version string (e.g. 13.4). Embeds {{ios version}}. */
 "SUPPORT_EMAIL_IOS_VERSION_LABEL_FORMAT" = "Версія iOS: %1$@";
 
 /* Localized label for support request email locale string. Embeds {{locale}}. */
-"SUPPORT_EMAIL_LOCALE_LABEL_FORMAT" = "Регіон: %1$@";
+"SUPPORT_EMAIL_LOCALE_LABEL_FORMAT" = "Мова: %1$@";
 
 /* Localized label for support request email debug log URL. Embeds {{debug log url}}. */
-"SUPPORT_EMAIL_LOG_URL_LABEL_FORMAT" = "URL-адреса журналу налагодження: %1$@";
+"SUPPORT_EMAIL_LOG_URL_LABEL_FORMAT" = "Журнал URL: %1$@";
 
 /* Localized label for support request email signal version string. Embeds {{signal version}}. */
 "SUPPORT_EMAIL_SIGNAL_VERSION_LABEL_FORMAT" = "Версія Signal: %1$@";
 
 /* Localized subject for support request emails */
-"SUPPORT_EMAIL_SUBJECT" = "Звернення в службу підтримки щодо Signal для iOS";
+"SUPPORT_EMAIL_SUBJECT" = "Запит на підтримку Signal на iOS";
 
 /* Header for emoji mood selection */
 "SUPPORT_EMOJI_PROMPT" = "Який у вас настрій? (необов'язково)";
@@ -7967,7 +7871,7 @@
 "SUPPORT_LOG_UPLOAD_IN_PROGRESS" = "Завантаження";
 
 /* Action sheet title for Still Processing Badge sheet */
-"SUSTAINER_STILL_PROCESSING_BADGE_TITLE" = "Опрацювання триває";
+"SUSTAINER_STILL_PROCESSING_BADGE_TITLE" = "Ще обробляється";
 
 /* Sustainer view Cancel Subscription button title */
 "SUSTAINER_VIEW_CANCEL_SUBSCRIPTION" = "Скасувати підписку";
@@ -7985,7 +7889,7 @@
 "SUSTAINER_VIEW_CANT_ADD_BADGE_MESSAGE" = "Не вдалося додати значок до вашого акаунту. Зверніться в службу підтримки.";
 
 /* Action sheet title for Couldn't Add Badge sheet */
-"SUSTAINER_VIEW_CANT_ADD_BADGE_TITLE" = "Не вдалося додати значок";
+"SUSTAINER_VIEW_CANT_ADD_BADGE_TITLE" = "Не вдалося додати відзнаку";
 
 /* Action sheet title for Error Authorizing Payment sheet */
 "SUSTAINER_VIEW_ERROR_AUTHORIZING_PAYMENT_TITLE" = "Помилка авторизації платежу";
@@ -8087,7 +7991,7 @@
 "THREAD_DETAILS_ONE_MUTUAL_GROUP" = "Учасник «%1$@»";
 
 /* Indicator that a blurred avatar can be revealed by tapping. */
-"THREAD_DETAILS_TAP_TO_UNBLUR_AVATAR" = "Показати";
+"THREAD_DETAILS_TAP_TO_UNBLUR_AVATAR" = "Детальніше";
 
 /* A string indicating three mutual groups the user shares with this contact. Embeds {{mutual group name}} */
 "THREAD_DETAILS_THREE_MUTUAL_GROUP" = "Учасник «%1$@», «%2$@» і «%3$@»";
@@ -8120,7 +8024,7 @@
 "TIME_AMOUNT_MINUTES" = "%1$@ хв";
 
 /* Label text below navbar button, embeds {{number of minutes}}. Must be very short, like 1 or 2 characters, The space is intentionally omitted between the text and the embedded duration so that we get, e.g. '5m' not '5 m'. See other *_TIME_AMOUNT strings */
-"TIME_AMOUNT_MINUTES_SHORT_FORMAT" = "%1$@хв";
+"TIME_AMOUNT_MINUTES_SHORT_FORMAT" = "%1$@х";
 
 /* {{number of seconds}} embedded in strings, e.g. 'Alice updated disappearing messages expiration to {{5 seconds}}'. See other *_TIME_AMOUNT strings */
 "TIME_AMOUNT_SECONDS" = "%1$@ с";
@@ -8135,7 +8039,7 @@
 "TIME_AMOUNT_SINGLE_HOUR" = "%1$@ год";
 
 /* {{1 minute}} embedded in strings, e.g. 'Alice updated disappearing messages expiration to {{1 minute}}'. See other *_TIME_AMOUNT strings */
-"TIME_AMOUNT_SINGLE_MINUTE" = "%1$@ хв";
+"TIME_AMOUNT_SINGLE_MINUTE" = "%1$@ хвилина";
 
 /* {{1 week}} embedded in strings, e.g. 'Alice updated disappearing messages expiration to {{1 week}}'. See other *_TIME_AMOUNT strings */
 "TIME_AMOUNT_SINGLE_WEEK" = "%1$@ тиждень";
@@ -8171,25 +8075,25 @@
 "UNKNOWN_CONTACT_BLOCK_OFFER" = "Користувача немає у ваших контактах. Бажаєте заблокувати цього користувача?";
 
 /* Info message recorded in conversation history when local user receives an unknown message from a linked device and needs to upgrade. */
-"UNKNOWN_PROTOCOL_VERSION_NEED_TO_UPGRADE_FROM_LINKED_DEVICE" = "Один з ваших пристроїв надіслав повідомлення, яке неможливо опрацювати або показати, оскільки він використовує нову функцію Signal.";
+"UNKNOWN_PROTOCOL_VERSION_NEED_TO_UPGRADE_FROM_LINKED_DEVICE" = "Одне з ваших пристроїв відправило повідомлення, яке не може бути оброблено або відображено, оскільки воно використовує нову функцію Signal.";
 
 /* Info message recorded in conversation history when local user receives an unknown message and needs to upgrade. Embeds {{user's name or phone number}}. */
-"UNKNOWN_PROTOCOL_VERSION_NEED_TO_UPGRADE_WITH_NAME_FORMAT" = "Користувач %1$@ надіслав вам повідомлення, яке неможливо опрацювати або показати, оскільки було використано нову функцію Signal.";
+"UNKNOWN_PROTOCOL_VERSION_NEED_TO_UPGRADE_WITH_NAME_FORMAT" = "%1$@відправив(-a) вам повідомлення, яке не може бути оброблено або відображено, оскільки воно використовує нову функцію Signal.";
 
 /* Info message recorded in conversation history when local user receives an unknown message and needs to upgrade. */
-"UNKNOWN_PROTOCOL_VERSION_NEED_TO_UPGRADE_WITHOUT_NAME" = "Ви отримали повідомлення, яке неможливо опрацювати або показати, оскільки було використано нову функцію Signal.";
+"UNKNOWN_PROTOCOL_VERSION_NEED_TO_UPGRADE_WITHOUT_NAME" = "Ви отримали повідомлення, яке не може бути оброблено або відображено, оскільки воно використовує нову функцію Signal.";
 
 /* Label for button that lets users upgrade the app. */
-"UNKNOWN_PROTOCOL_VERSION_UPGRADE_BUTTON" = "Оновити Signal";
+"UNKNOWN_PROTOCOL_VERSION_UPGRADE_BUTTON" = "Вже Оновити Signal";
 
 /* Info message recorded in conversation history when local user has received an unknown unknown message from a linked device and has upgraded. */
-"UNKNOWN_PROTOCOL_VERSION_UPGRADE_COMPLETE_FROM_LINKED_DEVICE" = "Signal було оновлено до останньої версії. Тепер ви можете отримувати повідомлення такого типу на свій пристрій.";
+"UNKNOWN_PROTOCOL_VERSION_UPGRADE_COMPLETE_FROM_LINKED_DEVICE" = "Виконано оновлення до останньої версії Signal. Тепер ви можете отримувати цей тип повідомлень на вашому пристрої.";
 
 /* Info message recorded in conversation history when local user has received an unknown message and has upgraded. Embeds {{user's name or phone number}}. */
-"UNKNOWN_PROTOCOL_VERSION_UPGRADE_COMPLETE_WITH_NAME_FORMAT" = "Тепер ви використовуєте останню версію Signal і можете попросити користувача %1$@ ще раз надіслати це повідомлення.";
+"UNKNOWN_PROTOCOL_VERSION_UPGRADE_COMPLETE_WITH_NAME_FORMAT" = "Тепер ви використовуєте останню версію Signal і можете попросити %1$@ повторно відправити це повідомлення.";
 
 /* Info message recorded in conversation history when local user has received an unknown message and has upgraded. */
-"UNKNOWN_PROTOCOL_VERSION_UPGRADE_COMPLETE_WITHOUT_NAME" = "Тепер ви використовуєте останню версію Signal і можете попросити відправника ще раз надіслати це повідомлення.";
+"UNKNOWN_PROTOCOL_VERSION_UPGRADE_COMPLETE_WITHOUT_NAME" = "Тепер ви використовуєте останню версію Signal і можете попросити відправника повторно відправити це повідомлення.";
 
 /* Label indicating an unknown user. */
 "UNKNOWN_USER" = "Невідомий";
@@ -8207,7 +8111,7 @@
 "UNLINK_ACTION" = "Відв'язати";
 
 /* Alert message to confirm unlinking a device */
-"UNLINK_CONFIRMATION_ALERT_BODY" = "Якщо його відв'язати цей пристрій, він більше не зможе надсилати й отримувати повідомлення.";
+"UNLINK_CONFIRMATION_ALERT_BODY" = "Цей пристрій не матиме змоги надсилати чи отримувати повідомлення, якщо його відв'язати.";
 
 /* Alert title for confirming device deletion */
 "UNLINK_CONFIRMATION_ALERT_TITLE" = "Відв'язати «%1$@»?";
@@ -8219,7 +8123,7 @@
 "UNLINKED_WARNING_ACTION_TITLE" = "Зв'язати пристрій";
 
 /* Alert title when unlinking device fails */
-"UNLINKING_FAILED_ALERT_TITLE" = "Signal не вдалося відв'язати ваш пристрій.";
+"UNLINKING_FAILED_ALERT_TITLE" = "Signal не зміг відв'язати ваш пристрій.";
 
 /* Text for a toast confirming that the mic has been unmuted for a call. */
 "UNMUTE_CONFIRMATION_TOAST_LABEL" = "Мікрофон увімкнено";
@@ -8231,16 +8135,16 @@
 "UNPINNED_SECTION_TITLE" = "Чати";
 
 /* Pressing this button marks a thread as unread */
-"UNREAD_ACTION" = "Не читати";
+"UNREAD_ACTION" = "Не прочитано";
 
 /* No comment provided by engineer. */
-"UNSUPPORTED_ATTACHMENT" = "Отримано непідтримуваний тип вкладення.";
+"UNSUPPORTED_ATTACHMENT" = "Отримано непідтримуваний тип додатку.";
 
 /* When inviting contacts to use Signal, this error is shown if the device doesn't support SMS or if there aren't any registered email accounts. */
 "UNSUPPORTED_FEATURE_ERROR" = "Ваш пристрій не підтримує цю функцію.";
 
 /* Description for the unverified safety number change. Embeds {name of contact with identity change} */
-"UNVERIFIED_SAFETY_NUMBER_CHANGE_DESCRIPTION_FORMAT" = "Ваш код безпеки з користувачем %1$@ змінився. Імовірно, користувач перевстановив Signal або змінив пристрій. Торкніться «Перевірити», щоб перевірити новий код безпеки. Це необов'язково.";
+"UNVERIFIED_SAFETY_NUMBER_CHANGE_DESCRIPTION_FORMAT" = "Ваш код безпеки з %1$@, ймовірно, змінився тому що цей користувач перевстановив Signal або змінив пристрій. Торкніться «Підтвердити» щоб підтвердити новий код безпеки. Це необов'язково.";
 
 /* Action to verify a safety number after it has changed */
 "UNVERIFIED_SAFETY_NUMBER_VERIFY_ACTION" = "Перевірити";
@@ -8252,7 +8156,7 @@
 "UPDATE_GROUP_FAILED" = "Не вдалось оновити групу.";
 
 /* Error indicating that a group could not be updated due to network connectivity problems. */
-"UPDATE_GROUP_FAILED_DUE_TO_NETWORK" = "Групу не вдалось оновити. Перевірте з'єднання з інтернетом і спробуйте ще раз.";
+"UPDATE_GROUP_FAILED_DUE_TO_NETWORK" = "Групу не можна оновити. Перевірте з'єднання з інтернетом та спробуйте знову.";
 
 /* Button to activate the signal proxy */
 "USE_PROXY_BUTTON" = "Використати проксі";
@@ -8405,10 +8309,10 @@
 "USERNAMES_REMOTE_MUTATION_ERROR_DESCRIPTION" = "Ім'я користувача можна оновити лише за наявності підключення до інтернету.";
 
 /* error label near a field */
-"VALIDATION_ERROR_CANNOT_BE_BLANK" = "Ви мусите обов'язково дати пристрою назву";
+"VALIDATION_ERROR_CANNOT_BE_BLANK" = "Ім'я пристрою не може бути порожнім";
 
 /* error label near a field */
-"VALIDATION_ERROR_TOO_LONG" = "Назва пристрою задовга";
+"VALIDATION_ERROR_TOO_LONG" = "Ім'я пристрою занадто довге";
 
 /* Format for info message indicating that the verification state was unverified on this device. Embeds {{user's name or phone number}}. */
 "VERIFICATION_STATE_CHANGE_FORMAT_NOT_VERIFIED_LOCAL" = "Ви позначили користувача %1$@ як неперевірений контакт.";
@@ -8465,10 +8369,13 @@
 "VOICE_MESSAGE_CANCEL_INSTRUCTIONS" = "Скасувати: тягніть";
 
 /* Filename for voice messages. */
-"VOICE_MESSAGE_FILE_NAME" = "Голосове повідомлення";
+"VOICE_MESSAGE_FILE_NAME" = "Голосове Повідомлення";
 
 /* Message for the tooltip indicating the 'voice message' needs to be held to be held down to record. */
-"VOICE_MESSAGE_TOO_SHORT_TOOLTIP" = "Натисніть і тримайте для запису.";
+"VOICE_MESSAGE_TOO_SHORT_TOOLTIP" = "Натисніть та тримайте для запису.";
+
+/* Activity indicator title, shown upon returning to the device manager, until you complete the provisioning process on desktop */
+"WAITING_TO_COMPLETE_DEVICE_LINK_TEXT" = "Завершити установку Signal на настільному комп’ютері";
 
 /* Accessibility label for gradient wallpaper swatch, naming the two colors in the gradient. {{ Embeds the names of the two colors in the gradient }} */
 "WALLPAPER_GRADIENT_COLORS_ACCESSIBILITY_LABEL" = "Градієнт: %1$@ і %2$@";
@@ -8480,7 +8387,7 @@
 "WALLPAPER_PREVIEW_BLUR_BUTTON" = "Розмити фото";
 
 /* The incoming bubble text when setting a photo */
-"WALLPAPER_PREVIEW_INCOMING_MESSAGE_PHOTO" = "Розведіть два пальці, щоб збільшити, зведіть — щоб зменшити, потягніть, щоб зсунути фото.";
+"WALLPAPER_PREVIEW_INCOMING_MESSAGE_PHOTO" = "Розведіть чи зведіть два пальці для зміни масштабу, потягніть для зміни положення.";
 
 /* The incoming bubble text when setting a preset */
 "WALLPAPER_PREVIEW_INCOMING_MESSAGE_PRESET" = "Гортайте, щоб побачити більше шпалер.";
@@ -8501,25 +8408,25 @@
 "WALLPAPER_SETTINGS_CLEAR_CHAT_COLOR_CHAT_CONFIRMATION" = "Скинути колір цього чату?";
 
 /* Clear wallpaper action in wallpaper settings view. */
-"WALLPAPER_SETTINGS_CLEAR_WALLPAPER" = "Скинути шпалери";
+"WALLPAPER_SETTINGS_CLEAR_WALLPAPER" = "Видалити шпалери";
 
 /* Confirmation dialog when clearing the wallpaper for a specific chat. */
 "WALLPAPER_SETTINGS_CLEAR_WALLPAPER_CHAT_CONFIRMATION" = "Видалити шпалери для цього чату?";
 
 /* Dim wallpaper action in wallpaper settings view. */
-"WALLPAPER_SETTINGS_DIM_WALLPAPER" = "Темна тема зменшує яскравість шпалер";
+"WALLPAPER_SETTINGS_DIM_WALLPAPER" = "Темний вигляд затемнює шпалеру";
 
 /* An error indicating to the user that we failed to clear the wallpaper. */
-"WALLPAPER_SETTINGS_FAILED_TO_CLEAR" = "Шпалери не вдалося скинути. Спробуйте зробити це пізніше й зв'яжіться зі службою підтримки, якщо помилка не зникне.";
+"WALLPAPER_SETTINGS_FAILED_TO_CLEAR" = "Шпалери не вдається скинути, будь ласка, спробуйте пізніше чи зв'яжіться зі службою підтримки, якщо помилка не зникає.";
 
 /* An error indicating to the user that we failed to reset all wallpapers. */
-"WALLPAPER_SETTINGS_FAILED_TO_RESET" = "Не вдалося скинути всі шпалери. Спробуйте зробити це пізніше й зв'яжіться зі службою підтримки, якщо помилка не зникне.";
+"WALLPAPER_SETTINGS_FAILED_TO_RESET" = "Не вдається скинути усі шпалери, будь ласка, спробуйте пізініше чи зв'яжіться зі службою підтримки, якщо помилка не зникає.";
 
 /* Label for 'reset all chat colors' action in the global wallpaper settings. */
 "WALLPAPER_SETTINGS_RESET_ALL_CHAT_COLORS" = "Скинути всі кольори";
 
 /* Label for 'reset all wallpapers' action in the global wallpaper settings. */
-"WALLPAPER_SETTINGS_RESET_ALL_WALLPAPERS" = "Скинути всі шпалери";
+"WALLPAPER_SETTINGS_RESET_ALL_WALLPAPERS" = "Скинути усі шпалери";
 
 /* Message of confirmation dialog when resetting the global wallpaper settings. */
 "WALLPAPER_SETTINGS_RESET_CHAT_COLORS_CONFIRMATION_MESSAGE" = "Бажаєте скинути встановлені кольори всіх чатів?";
@@ -8567,7 +8474,7 @@
 "YOU_DISABLED_DISAPPEARING_MESSAGES_CONFIGURATION" = "Ви вимкнули тимчасові повідомлення.";
 
 /* alert body shown when trying to use features in the app before completing registration-related setup. */
-"YOU_MUST_COMPLETE_ONBOARDING_BEFORE_PROCEEDING" = "Спершу ви мусите завершити реєстрацію.";
+"YOU_MUST_COMPLETE_ONBOARDING_BEFORE_PROCEEDING" = "Ви повинні завершити реєстрацію перед продовженням.";
 
 /* Info Message when you update disappearing messages duration. Embeds a {{time amount}} before messages disappear. see the *_TIME_AMOUNT strings for context. */
 "YOU_UPDATED_DISAPPEARING_MESSAGES_CONFIGURATION" = "Ви встановили таймер тимчасових повідомлень: %1$@.";

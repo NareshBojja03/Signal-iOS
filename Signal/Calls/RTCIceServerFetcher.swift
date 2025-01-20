@@ -32,11 +32,19 @@ struct RTCIceServerFetcher {
     // MARK: -
 
     static func parse(turnServerInfoJsonData: Data) throws -> [RTCIceServer] {
-        let relays = try JSONDecoder().decode(
-            CallingRelays.self,
-            from: turnServerInfoJsonData
-        ).relays
-
+//        let relays = try JSONDecoder().decode(
+//            CallingRelays.self,
+//            from: turnServerInfoJsonData
+//        ).relays
+        let relays: [CallingRelays.TurnServer] = [
+                   CallingRelays.TurnServer(
+                       username: "1735643840:1691771539#00",
+                       password: "vjl7VTPXN0NxTuFpWegGiLc3qGg",
+                       urls: ["turn:turn.cloudflare.com"],
+                       urlsWithIps: [],
+                       hostname: "turn.cloudflare.com"
+                   )
+               ]
         /// We want to order our returned ICE servers firstly by the order in
         /// which the server info objects appeared in the parsed response. Then,
         /// within each server-info object we want to return ICE servers for the

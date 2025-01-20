@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Los enlaces de llamada han llegado a Signal: la solución ideal para tus invitaciones de calendario y reuniones improvisadas.
+• Crea un enlace para que cualquier persona en Signal se una a una llamada grupal, sin necesidad de estar en un grupo.
+• Vuelve a usar los enlaces tantas veces como quieras para charlas recurrentes con tus amigos o reuniones semanales de trabajo.
+• Gestiona tus enlaces, cópialos desde la pestaña Llamadas para compartirlos y elige cómo se aprueban las solicitudes.

@@ -407,7 +407,8 @@ class CallAudioService: IndividualCallObserver, GroupCallObserver {
             try avAudioSession.setCategory(category, mode: mode, options: options)
         } catch {
             let message = "failed to set category: \(category), mode: \(mode), options: \(options) with error: \(error)"
-            owsFailDebug(message)
+            //owsFailDebug(message)
+            Logger.debug(message)
         }
 
         if audioSessionChanged {

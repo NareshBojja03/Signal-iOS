@@ -15,40 +15,79 @@ public protocol AudioWaveformSamplingObserver: AnyObject {
 
 public class AudioWaveformManagerImpl: AudioWaveformManager {
 
-    private typealias AttachmentId = Attachment.IDType
+    private typealias AttachmentId = TSResourceId
 
     public init() {}
 
     public func audioWaveform(
-        forAttachment attachment: AttachmentStream,
+        forAttachment attachment: TSResourceStream,
         highPriority: Bool
     ) -> Task<AudioWaveform, Error> {
-        switch attachment.info.contentType {
-        case .file, .invalid, .image, .video, .animatedImage:
-            return Task {
-                throw OWSAssertionError("Invalid attachment type!")
-            }
-        case .audio(_, let relativeWaveformFilePath):
-            guard let relativeWaveformFilePath else {
+        switch attachment.concreteStreamType {
+        case .legacy(let tsAttachmentStream):
+            return _audioWaveform(forAttachment: tsAttachmentStream, highPriority: highPriority)
+        case .v2(let attachmentStream):
+            switch attachmentStream.info.contentType {
+            case .file, .invalid, .image, .video, .animatedImage:
                 return Task {
-                    // We could not generate a waveform at write time; don't retry now.
-                    throw AudioWaveformError.invalidAudioFile
+                    throw OWSAssertionError("Invalid attachment type!")
+                }
+            case .audio(_, let relativeWaveformFilePath):
+                guard let relativeWaveformFilePath else {
+                    return Task {
+                        // We could not generate a waveform at write time; don't retry now.
+                        throw AudioWaveformError.invalidAudioFile
+                    }
+                }
+                let encryptionKey = attachmentStream.attachment.encryptionKey
+                return Task {
+                    let fileURL = AttachmentStream.absoluteAttachmentFileURL(
+                        relativeFilePath: relativeWaveformFilePath
+                    )
+                    // waveform is validated at creation time; no need to revalidate every read.
+                    let data = try Cryptography.decryptFileWithoutValidating(
+                        at: fileURL,
+                        metadata: .init(
+                            key: encryptionKey
+                        )
+                    )
+                    return try AudioWaveform(archivedData: data)
                 }
             }
-            let encryptionKey = attachment.attachment.encryptionKey
-            return Task {
-                let fileURL = AttachmentStream.absoluteAttachmentFileURL(
-                    relativeFilePath: relativeWaveformFilePath
-                )
-                // waveform is validated at creation time; no need to revalidate every read.
-                let data = try Cryptography.decryptFileWithoutValidating(
-                    at: fileURL,
-                    metadata: .init(
-                        key: encryptionKey
-                    )
-                )
-                return try AudioWaveform(archivedData: data)
+        }
+    }
+
+    private func _audioWaveform(
+        forAttachment attachment: TSAttachmentStream,
+        highPriority: Bool
+    ) -> Task<AudioWaveform, Error> {
+        let attachmentId = attachment.resourceId
+        let mimeType = attachment.mimeType
+        let audioWaveformPath = attachment.audioWaveformPath
+        let originalFilePath = attachment.originalFilePath
+
+        return Task {
+            guard MimeTypeUtil.isSupportedAudioMimeType(mimeType) else {
+                owsFailDebug("Not audio.")
+                throw AudioWaveformError.invalidAudioFile
             }
+
+            guard let audioWaveformPath else {
+                owsFailDebug("Missing audioWaveformPath.")
+                throw AudioWaveformError.invalidAudioFile
+            }
+
+            guard let originalFilePath else {
+                owsFailDebug("Missing originalFilePath.")
+                throw AudioWaveformError.invalidAudioFile
+            }
+
+            return try await self.buildAudioWaveForm(
+                source: .unencryptedFile(path: originalFilePath),
+                waveformPath: audioWaveformPath,
+                identifier: .attachment(attachmentId),
+                highPriority: highPriority
+            ).value
         }
     }
 
@@ -123,10 +162,10 @@ public class AudioWaveformManagerImpl: AudioWaveformManager {
     }
 
     private enum WaveformId: Hashable {
-        case attachment(Attachment.IDType)
+        case attachment(TSResourceId)
         case file(UUID)
 
-        var cacheKey: Attachment.IDType? {
+        var cacheKey: TSResourceId? {
             switch self {
             case .attachment(let id):
                 return id
@@ -176,16 +215,16 @@ public class AudioWaveformManagerImpl: AudioWaveformManager {
         waveformPath: String?
     ) throws -> AudioWaveform {
         if let waveformPath {
-            do {
-                let waveformData = try Data(contentsOf: URL(fileURLWithPath: waveformPath))
+            if FileManager.default.fileExists(atPath: waveformPath) {
                 // We have a cached waveform on disk, read it into memory.
-                return try AudioWaveform(archivedData: waveformData)
-            } catch POSIXError.ENOENT, CocoaError.fileReadNoSuchFile, CocoaError.fileNoSuchFile {
-                // The file doesn't exist...
-            } catch {
-                owsFailDebug("Error: \(error)")
-                // Remove the file from disk and create a new one.
-                OWSFileSystem.deleteFileIfExists(waveformPath)
+                do {
+                    return try AudioWaveform(contentsOfFile: waveformPath)
+                } catch {
+                    owsFailDebug("Error: \(error)")
+
+                    // Remove the file from disk and create a new one.
+                    OWSFileSystem.deleteFileIfExists(waveformPath)
+                }
             }
         }
 

@@ -109,8 +109,10 @@ class NSEEnvironment {
     func setUp(logger: NSELogger) throws {
         let debugLogger = DebugLogger.shared
 
+        // Do this every time in case the setting is changed.
+        debugLogger.setUpFileLoggingIfNeeded(appContext: appContext, canLaunchInBackground: true)
+
         if !didStartAppSetup {
-            debugLogger.enableFileLogging(appContext: appContext, canLaunchInBackground: true)
             debugLogger.enableTTYLoggingIfNeeded()
             DebugLogger.registerLibsignal()
             DebugLogger.registerRingRTC()
@@ -145,6 +147,7 @@ class NSEEnvironment {
             callMessageHandler: NSECallMessageHandler(),
             currentCallProvider: CurrentCallNoOpProvider(),
             notificationPresenter: NotificationPresenterImpl(),
+            incrementalTSAttachmentMigrator: NoOpIncrementalMessageTSAttachmentMigrator(),
             messageBackupErrorPresenterFactory: NoOpMessageBackupErrorPresenterFactory()
         )
 

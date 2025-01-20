@@ -22,41 +22,34 @@ public struct GroupsV2Request {
 
 public extension StorageService {
 
-    static func buildNewGroupRequest(
-        groupProto: GroupsProtoGroup,
-        groupV2Params: GroupV2Params,
-        authCredential: AuthCredentialWithPni
-    ) throws -> GroupsV2Request {
+    static func buildNewGroupRequest(groupProto: GroupsProtoGroup,
+                                     groupV2Params: GroupV2Params,
+                                     authCredential: AuthCredentialWithPni) throws -> GroupsV2Request {
+
         let protoData = try groupProto.serializedData()
-        return try buildGroupV2Request(
-            protoData: protoData,
-            urlString: "v2/groups",
-            method: .put,
-            groupV2Params: groupV2Params,
-            authCredential: authCredential
-        )
+        return try buildGroupV2Request(protoData: protoData,
+                                       urlString: "/v1/groups/",
+                                       method: .put,
+                                       groupV2Params: groupV2Params,
+                                       authCredential: authCredential)
     }
 
-    static func buildUpdateGroupRequest(
-        groupChangeProto: GroupsProtoGroupChangeActions,
-        groupV2Params: GroupV2Params,
-        authCredential: AuthCredentialWithPni,
-        groupInviteLinkPassword: Data?
-    ) throws -> GroupsV2Request {
+    static func buildUpdateGroupRequest(groupChangeProto: GroupsProtoGroupChangeActions,
+                                        groupV2Params: GroupV2Params,
+                                        authCredential: AuthCredentialWithPni,
+                                        groupInviteLinkPassword: Data?) throws -> GroupsV2Request {
 
-        var urlString = "v2/groups"
-        if let groupInviteLinkPassword {
+        var urlString = "/v1/groups/"
+        if let groupInviteLinkPassword = groupInviteLinkPassword {
             urlString += "?inviteLinkPassword=\(groupInviteLinkPassword.asBase64Url)"
         }
 
         let protoData = try groupChangeProto.serializedData()
-        return try buildGroupV2Request(
-            protoData: protoData,
-            urlString: urlString,
-            method: .patch,
-            groupV2Params: groupV2Params,
-            authCredential: authCredential
-        )
+        return try buildGroupV2Request(protoData: protoData,
+                                       urlString: urlString,
+                                       method: .patch,
+                                       groupV2Params: groupV2Params,
+                                       authCredential: authCredential)
     }
 
     static func buildFetchCurrentGroupV2SnapshotRequest(
@@ -65,7 +58,7 @@ public extension StorageService {
     ) throws -> GroupsV2Request {
         return try buildGroupV2Request(
             protoData: nil,
-            urlString: "v2/groups",
+            urlString: "/v1/groups/",
             method: .get,
             groupV2Params: groupV2Params,
             authCredential: authCredential
@@ -172,7 +165,7 @@ public extension StorageService {
         groupV2Params: GroupV2Params,
         authCredential: AuthCredentialWithPni
     ) throws {
-        let serverPublicParams = GroupsV2Protos.serverPublicParams()
+        let serverPublicParams = try GroupsV2Protos.serverPublicParams()
         let clientZkAuthOperations = ClientZkAuthOperations(serverPublicParams: serverPublicParams)
         let authCredentialPresentation = try clientZkAuthOperations.createAuthCredentialPresentation(groupSecretParams: groupV2Params.groupSecretParams, authCredential: authCredential)
         let authCredentialPresentationData = authCredentialPresentation.serialize().asData

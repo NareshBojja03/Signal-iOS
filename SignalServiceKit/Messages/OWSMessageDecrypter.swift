@@ -52,9 +52,9 @@ public class OWSMessageDecrypter {
             return
         }
 
-        let store = KeyValueStore(collection: "OWSMessageDecrypter+NullMessage")
+        let store = SDSKeyValueStore(collection: "OWSMessageDecrypter+NullMessage")
 
-        let lastNullMessageDate = store.getDate(senderId, transaction: transaction.asV2Read)
+        let lastNullMessageDate = store.getDate(senderId, transaction: transaction)
         let timeSinceNullMessage = abs(lastNullMessageDate?.timeIntervalSinceNow ?? .infinity)
         guard timeSinceNullMessage > RemoteConfig.current.automaticSessionResetAttemptInterval else {
             Logger.warn("Skipping null message after undecryptable message from \(senderId), " +
@@ -63,7 +63,7 @@ public class OWSMessageDecrypter {
         }
 
         Logger.info("Sending null message to reset session after undecryptable message from: \(senderId)")
-        store.setDate(Date(), key: senderId, transaction: transaction.asV2Write)
+        store.setDate(Date(), key: senderId, transaction: transaction)
 
         transaction.addAsyncCompletionOffMain {
             SSKEnvironment.shared.databaseStorageRef.write { transaction in
@@ -92,28 +92,44 @@ public class OWSMessageDecrypter {
     }
 
     private func trySendReactiveProfileKey(to sourceAci: Aci, tx transaction: SDSAnyWriteTransaction) {
-        let store = KeyValueStore(collection: "OWSMessageDecrypter+ReactiveProfileKey")
+        let store = SDSKeyValueStore(collection: "OWSMessageDecrypter+ReactiveProfileKey")
 
-        let lastProfileKeyMessageDate = store.getDate(sourceAci.serviceIdUppercaseString, transaction: transaction.asV2Read)
+        let lastProfileKeyMessageDate = store.getDate(sourceAci.serviceIdUppercaseString, transaction: transaction)
         let timeSinceProfileKeyMessage = abs(lastProfileKeyMessageDate?.timeIntervalSinceNow ?? .infinity)
         guard timeSinceProfileKeyMessage > RemoteConfig.current.reactiveProfileKeyAttemptInterval else {
-            Logger.warn("Skipping reactive profile key for \(sourceAci), last reactive profile key message sent \(lastProfileKeyMessageDate!.ows_millisecondsSince1970).")
+            Logger.warn("Skipping reactive profile key message after non-UD message from \(sourceAci), last reactive profile key message sent \(lastProfileKeyMessageDate!.ows_millisecondsSince1970).")
             return
         }
 
-        Logger.info("Sending reactive profile key to \(sourceAci)")
-        store.setDate(Date(), key: sourceAci.serviceIdUppercaseString, transaction: transaction.asV2Write)
+        Logger.info("Sending reactive profile key message after non-UD message from: \(sourceAci)")
+        store.setDate(Date(), key: sourceAci.serviceIdUppercaseString, transaction: transaction)
 
         let contactThread = TSContactThread.getOrCreateThread(
             withContactAddress: SignalServiceAddress(sourceAci),
             transaction: transaction
         )
 
-        let profileKeyMessage = OWSProfileKeyMessage(thread: contactThread, transaction: transaction)
-        let preparedMessage = PreparedOutgoingMessage.preprepared(
-            transientMessageWithoutAttachments: profileKeyMessage
-        )
-        SSKEnvironment.shared.messageSenderJobQueueRef.add(message: preparedMessage, transaction: transaction)
+        transaction.addAsyncCompletionOffMain {
+            SSKEnvironment.shared.databaseStorageRef.write { transaction in
+                let profileKeyMessage = OWSProfileKeyMessage(thread: contactThread, transaction: transaction)
+                let preparedMessage = PreparedOutgoingMessage.preprepared(
+                    transientMessageWithoutAttachments: profileKeyMessage
+                )
+                SSKEnvironment.shared.messageSenderJobQueueRef.add(
+                    .promise,
+                    message: preparedMessage,
+                    transaction: transaction
+                ).done(on: DispatchQueue.global()) {
+                    Logger.info("Successfully sent reactive profile key message after non-UD message from \(sourceAci)")
+                }.catch(on: DispatchQueue.global()) { error in
+                    if error is UntrustedIdentityError {
+                        Logger.info("Failed to send reactive profile key message after non-UD message from \(sourceAci) (\(error))")
+                    } else {
+                        owsFailDebug("Failed to send reactive profile key message after non-UD message from \(sourceAci) (\(error))")
+                    }
+                }
+            }
+        }
     }
 
     private struct UnsealedEnvelope {

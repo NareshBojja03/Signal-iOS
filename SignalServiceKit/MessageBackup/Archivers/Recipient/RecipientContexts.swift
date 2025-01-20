@@ -38,59 +38,10 @@ extension MessageBackup {
         fileprivate init(sendStatus: BackupProto_SendStatus) {
             self.init(value: sendStatus.recipientID)
         }
-
-        fileprivate init(adHocCall: BackupProto_AdHocCall) {
-            self.init(value: adHocCall.recipientID)
-        }
     }
 
-    public struct GroupId: Hashable, MessageBackupLoggableId {
-        let value: Data
-
-        init(groupModel: TSGroupModel) {
-            self.value = groupModel.groupId
-        }
-
-        public var typeLogString: String { "Group" }
-        public var idLogString: String { value.base64EncodedString() }
-    }
-
-    public struct DistributionId: Hashable {
-
-        let value: UUID
-        let isMyStoryId: Bool
-
-        init(_ value: UUID) {
-            self.value = value
-
-            /// The same hardcoded My Story UUID (all 0's) is shared across clients.
-            /// We use the uuid ("distributionId") encoded into the backup proto to determine if this is
-            /// "My Story" or not. The same mechanism of shared all-0s-UUID is used in StorageService.
-            /// Check, though, that the value didn't drift just in case.
-            owsAssertBeta(
-                TSPrivateStoryThread.myStoryUniqueId == "00000000-0000-0000-0000-000000000000",
-                "My Story hardcoded id drifted; legacy backups may now be invalid"
-            )
-            self.isMyStoryId = value.uuidString == TSPrivateStoryThread.myStoryUniqueId
-        }
-
-        init?(distributionListItem: BackupProto_DistributionListItem) {
-            guard let uuid = UUID(data: distributionListItem.distributionID) else {
-                return nil
-            }
-            self.init(uuid)
-        }
-
-        init?(storyThread: TSPrivateStoryThread) {
-            guard
-                let uuidData = storyThread.distributionListIdentifier,
-                let uuid = UUID(data: uuidData)
-            else {
-                return nil
-            }
-            self.init(uuid)
-        }
-    }
+    public typealias GroupId = Data
+    public typealias DistributionId = Data
 
     /**
      * As we go archiving recipients, we use this object to track mappings from the addressing we use in the app
@@ -107,7 +58,6 @@ extension MessageBackup {
             case contact(ContactAddress)
             case group(GroupId)
             case distributionList(DistributionId)
-            case callLink(CallLinkRecordId)
         }
 
         let localRecipientId: RecipientId
@@ -120,10 +70,8 @@ extension MessageBackup {
         private let contactAciMap = SharedMap<Aci, RecipientId>()
         private let contactPniMap = SharedMap<Pni, RecipientId>()
         private let contactE164ap = SharedMap<E164, RecipientId>()
-        private let callLinkIdMap = SharedMap<CallLinkRecordId, RecipientId>()
 
         init(
-            backupPurpose: MessageBackupPurpose,
             currentBackupAttachmentUploadEra: String?,
             backupAttachmentUploadManager: BackupAttachmentUploadManager,
             localIdentifiers: LocalIdentifiers,
@@ -147,7 +95,6 @@ extension MessageBackup {
             }
 
             super.init(
-                backupPurpose: backupPurpose,
                 currentBackupAttachmentUploadEra: currentBackupAttachmentUploadEra,
                 backupAttachmentUploadManager: backupAttachmentUploadManager,
                 tx: tx
@@ -176,8 +123,6 @@ extension MessageBackup {
                 if let e164 = contactAddress.e164 {
                     contactE164ap[e164] = currentRecipientId
                 }
-            case .callLink(let callLinkId):
-                callLinkIdMap[callLinkId] = currentRecipientId
             }
             return currentRecipientId
         }
@@ -203,8 +148,6 @@ extension MessageBackup {
                     } else {
                         return nil
                     }
-                case .callLink(let callLinkId):
-                    return callLinkIdMap[callLinkId]
                 }
             }
         }
@@ -217,7 +160,6 @@ extension MessageBackup {
             case contact(ContactAddress)
             case group(GroupId)
             case distributionList(DistributionId)
-            case callLink(CallLinkRecordId)
         }
 
         let localIdentifiers: LocalIdentifiers
@@ -227,7 +169,6 @@ extension MessageBackup {
         /// By comparison, TSContactThread is created when we restore the Chat frame.
         /// We cache the TSGroupThread here to avoid fetching later when we do restore the Chat.
         private let groupThreadCache = SharedMap<GroupId, TSGroupThread>()
-        private let callLinkRecordCache = SharedMap<CallLinkRecordId, CallLinkRecord>()
 
         init(
             localIdentifiers: LocalIdentifiers,
@@ -245,11 +186,6 @@ extension MessageBackup {
         subscript(_ id: GroupId) -> TSGroupThread? {
             get { groupThreadCache[id] }
             set(newValue) { groupThreadCache[id] = newValue }
-        }
-
-        subscript(_ id: CallLinkRecordId) -> CallLinkRecord? {
-            get { callLinkRecordCache[id] }
-            set(newValue) { callLinkRecordCache[id] = newValue }
         }
 
         // MARK: Post-Frame Restore
@@ -293,8 +229,6 @@ extension MessageBackup.RecipientArchivingContext.Address: MessageBackupLoggable
             return "TSGroupThread"
         case .distributionList:
             return "TSPrivateStoryThread"
-        case .callLink:
-            return "CallLinkRecord"
         }
     }
 
@@ -306,11 +240,9 @@ extension MessageBackup.RecipientArchivingContext.Address: MessageBackupLoggable
             return contactAddress.idLogString
         case .group(let groupId):
             // Rely on the scrubber to scrub the id.
-            return groupId.idLogString
+            return groupId.base64EncodedString()
         case .distributionList(let distributionId):
-            return distributionId.value.uuidString
-        case .callLink(let callLinkRecordId):
-            return callLinkRecordId.idLogString
+            return distributionId.base64EncodedString()
         }
     }
 }
@@ -354,12 +286,5 @@ extension BackupProto_SendStatus {
 
     public var destinationRecipientId: MessageBackup.RecipientId {
         return MessageBackup.RecipientId(sendStatus: self)
-    }
-}
-
-extension BackupProto_AdHocCall {
-
-    public var callLinkRecipientId: MessageBackup.RecipientId {
-        return MessageBackup.RecipientId(adHocCall: self)
     }
 }

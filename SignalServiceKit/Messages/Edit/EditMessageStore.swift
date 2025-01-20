@@ -64,7 +64,7 @@ public protocol EditMessageStore {
     func insert(
         _ editRecord: EditRecord,
         tx: DBWriteTransaction
-    ) throws
+    )
 
     func update(
         _ editRecord: EditRecord,
@@ -249,8 +249,12 @@ public class EditMessageStoreImpl: EditMessageStore {
     public func insert(
         _ editRecord: EditRecord,
         tx: DBWriteTransaction
-    ) throws {
-        try editRecord.insert(tx.databaseConnection)
+    ) {
+        do {
+            try editRecord.insert(tx.databaseConnection)
+        } catch {
+            owsFailDebug("Unexpected edit record insertion error \(error)")
+        }
     }
 
     public func update(

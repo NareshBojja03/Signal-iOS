@@ -475,7 +475,8 @@ public class SignalServiceAddress: NSObject, NSCopying, NSSecureCoding, Codable 
         var splits = [String]()
         if let uuid = uuidString?.nilIfEmpty {
             splits.append("serviceId: " + uuid)
-        } else if let phoneNumber = phoneNumber?.nilIfEmpty {
+        }
+        if let phoneNumber = phoneNumber?.nilIfEmpty {
             splits.append("phoneNumber: " + phoneNumber)
         }
         return "<" + splits.joined(separator: ", ") + ">"

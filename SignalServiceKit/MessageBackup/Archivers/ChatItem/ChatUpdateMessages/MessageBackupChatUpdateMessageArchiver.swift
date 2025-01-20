@@ -27,19 +27,18 @@ final class MessageBackupChatUpdateMessageArchiver: MessageBackupProtoArchiver {
         individualCallRecordManager: any IndividualCallRecordManager,
         interactionStore: MessageBackupInteractionStore
     ) {
-        groupUpdateMessageArchiver = MessageBackupGroupUpdateMessageArchiver(
-            groupUpdateBuilder: groupUpdateItemBuilder,
-            groupUpdateHelper: groupUpdateHelper,
-            interactionStore: interactionStore
-        )
         expirationTimerChatUpdateArchiver = MessageBackupExpirationTimerChatUpdateArchiver(
             contactManager: contactManager,
-            groupUpdateArchiver: groupUpdateMessageArchiver,
             interactionStore: interactionStore
         )
         groupCallArchiver = MessageBackupGroupCallArchiver(
             callRecordStore: callRecordStore,
             groupCallRecordManager: groupCallRecordManager,
+            interactionStore: interactionStore
+        )
+        groupUpdateMessageArchiver = MessageBackupGroupUpdateMessageArchiver(
+            groupUpdateBuilder: groupUpdateItemBuilder,
+            groupUpdateHelper: groupUpdateHelper,
             interactionStore: interactionStore
         )
         individualCallArchiver = MessageBackupIndividualCallArchiver(
@@ -78,6 +77,7 @@ final class MessageBackupChatUpdateMessageArchiver: MessageBackupProtoArchiver {
 
     func archiveGroupCall(
         _ groupCallInteraction: OWSGroupCallMessage,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         return groupCallArchiver.archiveGroupCall(
@@ -88,18 +88,20 @@ final class MessageBackupChatUpdateMessageArchiver: MessageBackupProtoArchiver {
 
     func archiveErrorMessage(
         _ errorMessage: TSErrorMessage,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         /// All `TSErrorMessage`s map to simple chat updates.
         return simpleChatUpdateArchiver.archiveSimpleChatUpdate(
             errorMessage: errorMessage,
+            thread: thread,
             context: context
         )
     }
 
     func archiveInfoMessage(
         _ infoMessage: TSInfoMessage,
-        threadInfo: MessageBackup.ChatArchivingContext.CachedThreadInfo,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         switch infoMessage.groupUpdateMetadata(
@@ -155,35 +157,37 @@ final class MessageBackupChatUpdateMessageArchiver: MessageBackupProtoArchiver {
             /// These info message types map to simple chat updates.
             return simpleChatUpdateArchiver.archiveSimpleChatUpdate(
                 infoMessage: infoMessage,
-                threadInfo: threadInfo,
+                thread: thread,
                 context: context
             )
         case .profileUpdate:
             return profileChangeChatUpdateArchiver.archive(
                 infoMessage: infoMessage,
+                thread: thread,
                 context: context
             )
         case .typeDisappearingMessagesUpdate:
             return expirationTimerChatUpdateArchiver.archiveExpirationTimerChatUpdate(
                 infoMessage: infoMessage,
-                threadInfo: threadInfo,
+                thread: thread,
                 context: context
             )
         case .threadMerge:
             return threadMergeChatUpdateArchiver.archiveThreadMergeChatUpdate(
                 infoMessage: infoMessage,
-                threadInfo: threadInfo,
+                thread: thread,
                 context: context
             )
         case .sessionSwitchover:
             return sessionSwitchoverChatUpdateArchiver.archiveSessionSwitchoverChatUpdate(
                 infoMessage: infoMessage,
-                threadInfo: threadInfo,
+                thread: thread,
                 context: context
             )
         case .learnedProfileName:
             return learnedProfileChatUpdateArchiver.archiveLearnedProfileChatUpdate(
                 infoMessage: infoMessage,
+                thread: thread,
                 context: context
             )
         }

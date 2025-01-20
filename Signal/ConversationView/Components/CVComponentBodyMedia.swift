@@ -26,7 +26,7 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
             // This potentially reads the image data on disk.
             // We will eventually have better guarantees about this
             // state being cached and not requiring a disk read.
-            switch item.attachmentStream?.contentType {
+            switch item.attachmentStream?.computeContentType() {
             case .image, .animatedImage:
                 continue
             case .none:
@@ -206,7 +206,7 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
             if mediaAlbumHasPendingAttachment {
                 let pendingManualDownloadAttachments = items
                     .lazy
-                    .compactMap { (item: CVMediaAlbumItem) -> ReferencedAttachment? in
+                    .compactMap { (item: CVMediaAlbumItem) -> ReferencedTSResource? in
                         switch item.attachment {
                         case .stream:
                             return nil
@@ -226,9 +226,7 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
                             }
                         }
                     }
-                let totalSize = pendingManualDownloadAttachments.map {
-                    $0.attachment.asTransitTierPointer()?.info.unencryptedByteCount ?? 0
-                }.reduce(0, +)
+                let totalSize = pendingManualDownloadAttachments.map { $0.attachment.unencryptedResourceByteCount ?? 0}.reduce(0, +)
 
                 if totalSize > 0 {
                     var downloadSizeText = [OWSFormat.localizedFileSizeString(from: Int64(totalSize))]
@@ -379,8 +377,8 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
             case .enqueuedOrDownloading:
                 Logger.warn("Media attachment not yet downloaded.")
                 SSKEnvironment.shared.databaseStorageRef.write { tx in
-                    DependenciesBridge.shared.attachmentDownloadManager.cancelDownload(
-                        for: pointer.attachment.id,
+                    DependenciesBridge.shared.tsResourceDownloadManager.cancelDownload(
+                        for: pointer.attachment.resourceId,
                         tx: tx.asV2Write
                     )
                 }
@@ -388,7 +386,7 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
             }
         case .stream(let stream):
             let itemViewModel = CVItemViewModelImpl(renderItem: renderItem)
-            if let item = items.first(where: { $0.attachment.attachment.attachment.id == stream.attachment.id }), item.isBroken {
+            if let item = items.first(where: { $0.attachment.attachment.attachment.resourceId == stream.attachment.resourceId }), item.isBroken {
                 componentDelegate.didTapBrokenVideo()
                 return true
             }
@@ -405,7 +403,7 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
     }
 
     public func albumItemView(
-        forAttachment attachment: ReferencedAttachment,
+        forAttachment attachment: ReferencedTSResource,
         componentView: CVComponentView
     ) -> UIView? {
         guard let componentView = componentView as? CVComponentViewBodyMedia else {
@@ -414,7 +412,7 @@ public class CVComponentBodyMedia: CVComponentBase, CVComponent {
         }
         let albumView = componentView.albumView
         guard let albumItemView = (albumView.itemViews.first {
-            $0.attachment.attachment.attachment.id == attachment.attachment.id
+            $0.attachment.attachment.attachment.resourceId == attachment.attachment.resourceId
                 && $0.attachment.attachment.reference.hasSameOwner(as: attachment.reference)
         }) else {
             assert(albumView.moreItemsView != nil)

@@ -17,8 +17,6 @@ public protocol SyncManagerProtocolObjc {
 // MARK: -
 
 public protocol SyncManagerProtocolSwift {
-    func sendInitialSyncRequestsAwaitingCreatedThreadOrdering(timeoutSeconds: TimeInterval) -> Promise<[String]>
-
     func sendAllSyncRequestMessagesIfNecessary() -> Promise<Void>
     func sendAllSyncRequestMessages(timeout: TimeInterval) -> Promise<Void>
 

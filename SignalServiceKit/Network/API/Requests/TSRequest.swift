@@ -96,19 +96,6 @@ public class TSRequest: NSMutableURLRequest {
         }
     }
 
-    enum SealedSenderAuth {
-        case accessKey(SMKUDAccessKey)
-    }
-
-    func setAuth(sealedSender: SealedSenderAuth) {
-        self.isUDRequest = true
-        self.shouldHaveAuthorizationHeaders = false
-        switch sealedSender {
-        case .accessKey(let accessKey):
-            setValue(accessKey.keyData.base64EncodedString(), forHTTPHeaderField: "Unidentified-Access-Key")
-        }
-    }
-
     public enum RedactionStrategy {
         case none
         /// Error responses must be separately handled
@@ -126,12 +113,11 @@ public class TSRequest: NSMutableURLRequest {
     }
 
     public override var description: String {
-        let prefix = "\(self.isUDRequest ? "UD" : "ID") \(self.httpMethod)"
         switch redactionStrategy {
         case .none:
-            return "\(prefix) \(self.url?.relativeString ?? "")"
+            return "{ \(self.httpMethod): \(String(describing: self.url)) }"
         case .redactURLForSuccessResponses(let replacementString):
-            return "\(prefix) \(replacementString)"
+            return "{ \(self.httpMethod): \(replacementString) }"
         }
     }
 }

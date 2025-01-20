@@ -268,7 +268,7 @@ extension GetStartedBannerViewController: GetStartedBannerCellDelegate {
 
 extension GetStartedBannerViewController {
     private static let activeCardsDidChange = NSNotification.Name("ActiveBannerCardsDidChange")
-    private static let keyValueStore = KeyValueStore(collection: "GetStartedBannerViewController")
+    private static let keyValueStore = SDSKeyValueStore(collection: "GetStartedBannerViewController")
     private static let completePrefix = "ActiveCard."
 
     static func enableAllCards(writeTx: SDSAnyWriteTransaction) {
@@ -277,13 +277,13 @@ extension GetStartedBannerViewController {
         GetStartedBannerEntry.allCases.forEach { entry in
             let key = completePrefix + entry.identifier
 
-            let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: writeTx.asV2Read)
+            let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: writeTx)
             guard !isActive else {
                 // Card already active.
                 return
             }
 
-            Self.keyValueStore.setBool(true, key: key, transaction: writeTx.asV2Write)
+            Self.keyValueStore.setBool(true, key: key, transaction: writeTx)
             didChange = true
         }
 
@@ -299,7 +299,7 @@ extension GetStartedBannerViewController {
     static private func getActiveCards(readTx: SDSAnyReadTransaction) -> [GetStartedBannerEntry] {
         GetStartedBannerEntry.allCases.filter { entry in
             let key = completePrefix + entry.identifier
-            let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: readTx.asV2Read)
+            let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: readTx)
             return isActive
         }
     }
@@ -310,13 +310,13 @@ extension GetStartedBannerViewController {
         GetStartedBannerEntry.allCases.forEach { entry in
             let key = completePrefix + entry.identifier
 
-            let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: writeTx.asV2Read)
+            let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: writeTx)
             guard isActive else {
                 // Card not active.
                 return
             }
 
-            Self.keyValueStore.removeValue(forKey: key, transaction: writeTx.asV2Write)
+            Self.keyValueStore.removeValue(forKey: key, transaction: writeTx)
             didChange = true
         }
 
@@ -332,13 +332,13 @@ extension GetStartedBannerViewController {
     static private func completeCard(_ model: GetStartedBannerEntry, writeTx: SDSAnyWriteTransaction) {
         let key = Self.completePrefix + model.identifier
 
-        let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: writeTx.asV2Read)
+        let isActive = keyValueStore.getBool(key, defaultValue: false, transaction: writeTx)
         guard isActive else {
             // Card not active.
             return
         }
 
-        Self.keyValueStore.removeValue(forKey: key, transaction: writeTx.asV2Write)
+        Self.keyValueStore.removeValue(forKey: key, transaction: writeTx)
 
         writeTx.addSyncCompletion {
             NotificationCenter.default.postNotificationNameAsync(activeCardsDidChange, object: nil)

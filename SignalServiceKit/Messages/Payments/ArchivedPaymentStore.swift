@@ -7,12 +7,8 @@ import Foundation
 import GRDB
 
 public protocol ArchivedPaymentStore {
-    func insert(_ archivedPayment: ArchivedPayment, tx: DBWriteTransaction) throws
-    func fetch(
-        for archivedPaymentMessage: OWSArchivedPaymentMessage,
-        interactionUniqueId: String,
-        tx: DBReadTransaction
-    ) throws -> ArchivedPayment?
+    func insert(_ archivedPayment: ArchivedPayment, tx: DBWriteTransaction)
+    func fetch(for archivedPaymentMessage: OWSArchivedPaymentMessage, tx: DBReadTransaction) -> ArchivedPayment?
     func enumerateAll(tx: DBReadTransaction, block: @escaping (ArchivedPayment, _ stop: inout Bool) -> Void)
 }
 
@@ -39,25 +35,30 @@ public struct ArchivedPaymentStoreImpl: ArchivedPaymentStore {
         }
     }
 
-    public func fetch(
-        for archivedPaymentMessage: OWSArchivedPaymentMessage,
-        interactionUniqueId: String,
-        tx: DBReadTransaction
-    ) throws -> ArchivedPayment? {
+    public func fetch(for archivedPaymentMessage: OWSArchivedPaymentMessage, tx: DBReadTransaction) -> ArchivedPayment? {
+        let db = tx.databaseConnection
+        guard let interaction = archivedPaymentMessage as? TSInteraction else {
+            owsFailDebug("Unexpected message type passed to archive payment fetch.")
+            return nil
+        }
         do {
             return try ArchivedPayment
-                .filter(Column(ArchivedPayment.CodingKeys.interactionUniqueId) == interactionUniqueId)
-                .fetchOne(tx.databaseConnection)
+                .filter(Column(ArchivedPayment.CodingKeys.interactionUniqueId) == interaction.uniqueId)
+                .fetchOne(db)
         } catch {
             DatabaseCorruptionState.flagDatabaseReadCorruptionIfNecessary(
                 userDefaults: CurrentAppContext().appUserDefaults(),
                 error: error
             )
-            throw error
+            owsFail("Missing instance.")
         }
     }
 
-    public func insert(_ archivedPayment: ArchivedPayment, tx: DBWriteTransaction) throws {
-        try archivedPayment.insert(tx.databaseConnection)
+    public func insert(_ archivedPayment: ArchivedPayment, tx: DBWriteTransaction) {
+        do {
+            try archivedPayment.insert(tx.databaseConnection)
+        } catch {
+            owsFailDebug("Unexpected payment history insertion error \(error)")
+        }
     }
 }

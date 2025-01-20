@@ -74,6 +74,7 @@ class LinkedDevicePniKeyManagerImpl: LinkedDevicePniKeyManager {
 
     init(
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         messageProcessor: Shims.MessageProcessor,
         pniIdentityKeyChecker: PniIdentityKeyChecker,
         registrationStateChangeManager: RegistrationStateChangeManager,
@@ -81,7 +82,7 @@ class LinkedDevicePniKeyManagerImpl: LinkedDevicePniKeyManager {
         tsAccountManager: TSAccountManager
     ) {
         self.db = db
-        self.kvStore = KeyValueStore(collection: Constants.collection)
+        self.kvStore = keyValueStoreFactory.keyValueStore(collection: Constants.collection)
         self.messageProcessor = messageProcessor
         self.pniIdentityKeyChecker = pniIdentityKeyChecker
         self.registrationStateChangeManager = registrationStateChangeManager

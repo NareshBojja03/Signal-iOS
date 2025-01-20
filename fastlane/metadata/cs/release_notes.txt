@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Představujeme odkazy na hovory: Chybějící odkaz pro pozvánky do kalendáře a improvizovaná setkání.
+• Nyní můžete rychle vytvořit jednoduchý odkaz, přes který se může každý v aplikaci Signal připojit ke skupinovému hovoru, aniž by se musel nejprve připojit ke skupinovému chatu.
+• Odkazy na hovory lze používat opakovaně a jsou ideální pro opakované telefonní schůzky s nejlepšími přáteli nebo pro týdenní kontroly s kolegy z práce.
+• Odkazy na hovory můžete spravovat, můžete kontrolovat nastavení schvalování a kopírovat odkazy z karty hovorů pro rychlé sdílení.

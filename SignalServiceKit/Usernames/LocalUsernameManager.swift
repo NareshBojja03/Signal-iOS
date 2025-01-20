@@ -45,11 +45,11 @@ public protocol LocalUsernameManager {
     func clearLocalUsername(tx: DBWriteTransaction)
 
     /// Returns the color to be used for the local user's username link QR code.
-    func usernameLinkQRCodeColor(tx: DBReadTransaction) -> SignalBrandedQRCodes.QRCodeColor
+    func usernameLinkQRCodeColor(tx: DBReadTransaction) -> Usernames.QRCodeColor
 
     /// Sets the color to be used for the local user's username link QR code.
     func setUsernameLinkQRCodeColor(
-        color: SignalBrandedQRCodes.QRCodeColor,
+        color: Usernames.QRCodeColor,
         tx: DBWriteTransaction
     )
 
@@ -183,8 +183,8 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
 
         private let kvStore: KeyValueStore
 
-        init() {
-            kvStore = KeyValueStore(collection: Constants.collection)
+        init(kvStoreFactory: KeyValueStoreFactory) {
+            kvStore = kvStoreFactory.keyValueStore(collection: Constants.collection)
         }
 
         func isUsernameCorrupted(tx: DBReadTransaction) -> Bool {
@@ -215,8 +215,8 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
 
         private let kvStore: KeyValueStore
 
-        init() {
-            kvStore = KeyValueStore(collection: Constants.collection)
+        init(kvStoreFactory: KeyValueStoreFactory) {
+            kvStore = kvStoreFactory.keyValueStore(collection: Constants.collection)
         }
 
         func username(tx: DBReadTransaction) -> String? {
@@ -236,7 +236,7 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
             return nil
         }
 
-        func usernameLinkColor(tx: DBReadTransaction) -> SignalBrandedQRCodes.QRCodeColor {
+        func usernameLinkColor(tx: DBReadTransaction) -> Usernames.QRCodeColor {
             return (try? kvStore.getCodableValue(
                 forKey: Constants.usernameLinkQRCodeColorKey,
                 transaction: tx
@@ -252,7 +252,7 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
             kvStore.setData(usernameLink?.entropy, key: Constants.usernameLinkEntropyKey, transaction: tx)
         }
 
-        func setUsernameLinkColor(color: SignalBrandedQRCodes.QRCodeColor, tx: DBWriteTransaction) {
+        func setUsernameLinkColor(color: Usernames.QRCodeColor, tx: DBWriteTransaction) {
             try? kvStore.setCodable(color, key: Constants.usernameLinkQRCodeColorKey, transaction: tx)
         }
     }
@@ -283,6 +283,7 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
 
     init(
         db: any DB,
+        kvStoreFactory: KeyValueStoreFactory,
         reachabilityManager: SSKReachabilityManager,
         schedulers: Schedulers,
         storageServiceManager: StorageServiceManager,
@@ -297,8 +298,8 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
         self.usernameApiClient = usernameApiClient
         self.usernameLinkManager = usernameLinkManager
 
-        corruptionStore = CorruptionStore()
-        usernameStore = UsernameStore()
+        corruptionStore = CorruptionStore(kvStoreFactory: kvStoreFactory)
+        usernameStore = UsernameStore(kvStoreFactory: kvStoreFactory)
 
         self.maxNetworkRequestRetries = maxNetworkRequestRetries
     }
@@ -366,12 +367,12 @@ class LocalUsernameManagerImpl: LocalUsernameManager {
 
     func usernameLinkQRCodeColor(
         tx: DBReadTransaction
-    ) -> SignalBrandedQRCodes.QRCodeColor {
+    ) -> Usernames.QRCodeColor {
         return usernameStore.usernameLinkColor(tx: tx)
     }
 
     func setUsernameLinkQRCodeColor(
-        color: SignalBrandedQRCodes.QRCodeColor,
+        color: Usernames.QRCodeColor,
         tx: DBWriteTransaction
     ) {
         usernameStore.setUsernameLinkColor(color: color, tx: tx)

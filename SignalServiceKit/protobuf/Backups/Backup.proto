@@ -13,9 +13,8 @@ option swift_prefix = "BackupProto_";
 message BackupInfo {
   uint64 version = 1;
   uint64 backupTimeMs = 2;
-  bytes mediaRootBackupKey = 3; // 32-byte random value generated when the backup is uploaded for the first time.
-  string currentAppVersion = 4;
-  string firstAppVersion = 5;
+  bytes mediaRootBackupKey = 3; // 32-byte random value generated when the
+                                // backup is uploaded for the first time.
 }
 
 // Frames must follow in the following ordering rules:
@@ -25,13 +24,9 @@ message BackupInfo {
 //    e.g. a Recipient must come before any Chat referencing it.
 // 3. All ChatItems must appear in global Chat rendering order.
 //    (The order in which they were received by the client.)
-// 4. ChatFolders must appear in render order (e.g., left to right for 
-//    LTR locales), but can appear anywhere relative to other frames respecting
-//    rule 2.
 //
-// Recipients, Chats, StickerPacks, AdHocCalls, and NotificationProfiles
-// can be in any order. (But must respect rule 2.)
-//
+// Recipients, Chats, StickerPacks, and AdHocCalls can be in any order.
+// (But must respect rule 2.)
 // For example, Chats may all be together at the beginning,
 // or may each immediately precede its first ChatItem.
 message Frame {
@@ -42,8 +37,6 @@ message Frame {
     ChatItem chatItem = 4;
     StickerPack stickerPack = 5;
     AdHocCall adHocCall = 6;
-    NotificationProfile notificationProfile = 7;
-    ChatFolder chatFolder = 8;
   }
 }
 
@@ -99,17 +92,6 @@ message AccountData {
     bool manuallyCancelled = 3;
   }
 
-  message IAPSubscriberData {
-    bytes subscriberId = 1;
-
-    oneof iapSubscriptionId {
-      // Identifies an Android Play Store IAP subscription.
-      string purchaseToken = 2;
-      // Identifies an iOS App Store IAP subscription.
-      uint64 originalTransactionId = 3;
-    }
-  }
-
   bytes profileKey = 1;
   optional string username = 2;
   UsernameLink usernameLink = 3;
@@ -117,9 +99,8 @@ message AccountData {
   string familyName = 5;
   string avatarUrlPath = 6;
   SubscriberData donationSubscriberData = 7;
-  reserved /*backupsSubscriberData*/ 8; // A deprecated format
+  SubscriberData backupsSubscriberData = 8;
   AccountSettings accountSettings = 9;
-  IAPSubscriberData backupsSubscriberData = 10;
 }
 
 message Recipient {
@@ -135,12 +116,6 @@ message Recipient {
 }
 
 message Contact {
-  enum IdentityState {
-    DEFAULT = 0;
-    VERIFIED = 1;
-    UNVERIFIED = 2;
-  }
-
   message Registered { }
   message NotRegistered {
     uint64 unregisteredTimestamp = 1;
@@ -169,8 +144,6 @@ message Contact {
   optional string profileGivenName = 11;
   optional string profileFamilyName = 12;
   bool hideStory = 13;
-  optional bytes identityKey = 14;
-  IdentityState identityState = 15;
 }
 
 message Group {
@@ -271,9 +244,9 @@ message Chat {
   uint64 id = 1; // generated id for reference only within this file
   uint64 recipientId = 2;
   bool archived = 3;
-  optional uint32 pinnedOrder = 4; // will be displayed in ascending order
-  optional uint64 expirationTimerMs = 5;
-  optional uint64 muteUntilMs = 6; // INT64_MAX (2^63 - 1) = "always muted".
+  uint32 pinnedOrder = 4; // 0 = unpinned, otherwise chat is considered pinned and will be displayed in ascending order
+  uint64 expirationTimerMs = 5; // 0 = no expire timer.
+  uint64 muteUntilMs = 6;
   bool markedUnread = 7;
   bool dontNotifyForMentionsIfMuted = 8;
   ChatStyle style = 9;
@@ -316,8 +289,6 @@ message AdHocCall {
 }
 
 message DistributionListItem {
-  // distribution ids are UUIDv4s. "My Story" is represented
-  // by an all-0 UUID (00000000-0000-0000-0000-000000000000).
   bytes distributionId = 1; // distribution list ids are uuids
 
   oneof item {
@@ -343,7 +314,7 @@ message DistributionList {
 message ChatItem {
   message IncomingMessageDetails {
     uint64 dateReceived = 1;
-    optional uint64 dateServerSent = 2;
+    uint64 dateServerSent = 2;
     bool read = 3;
     bool sealedSender = 4;
   }
@@ -358,8 +329,8 @@ message ChatItem {
   uint64 chatId = 1;   // conversation id
   uint64 authorId = 2; // recipient id
   uint64 dateSent = 3;
-  optional uint64 expireStartDate = 4; // timestamp of when expiration timer started ticking down
-  optional uint64 expiresInMs = 5; // how long timer of message is (ms)
+  uint64 expireStartDate = 4; // timestamp of when expiration timer started ticking down
+  uint64 expiresInMs = 5; // how long timer of message is (ms)
   repeated ChatItem revisions = 6; // ordered from oldest to newest
   bool sms = 7;
 
@@ -649,7 +620,7 @@ message FilePointer {
   message AttachmentLocator {
     string cdnKey = 1;
     uint32 cdnNumber = 2;
-    optional uint64 uploadTimestamp = 3;
+    uint64 uploadTimestamp = 3;
     bytes key = 4;
     bytes digest = 5;
     uint32 size = 6;
@@ -683,8 +654,7 @@ message Quote {
   enum Type {
     UNKNOWN = 0;
     NORMAL = 1;
-    GIFT_BADGE = 2;
-    VIEW_ONCE = 3;
+    GIFTBADGE = 2;
   }
 
   message QuotedAttachment {
@@ -802,7 +772,8 @@ message GroupCall {
   optional uint64 ringerRecipientId = 3;
   optional uint64 startedCallRecipientId = 4;
   uint64 startedCallTimestamp = 5;
-  optional uint64 endedCallTimestamp = 6; // The time the call ended.
+  // The time the call ended. 0 indicates an unknown time.
+  uint64 endedCallTimestamp = 6;
   bool read = 7;
 }
 
@@ -858,6 +829,7 @@ message SessionSwitchoverChatUpdate {
 
 message GroupChangeChatUpdate {
   message Update {
+    // Note: group expiration timer changes are represented as ExpirationTimerChatUpdate.
     oneof update {
       GenericGroupUpdate genericGroupUpdate = 1;
       GroupCreationUpdate groupCreationUpdate = 2;
@@ -1195,49 +1167,4 @@ message ChatStyle {
   }
 
   bool dimWallpaperInDarkMode = 7;
-}
-
-message NotificationProfile {
-  enum DayOfWeek {
-    UNKNOWN = 0;
-    MONDAY = 1;
-    TUESDAY = 2;
-    WEDNESDAY = 3;
-    THURSDAY = 4;
-    FRIDAY = 5;
-    SATURDAY = 6;
-    SUNDAY = 7;
-  }
-
-  string name = 1;
-  optional string emoji = 2;
-  fixed32 color = 3; // 0xAARRGGBB
-  uint64 createdAtMs = 4;
-  bool allowAllCalls = 5;
-  bool allowAllMentions = 6;
-  repeated uint64 allowedMembers = 7; // generated recipient id for allowed groups and contacts
-  bool scheduleEnabled = 8;
-  uint32 scheduleStartTime = 9; // 24-hour clock int, 0000-2359 (e.g., 15, 900, 1130, 2345)
-  uint32 scheduleEndTime = 10; // 24-hour clock int, 0000-2359 (e.g., 15, 900, 1130, 2345)
-  repeated DayOfWeek scheduleDaysEnabled = 11;
-}
-
-message ChatFolder {
-  // Represents the default "All chats" folder record vs all other custom folders
-  enum FolderType {
-    UNKNOWN = 0;
-    ALL = 1;
-    CUSTOM = 2;
-  }
-
-  string name = 1;
-  bool showOnlyUnread = 2;
-  bool showMutedChats = 3;
-  // Folder includes all 1:1 chats, unless excluded
-  bool includeAllIndividualChats = 4;
-  // Folder includes all group chats, unless excluded
-  bool includeAllGroupChats = 5;
-  FolderType folderType = 6;
-  repeated uint64 includedRecipientIds = 7; // generated recipient id of groups, contacts, and/or note to self
-  repeated uint64 excludedRecipientIds = 8; // generated recipient id of groups, contacts, and/or note to self
 }

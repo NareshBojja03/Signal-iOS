@@ -44,18 +44,16 @@ extension DonateViewController {
 
             wrappedCompletion(.init(status: .success, errors: nil))
 
-            let redemptionPromise = Promise.wrapAsync {
-                try await DonationSubscriptionManager.requestAndRedeemReceipt(
-                    boostPaymentIntentId: confirmedIntent.paymentIntentId,
-                    amount: amount,
-                    paymentProcessor: .stripe,
-                    paymentMethod: .applePay
-                )
-            }
+            let redemptionJob = DonationSubscriptionManager.requestAndRedeemReceipt(
+                boostPaymentIntentId: confirmedIntent.paymentIntentId,
+                amount: amount,
+                paymentProcessor: .stripe,
+                paymentMethod: .applePay
+            )
 
             DonationViewsUtil.wrapPromiseInProgressView(
                 from: self,
-                promise: DonationViewsUtil.waitForRedemptionJob(redemptionPromise, paymentMethod: .applePay)
+                promise: DonationViewsUtil.waitForRedemptionJob(redemptionJob, paymentMethod: .applePay)
             ).done(on: DispatchQueue.main) {
                 self.didCompleteDonation(
                     receiptCredentialSuccessMode: .oneTimeBoost

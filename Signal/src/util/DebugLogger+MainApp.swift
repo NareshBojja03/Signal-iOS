@@ -22,7 +22,14 @@ extension DebugLogger {
         }
     }
 
+    func wipeLogsIfDisabled(appContext: MainAppContext) {
+        guard !Preferences.isLoggingEnabled else { return }
+
+        wipeLogsAlways(appContext: appContext)
+    }
+
     func wipeLogsAlways(appContext: MainAppContext) {
+        let shouldReEnable = fileLogger != nil
         disableFileLogging()
 
         // Only the main app can wipe logs because only the main app can access its
@@ -35,6 +42,8 @@ extension DebugLogger {
             }
         }
 
-        enableFileLogging(appContext: appContext, canLaunchInBackground: true)
+        if shouldReEnable {
+            enableFileLogging(appContext: appContext, canLaunchInBackground: true)
+        }
     }
 }

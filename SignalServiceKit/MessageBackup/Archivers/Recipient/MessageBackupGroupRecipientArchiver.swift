@@ -13,7 +13,6 @@ import LibSignalClient
 /// thread. Its just that our group thread contains all the metadata
 /// corresponding to both the Chat and Recipient parts of the Backup proto.
 public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
-    typealias GroupId = MessageBackup.GroupId
     typealias RecipientId = MessageBackup.RecipientId
     typealias RecipientAppId = MessageBackup.RecipientArchivingContext.Address
 
@@ -23,7 +22,6 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
     typealias RestoreFrameResult = MessageBackup.RestoreFrameResult<RecipientId>
     private typealias RestoreFrameError = MessageBackup.RestoreFrameError<RecipientId>
 
-    private let avatarFetcher: MessageBackupAvatarFetcher
     private let disappearingMessageConfigStore: DisappearingMessagesConfigurationStore
     private let groupsV2: GroupsV2
     private let profileManager: MessageBackup.Shims.ProfileManager
@@ -33,14 +31,12 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
     private var logger: MessageBackupLogger { .shared }
 
     public init(
-        avatarFetcher: MessageBackupAvatarFetcher,
         disappearingMessageConfigStore: DisappearingMessagesConfigurationStore,
         groupsV2: GroupsV2,
         profileManager: MessageBackup.Shims.ProfileManager,
         storyStore: MessageBackupStoryStore,
         threadStore: MessageBackupThreadStore
     ) {
-        self.avatarFetcher = avatarFetcher
         self.disappearingMessageConfigStore = disappearingMessageConfigStore
         self.groupsV2 = groupsV2
         self.profileManager = profileManager
@@ -56,14 +52,12 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
 
         do {
             try threadStore.enumerateGroupThreads(context: context) { groupThread in
-                autoreleasepool {
-                    self.archiveGroupThread(
-                        groupThread,
-                        stream: stream,
-                        context: context,
-                        errors: &errors
-                    )
-                }
+                self.archiveGroupThread(
+                    groupThread,
+                    stream: stream,
+                    context: context,
+                    errors: &errors
+                )
 
                 return true
             }
@@ -90,10 +84,11 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
             return
         }
 
-        let groupId = GroupId(groupModel: groupModel)
+        let groupId = groupModel.groupId
         let groupMembership = groupModel.groupMembership
 
         let groupAppId: RecipientAppId = .group(groupId)
+        let recipientId = context.assignRecipientId(to: groupAppId)
 
         let groupMasterKey: Data
         do {
@@ -206,7 +201,6 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
             objectId: groupAppId,
             frameBuilder: {
                 var recipient = BackupProto_Recipient()
-                let recipientId = context.assignRecipientId(to: groupAppId)
                 recipient.id = recipientId.value
                 recipient.destination = .group(group)
 
@@ -244,7 +238,6 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
         let groupSnapshot = groupProto.snapshot
 
         var groupMembershipBuilder = GroupMembership.Builder()
-        var fullGroupMemberAcis = Set<Aci>()
         for fullMember in groupSnapshot.members {
             guard let aci = try? Aci.parseFrom(serviceIdBinary: fullMember.userID) else {
                 return restoreFrameError(.invalidProtoData(.invalidAci(protoClass: BackupProto_Group.Member.self)))
@@ -254,7 +247,6 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
             }
 
             groupMembershipBuilder.addFullMember(aci, role: role)
-            fullGroupMemberAcis.insert(aci)
         }
         for invitedMember in groupSnapshot.membersPendingProfileKey {
             guard invitedMember.hasMember else {
@@ -342,16 +334,6 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
 
         // MARK: Store group properties that live outside the group model
 
-        do {
-            try threadStore.insertFullGroupMemberRecords(
-                acis: fullGroupMemberAcis,
-                groupThread: groupThread,
-                context: context
-            )
-        } catch let error {
-            return restoreFrameError(.databaseInsertionFailed(error))
-        }
-
         if let disappearingMessageTimer = groupSnapshot.extractDisappearingMessageTimer {
             disappearingMessageConfigStore.set(
                 token: .token(
@@ -382,18 +364,14 @@ public class MessageBackupGroupRecipientArchiver: MessageBackupProtoArchiver {
             }
         }
 
-        do {
-            try avatarFetcher.enqueueFetchOfGroupAvatar(groupThread, tx: context.tx)
-        } catch let error {
-            // Don't fail entirely, we just won't fetch the avatar.
-            partialErrors.append(.restoreFrameError(.databaseInsertionFailed(error), recipient.recipientId))
+        if groupModel.avatarUrlPath != nil {
+            // TODO: [Backups] Enqueue download of the group avatar.
         }
 
         // MARK: Return successfully!
 
-        let groupId = GroupId(groupModel: groupModel)
-        context[recipient.recipientId] = .group(groupId)
-        context[groupId] = groupThread
+        context[recipient.recipientId] = .group(groupModel.groupId)
+        context[groupModel.groupId] = groupThread
 
         if partialErrors.isEmpty {
             return .success

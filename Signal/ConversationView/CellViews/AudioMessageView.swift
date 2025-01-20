@@ -15,8 +15,8 @@ class AudioMessageView: ManualStackView {
         static let innerLayoutMargins = UIEdgeInsets(hMargin: 0, vMargin: 4)
     }
     // MARK: - State
-    private var attachment: Attachment { presentation.audioAttachment.attachment }
-    private var attachmentStream: AttachmentStream? { presentation.audioAttachment.attachmentStream?.attachmentStream }
+    private var attachment: TSResource { presentation.audioAttachment.attachment }
+    private var attachmentStream: TSResourceStream? { presentation.audioAttachment.attachmentStream?.attachmentStream }
     private var durationSeconds: TimeInterval { presentation.audioAttachment.durationSeconds }
 
     private var isIncoming: Bool {
@@ -26,7 +26,7 @@ class AudioMessageView: ManualStackView {
     private let mediaCache: CVMediaCache
 
     private var audioPlaybackState: AudioPlaybackState {
-        AppEnvironment.shared.cvAudioPlayerRef.audioPlaybackState(forAttachmentId: attachment.id)
+        AppEnvironment.shared.cvAudioPlayerRef.audioPlaybackState(forAttachmentId: attachment.resourceId)
     }
 
     private var elapsedSeconds: TimeInterval {
@@ -406,9 +406,9 @@ class AudioMessageView: ManualStackView {
             progressSlider.isHidden = false
         }
         waveformProgress.cachedAudioDuration = {
-            switch attachmentStream?.contentType {
-            case .audio(let duration, _):
-                return duration
+            switch attachmentStream?.cachedContentType {
+            case .audio(let duration):
+                return duration.getCached()
             default:
                 return nil
             }
@@ -474,7 +474,7 @@ class AudioMessageView: ManualStackView {
             guard let attachmentStream = attachmentStream else {
                 return false
             }
-            return AppEnvironment.shared.cvAudioPlayerRef.audioPlaybackState(forAttachmentId: attachmentStream.id) == .playing
+            return AppEnvironment.shared.cvAudioPlayerRef.audioPlaybackState(forAttachmentId: attachmentStream.resourceId) == .playing
         }()
         presentation.playbackRateView.setVisibility(isPlaying, animated: animated)
     }
@@ -483,26 +483,26 @@ class AudioMessageView: ManualStackView {
 // MARK: - CVAudioPlayerListener
 
 extension AudioMessageView: CVAudioPlayerListener {
-    func audioPlayerStateDidChange(attachmentId: Attachment.IDType) {
+    func audioPlayerStateDidChange(attachmentId: TSResourceId) {
         AssertIsOnMainThread()
 
-        guard attachmentId == attachment.id else { return }
+        guard attachmentId == attachment.resourceId else { return }
 
         updateContents(animated: true)
     }
 
-    func audioPlayerDidFinish(attachmentId: Attachment.IDType) {
+    func audioPlayerDidFinish(attachmentId: TSResourceId) {
         AssertIsOnMainThread()
 
-        guard attachmentId == attachment.id else { return }
+        guard attachmentId == attachment.resourceId else { return }
 
         updateContents(animated: true)
     }
 
-    func audioPlayerDidMarkViewed(attachmentId: Attachment.IDType) {
+    func audioPlayerDidMarkViewed(attachmentId: TSResourceId) {
         AssertIsOnMainThread()
 
-        guard !isViewed, attachmentId == attachment.id else { return }
+        guard !isViewed, attachmentId == attachment.resourceId else { return }
 
         setViewed(true, animated: true)
     }
@@ -512,7 +512,7 @@ extension AudioAttachment {
     var sizeString: String {
         switch state {
         case .attachmentStream(let stream, _):
-            return ByteCountFormatter().string(for: stream.attachmentStream.unencryptedByteCount) ?? ""
+            return ByteCountFormatter().string(for: stream.attachmentStream.unencryptedResourceByteCount) ?? ""
         case .attachmentPointer:
             owsFailDebug("Shouldn't get here - undownloaded media not implemented")
             return ""

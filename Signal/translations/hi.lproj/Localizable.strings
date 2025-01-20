@@ -1984,9 +1984,6 @@
 /* Alert title that can occur when viewing device manager. */
 "DEVICE_LIST_UPDATE_FAILED_TITLE" = "डिवाइस की सूची को अपडेट नहीं हो पा रही है।";
 
-/* Message appearing on a toast indicating a new device was successfully linked and synced. */
-"DEVICE_LIST_UPDATE_NEW_DEVICE_SYNCED_TOAST" = "Message sync complete";
-
 /* Message appearing on a toast indicating a new device was successfully linked. Embeds {{ device name }} */
 "DEVICE_LIST_UPDATE_NEW_DEVICE_TOAST" = "“%1$@” को लिंक किया गया";
 
@@ -2698,6 +2695,9 @@
 /* Error message when attempting to send message */
 "ERROR_DESCRIPTION_UNREGISTERED_RECIPIENT" = "संपर्क Signal उपभोगकर्ता नहीं है।";
 
+/* Error message indicating that attachment download(s) failed. */
+"ERROR_MESSAGE_ATTACHMENT_DOWNLOAD_FAILED" = "अटैचमेंट का डाउनलोड असफल रहा।";
+
 /* Error message indicating that attachment upload(s) failed. */
 "ERROR_MESSAGE_ATTACHMENT_UPLOAD_FAILED" = "अटैचमेंट अपलोड विफल रहा।";
 
@@ -3263,7 +3263,7 @@
 "GROUP_LINK_PROMOTION_ALERT_APPROVE_NEW_MEMBERS_EXPLANATION" = "ग्रुप लिंक के माध्यम से नए ग्रुप में शामिल होने वाले मेंबर्स को अनुमोदित करने के लिए एडमिन को आवश्यक करें।";
 
 /* Label for the 'approve new group members' switch. */
-"GROUP_LINK_PROMOTION_ALERT_APPROVE_NEW_MEMBERS_SWITCH" = "एडमिन की मंज़ूरी की ज़रूरत है";
+"GROUP_LINK_PROMOTION_ALERT_APPROVE_NEW_MEMBERS_SWITCH" = "नए मेंबर्स को एप्रूव करें";
 
 /* Label for the 'enable and share link' button in the 'group link promotion' alert view. */
 "GROUP_LINK_PROMOTION_ALERT_ENABLE_AND_SHARE_LINK" = "एनेबल करें और लिंक शेयर करें";
@@ -3290,7 +3290,7 @@
 "GROUP_LINK_QR_CODE_VIEW_TITLE" = "QR कोड";
 
 /* Label for the 'approve new members' switch in the 'group link' view. */
-"GROUP_LINK_VIEW_APPROVE_NEW_MEMBERS_SWITCH" = "एडमिन की मंज़ूरी की ज़रूरत है";
+"GROUP_LINK_VIEW_APPROVE_NEW_MEMBERS_SWITCH" = "नए मेंबर्स को एप्रूव करें";
 
 /* Label for the 'copy link' button in the 'group link' view. */
 "GROUP_LINK_VIEW_COPY_LINK" = "लिंक कॉपी करें";
@@ -4006,21 +4006,6 @@
 /* Title for a sheet explaining details about 'New Groups'. */
 "LEGACY_GROUP_WHAT_ARE_NEW_GROUPS_TITLE" = "नए ग्रुप क्या हैं?";
 
-/* subtitle for declining to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_DONT_TRANSFER_SUBTITLE" = "कोई पुराना संदेश या मीडिया आपके लिंक्ड डिवाइस पर ट्रांसफ़र नहीं किया जाएगा";
-
-/* title for declining to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_DONT_TRANSFER_TITLE" = "ट्रांसफ़र न करें";
-
-/* confirm the users intent to link a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TITLE" = "लिंकिंग पूरी करें";
-
-/* subtitle for choosing to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TRANSFER_SUBTITLE" = "अपने टेक्स्ट संदेश और हाल ही के मीडिया को अपने लिंक्ड डिवाइस पर ट्रांसफ़र करें";
-
-/* title for choosing to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TRANSFER_TITLE" = "संदेश ट्रांसफ़र करने का इतिहास";
-
 /* report an invalid linking code */
 "LINK_DEVICE_INVALID_CODE_BODY" = "यह QR कोड सही नहीं है। कृपया जांच लें कि आप उसी डिवाइस का QR कोड स्कैन कर रहे हैं जिसे आपको लिंक करना है।";
 
@@ -4035,6 +4020,9 @@
 
 /* attempt another linking */
 "LINK_DEVICE_RESTART" = "दोबारा कोशिश करें";
+
+/* QR Scanning screen instructions, placed alongside a camera view for scanning QR Codes */
+"LINK_DEVICE_SCANNING_INSTRUCTIONS" = "उस QR कोड को स्कैन करें जो उस डिवाइस पर दिख रहा है जिसे आप लिंक करना चाहते हैं।";
 
 /* Title for QR Scanning screen instructions sheet */
 "LINK_DEVICE_SCANNING_INSTRUCTIONS_SHEET_BODY" = "जिस डिवाइस को आप लिंक करना चाहते हैं उस पर प्रदर्शित QR कोड को स्कैन करने के लिए इस डिवाइस का उपयोग करें";
@@ -4057,17 +4045,8 @@
 /* Title for a sheet when a user has started linking a device informing them to finish the process on that other device */
 "LINK_NEW_DEVICE_FINISH_ON_OTHER_DEVICE_SHEET_TITLE" = "अपने दूसरे डिवाइस पर लिंक करना समाप्त करें";
 
-/* Message for a sheet indicating that a newly linked device failed to sync messages. */
-"LINK_NEW_DEVICE_SYNC_FAILED_MESSAGE" = "Your device was successfully linked, but your messages could not be transferred.";
-
-/* Title for a sheet indicating that a newly linked device failed to sync messages. */
-"LINK_NEW_DEVICE_SYNC_FAILED_TITLE" = "Message Sync Failed";
-
-/* On a progress modal indicating the percent complete the sync process is. Embeds {{ formatted percentage }} */
-"LINK_NEW_DEVICE_SYNC_PROGRESS_PERCENT" = "%1$@ complete";
-
-/* Title for a progress modal indicating the sync progress */
-"LINK_NEW_DEVICE_SYNC_PROGRESS_TITLE" = "Syncing Messages…";
+/* Subheading for 'Link New Device' navigation */
+"LINK_NEW_DEVICE_SUBTITLE" = "नया डिवाइस लिंक करने के लिए QR कोड स्कैन करें।";
 
 /* Navigation title when scanning QR code to add new device. */
 "LINK_NEW_DEVICE_TITLE" = "नया डिवाइस लिंक करें";
@@ -4084,65 +4063,11 @@
 /* A button shown in a banner when you tap the 'New Chat' icon at the top of the list of chats. Tapping it opens a website with more details. */
 "LINKED_DEVICE_MANAGE_CONTACTS_LEARN_MORE" = "अधिक जानें";
 
-/* Bullet point about downloads on the linked devices education sheet. Embeds {{ %1$@ iPad download link, %2$@ desktop download link }} */
-"LINKED_DEVICES_EDUCATION_POINT_DOWNLOADS" = "अपने दूसरे डिवाइस पर, iPad ऐप इंस्टॉल करने के लिए %1$@ पर जाएँ या डेस्कटॉप ऐप इंस्टॉल करने के लिए %2$@ पर जाएँ।";
-
-/* Bullet point about message sync on the linked devices education sheet */
-"LINKED_DEVICES_EDUCATION_POINT_MESSAGES" = "आपके मोबाइल फोन के लिंक होने के बाद Signal संदेशों को Signal के साथ सिंक्रनाइज़ किया जाता है।";
-
-/* Bullet point about privacy on the linked devices education sheet */
-"LINKED_DEVICES_EDUCATION_POINT_PRIVACY" = "लिंक किए गए डिवाइस पर सभी संदेश निजी हैं";
-
-/* Title for the linked device education sheet */
-"LINKED_DEVICES_EDUCATION_TITLE" = "डेस्कटॉप या आईपैड पर Signal";
-
-/* Text that appears where the linked device list would be indicating that there are no linked devices. */
-"LINKED_DEVICES_EMPTY_STATE" = "कोई लिंक किए गए डिवाइस नहीं";
-
-/* Description for header of the linked devices list */
-"LINKED_DEVICES_HEADER_DESCRIPTION" = "डेस्कटॉप या iPad पर Signal का उपयोग करें। आपके संदेश आपके लिंक किए गए डिवाइस से सिंक हो जाएंगे।";
-
-/* Description for header of the linked devices list when Link and Sync is disabled */
-"LINKED_DEVICES_HEADER_DESCRIPTION_LINK_AND_SYNC_DISABLED" = "डेस्कटॉप या iPad पर Signal का उपयोग करें।";
-
-/* Footer text below the list of currently-linked devices */
-"LINKED_DEVICES_LIST_FOOTER" = "सभी डिवाइस पर संदेश और चैट जानकारी शुरू से अंत तक एनक्रिप्शन से सुरक्षित हैं";
-
-/* Title above the list of currently-linked devices */
-"LINKED_DEVICES_LIST_TITLE" = "लिंक की गईं डिवाइसें";
-
-/* Button title for renaming a linked device */
-"LINKED_DEVICES_RENAME_BUTTON" = "Rename";
-
-/* Message on a sheet indicating the device rename attempt received an error. */
-"LINKED_DEVICES_RENAME_FAILURE_MESSAGE" = "Unable to change device name. Try again later.";
-
-/* Message on a toast indicating the device was renamed. */
-"LINKED_DEVICES_RENAME_SUCCESS_MESSAGE" = "Device name updated";
-
-/* Title for the screen for renaming a linked device */
-"LINKED_DEVICES_RENAME_TITLE" = "Edit Device Name";
-
 /* Menu item and navbar title for the device manager */
 "LINKED_DEVICES_TITLE" = "लिंक की गईं डिवाइसें";
 
 /* Alert Title */
 "LINKING_DEVICE_FAILED_TITLE" = "डिवाइस लिंक करना असफल रहा";
-
-/* Progress label when the message loading has nearly completed during the device linking process */
-"LINKING_SYNCING_FINALIZING" = "Finalizing message transfer…";
-
-/* Footer text when loading messages during linking process. */
-"LINKING_SYNCING_FOOTER" = "Messages and chat info are protected by end-to-end encryption, including the sync process.";
-
-/* Title shown when loading messages during linking process */
-"LINKING_SYNCING_MESSAGES_TITLE" = "संदेश सिंक किए जा रहे हैं";
-
-/* Progress label when the message loading has not yet started during the device linking process */
-"LINKING_SYNCING_PREPARING_TO_DOWNLOAD" = "Preparing to download…";
-
-/* Label below the progress bar when loading messages during linking process */
-"LINKING_SYNCING_TIMING_INFO" = "This may take a few minutes depending on the size of your message history";
 
 /* Body for local network permission action sheet */
 "LOCAL_NETWORK_PERMISSION_ACTION_SHEET_BODY" = "अपने Signal अकाउंट को ट्रांसफर करने के लिए, आपको दोनों डिवाइस पर लोकल नेटवर्क एक्सेस को चालू करना होगा।";
@@ -4176,9 +4101,6 @@
 
 /* Title for the 'long text message' view. */
 "LONG_TEXT_VIEW_TITLE" = "मेसेज";
-
-/* Title for error sheet shown when the max video length is recorded with the in-app camera */
-"MAX_VIDEO_RECORDING_LENGTH_ALERT" = "वीडियो की अधिकतम सीमा पार हो गई";
 
 /* nav bar button item */
 "MEDIA_DETAIL_VIEW_ALL_MEDIA_BUTTON" = "सभी मीडिया";
@@ -5004,9 +4926,6 @@
 
 /* Explanation of the 'onboarding pin attempts exhausted' view when it is unknown if reglock is enabled. */
 "ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_WITH_UNKNOWN_REGLOCK_EXPLANATION" = "आपका पिन अनुमान समाप्त हो गया है, लेकिन आप अभी भी अपना फोन नंबर सत्यापित करके अपने Signal अकाउंट तक पहुँचने का प्रयास कर सकते हैं। आपकी निजता और सुरक्षा के लिए आपका अकाउंट बिना किसी सहेजी गई प्रोफ़ाइल जानकारी या सेटिंग के पुनर्स्थापित कर दिया जाएगा।";
-
-/* Button for restoring or transferring account in the 'onboarding splash' view. */
-"ONBOARDING_SPLASH_RESTORE_OR_TRANSFER_BUTTON_TITLE" = "अकाउंट ट्रांसफ़र या रीस्टोर करें";
 
 /* Link to the 'terms and privacy policy' in the 'onboarding splash' view. */
 "ONBOARDING_SPLASH_TERM_AND_PRIVACY_POLICY" = "नियम और गोपनीयता नीति";
@@ -6107,7 +6026,7 @@
 "REGISTRATION_PHONE_NUMBER_TITLE" = "आपका फोन नंबर";
 
 /* Message for confirmation alert when requesting a voice code during phone number registration. */
-"REGISTRATION_PHONE_NUMBER_VOICE_CODE_ALERT_MESSAGE" = "Is your phone number above correct?";
+"REGISTRATION_PHONE_NUMBER_VOICE_CODE_ALERT_MESSAGE" = "इस नंबर को वेरिफाई करने के लिए आपको एक कॉल आएगी। क्या ऊपर दिया आपका फोन नंबर सही है?";
 
 /* Label for the phone number textfield */
 "REGISTRATION_PHONENUMBER_BUTTON" = "फोन नंबर";
@@ -6152,25 +6071,13 @@
 "REGISTRATION_PROFILE_SETUP_TITLE" = "अपनी प्रोफ़ाइल सेट करें";
 
 /* Error shown if an SMS/call service provider is permanently unable to send a verification code to the provided number. */
-"REGISTRATION_PROVIDER_FAILURE_MESSAGE_PERMANENT" = "SMS प्रोवाइडर से जुड़ी समस्या की वजह से, Signal SMS कोड नहीं भेज सका।";
+"REGISTRATION_PROVIDER_FAILURE_MESSAGE_PERMANENT" = "बाहरी विफलता के कारण Signal आपके नंबर पर SMS कोड भेजने में असमर्थ है।";
 
 /* Error shown if an SMS/call service provider is temporarily unable to send a verification code to the provided number. */
-"REGISTRATION_PROVIDER_FAILURE_MESSAGE_TRANSIENT" = "SMS प्रोवाइडर से जुड़ी समस्या की वजह से, Signal SMS कोड नहीं भेज सका। कुछ घंटों में फिर से कोशिश करें।";
+"REGISTRATION_PROVIDER_FAILURE_MESSAGE_TRANSIENT" = "बाहरी विफलता के कारण Signal अभी SMS कोड भेजने में असमर्थ है, कृपया बाद में पुनः प्रयास करें।";
 
 /* No comment provided by engineer. */
 "REGISTRATION_RESTRICTED_MESSAGE" = "आपको कोई मेसेज भेजने से पहले पंजीकृत होना होगाा।";
-
-/* Title for screen containing QR code that users scan with their old phone when they want to transfer/restore their message history to a new device. */
-"REGISTRATION_SCAN_QR_CODE_TITLE" = "Scan this code with your old phone";
-
-/* Tutorial text describing the first step to scanning the restore/transfer QR code with your old phone: opening Signal */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_OPEN_SIGNAL" = "Open Signal on your old device";
-
-/* Tutorial text describing the third step to scanning the restore/transfer QR code with your old phone: scan the code */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_SCAN" = "Scan this code with the camera";
-
-/* Tutorial text describing the second step to scanning the restore/transfer QR code with your old phone: tap the camera icon */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_TAP_CAMERA" = "Tap the camera icon";
 
 /* Button when sending a verification code via sms failed, but resending via voice call might succeed. */
 "REGISTRATION_SMS_CODE_FAILED_TRY_VOICE_BUTTON" = "वीडियो कॉल";
@@ -6382,6 +6289,9 @@
 /* section header for search results that match a message in a conversation */
 "SEARCH_SECTION_MESSAGES" = "मेसेज";
 
+/* alert title */
+"SECONDARY_DEVICE_ERROR_FETCHING_LINKING_CODE" = "लिंकिंग कोड नहीं मिल रहा है";
+
 /* Message for error alert indicating that re-linking failed because the account did not match. */
 "SECONDARY_LINKING_ERROR_DIFFERENT_ACCOUNT_MESSAGE" = "इस डिवाइस को किसी अन्य अकाउंट से लिंक करने के लिए आपको पहले इस डिवाइस को रीसेट करना होगा। क्या आप वाकई सारा इतिहास (संदेश, अटैचमेंट, कॉल, इत्यादि) डिलीट करना चाहते हैं? यह कार्रवाई होने के बाद वापस नहीं ली जा सकती।";
 
@@ -6405,15 +6315,6 @@
 
 /* alert title */
 "SECONDARY_LINKING_ERROR_WAITING_FOR_SCAN" = "डिवाइस लिंक करना असफल रहा";
-
-/* Title for action sheet when secondary device fails to sync messages. */
-"SECONDARY_LINKING_SYNCING_ERROR_TITLE" = "Error transferring your messages";
-
-/* Message for action sheet when secondary device fails to sync messages due to network error. */
-"SECONDARY_LINKING_SYNCING_NETWORK_ERROR_MESSAGE" = "Your messages could not be transferred. Check your internet connection and try again.";
-
-/* Message for action sheet when secondary device fails to sync messages due to an unspecified error. */
-"SECONDARY_LINKING_SYNCING_OTHER_ERROR_MESSAGE" = "Your messages could not be transferred due to an error. Try again by re-linking this device.";
 
 /* header text when this device is being added as a secondary */
 "SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME" = "इस डिवाइस के लिये एक नाम चुनें";
@@ -6444,9 +6345,6 @@
 
 /* Link text for page with troubleshooting info shown on the QR scanning screen */
 "SECONDARY_ONBOARDING_SCAN_CODE_HELP_TEXT" = "अपना iPad लिंक करने के लिये सहायता यहाँ से प्राप्त करें";
-
-/* Text for a button offering to refresh the QR code to link an iPad. */
-"SECONDARY_ONBOARDING_SCAN_CODE_REFRESH_CODE_BUTTON" = "Refresh code";
 
 /* header text while displaying a QR code which, when scanned, will link this device. */
 "SECONDARY_ONBOARDING_SCAN_CODE_TITLE" = "अपने फोन से QR कोड स्कैन करें";
@@ -6586,6 +6484,9 @@
 /* Table footer for the 'censorship circumvention' section shown when the app is connected to the Signal service. */
 "SETTINGS_ADVANCED_CENSORSHIP_CIRCUMVENTION_FOOTER_WEBSOCKET_CONNECTED" = "सेंसरशिप से बचाव ज़रूरी नहीं है; आप पहले से Signal सर्विस से जुङे हैं।";
 
+/* No comment provided by engineer. */
+"SETTINGS_ADVANCED_DEBUGLOG" = "डीबग लॉग सक्षम करें";
+
 /* Label for the 'advanced pin settings' button. */
 "SETTINGS_ADVANCED_PIN_SETTINGS" = "एडवांस्ड पिन सेटिंग्स";
 
@@ -6669,6 +6570,9 @@
 
 /* Format for the 'country code' in the 'change phone number' settings. Embeds: {{ %1$@ the numeric country code prefix, %2$@ the country code abbreviation }}. */
 "SETTINGS_CHANGE_PHONE_NUMBER_COUNTRY_CODE_FORMAT" = "%1$@ (%2$@)";
+
+/* Format for 'example phone numbers' in the 'change phone number' settings. Embeds: {{ the example phone number }} */
+"SETTINGS_CHANGE_PHONE_NUMBER_EXAMPLE_PHONE_NUMBER_FORMAT" = "उदाहरणः %1$@";
 
 /* Title for the 'new phone number' section in the 'change phone number' settings. */
 "SETTINGS_CHANGE_PHONE_NUMBER_NEW_PHONE_NUMBER_SECTION_TITLE" = "आपका नया नंबर";
@@ -8469,6 +8373,9 @@
 
 /* Message for the tooltip indicating the 'voice message' needs to be held to be held down to record. */
 "VOICE_MESSAGE_TOO_SHORT_TOOLTIP" = "रिकॉर्ड करने के लिए दबा कर रखें।";
+
+/* Activity indicator title, shown upon returning to the device manager, until you complete the provisioning process on desktop */
+"WAITING_TO_COMPLETE_DEVICE_LINK_TEXT" = "Signal Desktop की स्थापना पूरी करें।";
 
 /* Accessibility label for gradient wallpaper swatch, naming the two colors in the gradient. {{ Embeds the names of the two colors in the gradient }} */
 "WALLPAPER_GRADIENT_COLORS_ACCESSIBILITY_LABEL" = "%1$@ और %2$@ के साथ ग्रेडिएंट";

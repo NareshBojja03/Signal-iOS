@@ -28,7 +28,7 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
         dependencies: RegistrationCoordinatorDependencies
     ) {
         self._unsafeToModify_mode = mode
-        self.kvStore = KeyValueStore(collection: "RegistrationCoordinator")
+        self.kvStore = dependencies.keyValueStoreFactory.keyValueStore(collection: "RegistrationCoordinator")
         self.loader = loader
         self.deps = dependencies
     }
@@ -464,21 +464,16 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
                     auth: identity.chatServiceAuth
                 )
             }
-            // Get Backup Key
-            let backupKey = try self.deps.db.read { tx in
-                return try self.deps.messageBackupKeyMaterial.backupKey(type: .messages, tx: tx)
-            }
             try await self.deps.messageBackupManager.importEncryptedBackup(
                 fileUrl: fileUrl,
                 localIdentifiers: identity.localIdentifiers,
-                backupKey: backupKey,
-                progress: nil
+                mode: .remote
             )
             self.inMemoryState.hasRestoredFromLocalMessageBackup = true
             Logger.info("Finished restore")
         }.recover(on: schedulers.main) { error in
             let (guarantee, future) = Guarantee<Void>.pending()
-            self.deps.messageBackupErrorPresenter.presentOverTopmostViewController {
+            self.deps.messageBackupErrorPresenter.forcePresentDuringRegistration {
                 future.resolve()
             }
             return guarantee
@@ -2128,7 +2123,7 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
                         return strongSelf.nextStep()
                     case .invalidArgument:
                         return .value(.phoneNumberEntry(strongSelf.phoneNumberEntryState(
-                            validationError: .invalidE164(.init(invalidE164: e164))
+                            validationError: .invalidNumber(.init(invalidE164: e164))
                         )))
                     case .retryAfter(let timeInterval):
                         if timeInterval < Constants.autoRetryInterval {
@@ -3061,28 +3056,6 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
     private func restoreFromStorageService(
         accountIdentity: AccountIdentity
     ) -> Guarantee<RegistrationStep> {
-        if FeatureFlags.storageServiceRecordIkmMigration {
-            db.write { tx in
-                switch mode {
-                case .registering, .reRegistering:
-                    break
-                case .changingNumber:
-                    owsFailDebug("Unexpectedly restoring from Storage Service while changing number, rather than during (re)registration! Bailing.")
-                    return
-                }
-
-                /// We are (re-)registering, which means we have no devices.
-                /// Consequently, we can hardcode this capability to `true`.
-                ///
-                /// This is important because the `restoreOrCreateManifest` call
-                /// below may end up creating a brand-new Storage Service manifest,
-                /// and we want to ensure it's created with a `recordIkm`.
-                ///
-                /// - SeeAlso `StorageServiceRecordIkmCapabilityStore`
-                deps.storageServiceRecordIkmCapabilityStore.setIsRecordIkmCapable(tx: tx)
-            }
-        }
-
         return deps
             .storageServiceManager.restoreOrCreateManifestIfNecessary(
                 authedDevice: accountIdentity.authedDevice
@@ -3937,34 +3910,20 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
 
     // MARK: - Step State Generation Helpers
 
-    private enum RemoteValidationError {
-        case invalidE164(RegistrationPhoneNumberViewState.ValidationError.InvalidE164)
-        case rateLimited(RegistrationPhoneNumberViewState.ValidationError.RateLimited)
-
-        func asViewStateError() -> RegistrationPhoneNumberViewState.ValidationError {
-            switch self {
-            case let .invalidE164(error):
-                return .invalidE164(error)
-            case let .rateLimited(error):
-                return .rateLimited(error)
-            }
-        }
-    }
-
     private func phoneNumberEntryState(
-        validationError: RemoteValidationError? = nil
+        validationError: RegistrationPhoneNumberViewState.ValidationError? = nil
     ) -> RegistrationPhoneNumberViewState {
         switch mode {
         case .registering:
             return .registration(.initialRegistration(.init(
                 previouslyEnteredE164: persistedState.e164,
-                validationError: validationError?.asViewStateError(),
+                validationError: validationError,
                 canExitRegistration: canExitRegistrationFlow().canExit
             )))
         case .reRegistering(let state):
             return .registration(.reregistration(.init(
                 e164: state.e164,
-                validationError: validationError?.asViewStateError(),
+                validationError: validationError,
                 canExitRegistration: canExitRegistrationFlow().canExit
             )))
         case .changingNumber(let state):
@@ -3974,12 +3933,12 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
                 break
             case .rateLimited(let error):
                 rateLimitedError = error
-            case .invalidE164(let invalidE164Error):
+            case .invalidNumber(let invalidNumberError):
                 return .changingNumber(.initialEntry(.init(
                     oldE164: state.oldE164,
                     newE164: inMemoryState.changeNumberProspectiveE164,
                     hasConfirmed: inMemoryState.changeNumberProspectiveE164 != nil,
-                    invalidE164Error: invalidE164Error
+                    invalidNumberError: invalidNumberError
                 )))
             }
             if let newE164 = inMemoryState.changeNumberProspectiveE164 {
@@ -3993,7 +3952,7 @@ public class RegistrationCoordinatorImpl: RegistrationCoordinator {
                     oldE164: state.oldE164,
                     newE164: nil,
                     hasConfirmed: false,
-                    invalidE164Error: nil
+                    invalidNumberError: nil
                 )))
             }
         }

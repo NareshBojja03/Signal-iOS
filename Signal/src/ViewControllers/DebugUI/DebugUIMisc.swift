@@ -256,8 +256,8 @@ class DebugUIMisc: NSObject, DebugUIPage {
 
     // MARK: KVS
 
-    private static func randomKeyValueStore() -> KeyValueStore {
-        KeyValueStore(collection: "randomKeyValueStore")
+    private static func randomKeyValueStore() -> SDSKeyValueStore {
+        SDSKeyValueStore(collection: "randomKeyValueStore")
     }
 
     private static func populateRandomKeyValueStores(keyCount: UInt) {
@@ -275,9 +275,9 @@ class DebugUIMisc: NSObject, DebugUIPage {
                     // Set three values at a time.
                     for _ in 0..<kBatchSize / 3 {
                         let value = Randomness.generateRandomBytes(4096)
-                        store.setData(value, key: UUID().uuidString, transaction: transaction.asV2Write)
-                        store.setString(UUID().uuidString, key: UUID().uuidString, transaction: transaction.asV2Write)
-                        store.setBool(Bool.random(), key: UUID().uuidString, transaction: transaction.asV2Write)
+                        store.setData(value, key: UUID().uuidString, transaction: transaction)
+                        store.setString(UUID().uuidString, key: UUID().uuidString, transaction: transaction)
+                        store.setBool(Bool.random(), key: UUID().uuidString, transaction: transaction)
                     }
                 }
             }
@@ -287,7 +287,7 @@ class DebugUIMisc: NSObject, DebugUIPage {
     private static func clearRandomKeyValueStores() {
         let store = randomKeyValueStore()
         SSKEnvironment.shared.databaseStorageRef.write { transcation in
-            store.removeAll(transaction: transcation.asV2Write)
+            store.removeAll(transaction: transcation)
         }
     }
 

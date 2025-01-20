@@ -7,9 +7,9 @@ import SignalServiceKit
 import SignalUI
 
 class CLVViewState {
-    let tableDataSource: CLVTableDataSource
-    let multiSelectState: MultiSelectState
-    let loadCoordinator: CLVLoadCoordinator
+    let tableDataSource = CLVTableDataSource()
+    let multiSelectState = MultiSelectState()
+    let loadCoordinator = CLVLoadCoordinator()
 
     // MARK: - Caches
 
@@ -17,17 +17,16 @@ class CLVViewState {
     let cellContentCache = LRUCache<String, CLVCellContentToken>(maxSize: 256)
     var conversationCellHeightCache: CGFloat?
 
+    var spoilerAnimationManager = SpoilerAnimationManager()
+
     // MARK: - Views
 
-    let searchResultsController: ConversationSearchViewController
-    let searchController: UISearchController
-
-    let containerView: ChatListContainerView
-    let reminderViews: CLVReminderViews
-    let settingsButtonCreator: ChatListSettingsButtonState
-    let proxyButtonCreator: ChatListProxyButtonCreator
-
-    let spoilerAnimationManager: SpoilerAnimationManager
+    private(set) lazy var searchController = UISearchController(searchResultsController: searchResultsController)
+    var searchBar: UISearchBar { searchController.searchBar }
+    let searchResultsController = ConversationSearchViewController()
+    let reminderViews = CLVReminderViews()
+    let settingsButtonCreator = ChatListSettingsButtonState()
+    let proxyButtonCreator = ChatListProxyButtonCreator(chatConnectionManager: DependenciesBridge.shared.chatConnectionManager)
 
     // MARK: - State
 
@@ -57,20 +56,6 @@ class CLVViewState {
     init(chatListMode: ChatListMode, inboxFilter: InboxFilter?) {
         self.chatListMode = chatListMode
         self.inboxFilter = inboxFilter
-
-        self.tableDataSource = CLVTableDataSource()
-        self.multiSelectState = MultiSelectState()
-        self.loadCoordinator = CLVLoadCoordinator()
-
-        self.spoilerAnimationManager = SpoilerAnimationManager()
-
-        self.searchResultsController = ConversationSearchViewController()
-        self.searchController = UISearchController(searchResultsController: searchResultsController)
-
-        self.containerView = ChatListContainerView(tableView: tableDataSource.tableView, searchBar: searchController.searchBar)
-        self.reminderViews = CLVReminderViews()
-        self.settingsButtonCreator = ChatListSettingsButtonState()
-        self.proxyButtonCreator = ChatListProxyButtonCreator(chatConnectionManager: DependenciesBridge.shared.chatConnectionManager)
     }
 
     func configure() {
@@ -108,12 +93,8 @@ extension ChatListViewController {
     // MARK: - Views
 
     var tableView: CLVTableView { tableDataSource.tableView }
-
-    var searchBar: UISearchBar { viewState.searchController.searchBar }
+    var searchBar: UISearchBar { viewState.searchBar }
     var searchResultsController: ConversationSearchViewController { viewState.searchResultsController }
-
-    var containerView: ChatListContainerView { viewState.containerView }
-    var filterControl: ChatListFilterControl? { containerView.filterControl }
 
     // MARK: - State
 

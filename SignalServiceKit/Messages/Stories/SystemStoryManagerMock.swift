@@ -109,7 +109,7 @@ public class OnboardingStoryManagerFilesystemMock: OnboardingStoryManagerFilesys
 public class OnboardingStoryManagerStoryMessageFactoryMock: OnboardingStoryManagerStoryMessageFactory {
 
     public override class func createFromSystemAuthor(
-        attachmentSource: AttachmentDataSource,
+        attachmentSource: TSResourceDataSource,
         timestamp: UInt64,
         transaction: SDSAnyWriteTransaction
     ) throws -> StoryMessage {
@@ -126,7 +126,7 @@ public class OnboardingStoryManagerStoryMessageFactoryMock: OnboardingStoryManag
                 )
             ),
             replyCount: 0,
-            attachmentBuilder: .withoutFinalizer(.media),
+            attachmentBuilder: .withoutFinalizer(.foreignReferenceAttachment),
             mediaCaption: nil,
             shouldLoop: false,
             transaction: transaction
@@ -136,7 +136,7 @@ public class OnboardingStoryManagerStoryMessageFactoryMock: OnboardingStoryManag
     public override class func validateAttachmentContents(
         dataSource: any DataSource,
         mimeType: String
-    ) throws -> AttachmentDataSource {
+    ) throws -> TSResourceDataSource {
         struct FakePendingAttachment: PendingAttachment {
             let blurHash: String? = nil
             let sha256ContentHash: Data = Data()
@@ -146,24 +146,15 @@ public class OnboardingStoryManagerStoryMessageFactoryMock: OnboardingStoryManag
             let encryptionKey: Data = Data()
             let digestSHA256Ciphertext: Data = Data()
             let localRelativeFilePath: String = ""
-            var renderingFlag: AttachmentReference.RenderingFlag = .default
+            let renderingFlag: AttachmentReference.RenderingFlag = .default
             let sourceFilename: String?
             let validatedContentType: Attachment.ContentType = .file
             let orphanRecordId: OrphanedAttachmentRecord.IDType = 1
-
-            mutating func removeBorderlessRenderingFlagIfPresent() {
-                switch renderingFlag {
-                case .borderless:
-                    renderingFlag = .default
-                default:
-                    return
-                }
-            }
         }
 
         return AttachmentDataSource.pendingAttachment(FakePendingAttachment(
             mimeType: mimeType,
             sourceFilename: dataSource.sourceFilename
-        ))
+        )).tsDataSource
     }
 }

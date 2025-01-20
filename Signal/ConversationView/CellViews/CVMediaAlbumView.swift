@@ -565,7 +565,7 @@ public struct CVMediaAlbumItem: Equatable {
     public let attachment: CVAttachment
 
     // This property will only be set if the attachment is downloaded and valid.
-    public let attachmentStream: AttachmentStream?
+    public let attachmentStream: TSResourceStream?
 
     public var renderingFlag: AttachmentReference.RenderingFlag {
         attachment.attachment.reference.renderingFlag

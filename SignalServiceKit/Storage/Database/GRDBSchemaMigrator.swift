@@ -304,19 +304,6 @@ public class GRDBSchemaMigrator: NSObject {
         case deleteIncomingGroupSyncJobRecords
         case deleteKnownStickerPackTable
         case addReceiptCredentialColumnToJobRecord
-        case dropOrphanedGroupStoryReplies
-        case addMessageBackupAvatarFetchQueue
-        case addMessageBackupAvatarFetchQueueRetries
-        case tsMessageAttachmentMigration1
-        case tsMessageAttachmentMigration2
-        case tsMessageAttachmentMigration3
-        case addEditStateToMessageAttachmentReference
-        case removeVersionedDMTimerCapabilities
-        case removeJobRecordTSAttachmentColumns
-        case deprecateAttachmentIdsColumn
-        case dropTSAttachmentTable
-        case dropMediaGalleryItemTable
-        case addBackupsReceiptCredentialStateToJobRecord
 
         // NOTE: Every time we add a migration id, consider
         // incrementing grdbSchemaVersionLatest.
@@ -378,7 +365,7 @@ public class GRDBSchemaMigrator: NSObject {
     }
 
     public static let grdbSchemaVersionDefault: UInt = 0
-    public static let grdbSchemaVersionLatest: UInt = 106
+    public static let grdbSchemaVersionLatest: UInt = 96
 
     // An optimization for new users, we have the first migration import the latest schema
     // and mark any other migrations as "already run".
@@ -874,8 +861,8 @@ public class GRDBSchemaMigrator: NSObject {
             try transaction.database.drop(table: "model_TSRecipientReadReceipt")
             try transaction.database.drop(table: "model_OWSLinkedDeviceReadReceipt")
 
-            let viewOnceStore = KeyValueStore(collection: "viewOnceMessages")
-            viewOnceStore.removeAll(transaction: transaction.asAnyWrite.asV2Write)
+            let viewOnceStore = SDSKeyValueStore(collection: "viewOnceMessages")
+            viewOnceStore.removeAll(transaction: transaction.asAnyWrite)
             return .success(())
         }
 
@@ -2310,6 +2297,12 @@ public class GRDBSchemaMigrator: NSObject {
         }
 
         migrator.registerMigration(.addIndexToFindFailedAttachments) { tx in
+            // These constants should not change. If they do change, this migration
+            // should not be updated with the new values. Instead, we'd need a new
+            // migration to drop this index and re-build it with the new constants.
+            assert(SDSRecordType.attachmentPointer.rawValue == 3)
+            assert(TSAttachmentPointerState.enqueued.rawValue == 0)
+            assert(TSAttachmentPointerState.downloading.rawValue == 1)
             let sql = """
                 CREATE INDEX "index_attachments_toMarkAsFailed" ON "model_TSAttachment"(
                     "recordType", "state"
@@ -3657,133 +3650,6 @@ public class GRDBSchemaMigrator: NSObject {
             return .success(())
         }
 
-        migrator.registerMigration(.dropOrphanedGroupStoryReplies) { tx in
-            let groupThreadUniqueIdCursor = try String.fetchCursor(tx.database, sql: """
-                SELECT uniqueId
-                FROM model_TSThread
-                WHERE groupModel IS NOT NULL;
-                """
-            )
-
-            while let threadUniqueId = try groupThreadUniqueIdCursor.next() {
-                try tx.database.execute(
-                    sql: """
-                    DELETE FROM model_TSInteraction
-                    WHERE (
-                        uniqueThreadId = ?
-                        AND isGroupStoryReply = 1
-                        AND recordType IS NOT 70
-                        AND (storyTimestamp, storyAuthorUuidString) NOT IN (
-                            SELECT timestamp, authorUuid
-                            FROM model_StoryMessage
-                        )
-                    );
-                    """,
-                    arguments: [threadUniqueId])
-            }
-            return .success(())
-        }
-
-        migrator.registerMigration(.addMessageBackupAvatarFetchQueue) { tx in
-            try tx.database.create(table: "MessageBackupAvatarFetchQueue") { table in
-                table.column("id", .integer).primaryKey().notNull()
-                table.column("groupThreadRowId", .integer)
-                    .references("model_TSThread", column: "id", onDelete: .cascade)
-                table.column("groupAvatarUrl", .text)
-                table.column("serviceId", .blob)
-            }
-            return .success(())
-        }
-
-        migrator.registerMigration(.addMessageBackupAvatarFetchQueueRetries) { tx in
-            try tx.database.alter(table: "MessageBackupAvatarFetchQueue") { table in
-                table.add(column: "numRetries", .integer).notNull().defaults(to: 0)
-                table.add(column: "nextRetryTimestamp", .integer).notNull().defaults(to: 0)
-            }
-            try tx.database.create(
-                index: "index_MessageBackupAvatarFetchQueue_on_nextRetryTimestamp",
-                on: "MessageBackupAvatarFetchQueue",
-                columns: ["nextRetryTimestamp"]
-            )
-            return .success(())
-        }
-
-        migrator.registerMigration(.tsMessageAttachmentMigration1) { tx in
-            TSAttachmentMigration.TSMessageMigration.prepareBlockingTSMessageMigration(tx: tx)
-            return .success(())
-        }
-
-        migrator.registerMigration(.tsMessageAttachmentMigration2) { tx in
-            TSAttachmentMigration.TSMessageMigration.completeBlockingTSMessageMigration(tx: tx)
-            return .success(())
-        }
-
-        migrator.registerMigration(.tsMessageAttachmentMigration3) { tx in
-            TSAttachmentMigration.TSMessageMigration.cleanUpTSAttachmentFiles()
-            try tx.database.drop(table: "TSAttachmentMigration")
-            return .success(())
-        }
-
-        migrator.registerMigration(.addEditStateToMessageAttachmentReference) { tx in
-            try tx.database.alter(table: "MessageAttachmentReference") { table in
-                table.add(column: "ownerIsPastEditRevision", .boolean)
-                    .defaults(to: false)
-            }
-            // TSEditState.pastRevision rawValue is 2
-            try tx.database.execute(sql: """
-                UPDATE MessageAttachmentReference
-                SET ownerIsPastEditRevision = (
-                  SELECT model_TSInteraction.editState = 2
-                  FROM model_TSInteraction
-                  WHERE MessageAttachmentReference.ownerRowId = model_TSInteraction.id
-                );
-                """)
-            return .success(())
-        }
-
-        migrator.registerMigration(.removeVersionedDMTimerCapabilities) { tx in
-            try tx.database.drop(table: "VersionedDMTimerCapabilities")
-            return .success(())
-        }
-
-        migrator.registerMigration(.removeJobRecordTSAttachmentColumns) { tx in
-            // Remove TSAttachmentMultisend records.
-            try tx.database.execute(sql: """
-                DELETE FROM model_SSKJobRecord WHERE recordType = 58;
-                """)
-            try tx.database.alter(table: "model_SSKJobRecord") { table in
-                table.drop(column: "attachmentId")
-                table.drop(column: "attachmentIdMap")
-                table.drop(column: "unsavedMessagesToSend")
-            }
-            return .success(())
-        }
-
-        migrator.registerMigration(.deprecateAttachmentIdsColumn) { tx in
-            try tx.database.alter(table: "model_TSInteraction") { table in
-                table.rename(column: "attachmentIds", to: "deprecated_attachmentIds")
-            }
-            return .success(())
-        }
-
-        migrator.registerMigration(.dropTSAttachmentTable) { tx in
-            try tx.database.drop(table: "model_TSAttachment")
-            return .success(())
-        }
-
-        migrator.registerMigration(.dropMediaGalleryItemTable) { tx in
-            try tx.database.drop(table: "media_gallery_items")
-            return .success(())
-        }
-
-        migrator.registerMigration(.addBackupsReceiptCredentialStateToJobRecord) { tx in
-            try tx.database.alter(table: "model_SSKJobRecord") { table in
-                table.add(column: "BRCRJR_state", .blob)
-            }
-
-            return .success(())
-        }
-
         // MARK: - Schema Migration Insertion Point
     }
 
@@ -3812,7 +3678,7 @@ public class GRDBSchemaMigrator: NSObject {
                 return .success(())
             }
 
-            OWS2FAManager.keyValueStore.setBool(true, key: OWS2FAManager.isRegistrationLockV2EnabledKey, transaction: transaction.asAnyWrite.asV2Write)
+            OWS2FAManager.keyValueStore.setBool(true, key: OWS2FAManager.isRegistrationLockV2EnabledKey, transaction: transaction.asAnyWrite)
             return .success(())
         }
 
@@ -3852,16 +3718,16 @@ public class GRDBSchemaMigrator: NSObject {
         migrator.registerMigration(.dataMigration_turnScreenSecurityOnForExistingUsers) { transaction in
             // Declare the key value store here, since it's normally only
             // available in SignalMessaging.Preferences.
-            let preferencesKeyValueStore = KeyValueStore(collection: "SignalPreferences")
+            let preferencesKeyValueStore = SDSKeyValueStore(collection: "SignalPreferences")
             let screenSecurityKey = "Screen Security Key"
             guard !preferencesKeyValueStore.hasValue(
-                screenSecurityKey,
-                transaction: transaction.asAnyRead.asV2Read
+                forKey: screenSecurityKey,
+                transaction: transaction.asAnyRead
             ) else {
                 return .success(())
             }
 
-            preferencesKeyValueStore.setBool(true, key: screenSecurityKey, transaction: transaction.asAnyWrite.asV2Write)
+            preferencesKeyValueStore.setBool(true, key: screenSecurityKey, transaction: transaction.asAnyWrite)
             return .success(())
         }
 
@@ -4040,18 +3906,18 @@ public class GRDBSchemaMigrator: NSObject {
         migrator.registerMigration(.dataMigration_repairAvatar) { transaction in
             // Declare the key value store here, since it's normally only
             // available in SignalMessaging.Preferences.
-            let preferencesKeyValueStore = KeyValueStore(collection: Self.migrationSideEffectsCollectionName)
+            let preferencesKeyValueStore = SDSKeyValueStore(collection: Self.migrationSideEffectsCollectionName)
             let key = Self.avatarRepairAttemptCount
-            preferencesKeyValueStore.setInt(0, key: key, transaction: transaction.asAnyWrite.asV2Write)
+            preferencesKeyValueStore.setInt(0, key: key, transaction: transaction.asAnyWrite)
             return .success(())
         }
 
         migrator.registerMigration(.dataMigration_dropEmojiAvailabilityStore) { transaction in
             // This is a bit of a layering violation, since these tables were previously managed in the app layer.
-            // In the long run we'll have a general "unused KeyValueStore cleaner" migration,
+            // In the long run we'll have a general "unused SDSKeyValueStore cleaner" migration,
             // but for now this should drop 2000 or so rows for free.
-            KeyValueStore(collection: "Emoji+availableStore").removeAll(transaction: transaction.asAnyWrite.asV2Write)
-            KeyValueStore(collection: "Emoji+metadataStore").removeAll(transaction: transaction.asAnyWrite.asV2Write)
+            SDSKeyValueStore(collection: "Emoji+availableStore").removeAll(transaction: transaction.asAnyWrite)
+            SDSKeyValueStore(collection: "Emoji+metadataStore").removeAll(transaction: transaction.asAnyWrite)
             return .success(())
         }
 
@@ -4079,8 +3945,8 @@ public class GRDBSchemaMigrator: NSObject {
 
         migrator.registerMigration(.dataMigration_deleteOldGroupCapabilities) { transaction in
             let sql = """
-                DELETE FROM \(KeyValueStore.tableName)
-                WHERE \(KeyValueStore.collectionColumnName)
+                DELETE FROM \(SDSKeyValueStore.tableName)
+                WHERE \(SDSKeyValueStore.collectionColumn.columnName)
                 IN ("GroupManager.senderKeyCapability", "GroupManager.announcementOnlyGroupsCapability", "GroupManager.groupsV2MigrationCapability")
             """
             try transaction.database.execute(sql: sql)
@@ -4223,7 +4089,7 @@ public class GRDBSchemaMigrator: NSObject {
             ]
 
             for collection in keyValueCollections {
-                KeyValueStore(collection: collection).removeAll(transaction: transaction.asAnyWrite.asV2Write)
+                SDSKeyValueStore(collection: collection).removeAll(transaction: transaction.asAnyWrite)
             }
 
             return .success(())
@@ -5187,11 +5053,32 @@ public class GRDBSchemaMigrator: NSObject {
 // MARK: -
 
 public func createInitialGalleryRecords(transaction: GRDBWriteTransaction) throws {
-    /// This method used to insert `media_gallery_record` rows for every message attachment.
-    /// Since the writing of this method, the table has been obsoleted. In between the original migration and its
-    /// obsoletion, no other migration referenced the table. This migration used to reference live application code
-    /// that no longer exists. Therefore, it is safe (if still not ideal) to no-op this migration, as the rows it inserts
-    /// will just be removed by a later migration before they're ever used.
+    try Bench(title: "createInitialGalleryRecords", logInProduction: true) {
+        try MediaGalleryRecord.deleteAll(transaction.database)
+        let scope = AttachmentRecord.filter(sql: "\(attachmentColumn: .recordType) = \(SDSRecordType.attachmentStream.rawValue)")
+
+        let totalCount = try scope.fetchCount(transaction.database)
+        let cursor = try scope.fetchCursor(transaction.database)
+        var i = 0
+        try Batching.loop(batchSize: 500) { stopPtr in
+            guard let record = try cursor.next() else {
+                stopPtr.pointee = true
+                return
+            }
+
+            i+=1
+            if (i % 100) == 0 {
+                Logger.info("migrated \(i) / \(totalCount)")
+            }
+
+            guard let attachmentStream = try TSAttachment.fromRecord(record) as? TSAttachmentStream else {
+                owsFailDebug("unexpected record: \(record.recordType)")
+                return
+            }
+
+            try MediaGalleryRecordManager.insertForMigration(attachmentStream: attachmentStream, transaction: transaction)
+        }
+    }
 }
 
 private func dedupeSignalRecipients(transaction: SDSAnyWriteTransaction) throws {

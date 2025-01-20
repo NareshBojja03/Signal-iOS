@@ -101,13 +101,13 @@ class StoryInfoSheet: OWSTableSheetViewController {
 
         switch storyMessage.attachment {
         case .text: break
-        case .media:
+        case .file, .foreignReferenceAttachment:
             guard let attachment = SSKEnvironment.shared.databaseStorageRef.read(block: { storyMessage.fileAttachment(tx: $0) })?.attachment else {
                 owsFailDebug("Missing attachment for story message")
                 break
             }
 
-            if let formattedByteCount = byteCountFormatter.string(for: attachment.asStream()?.unencryptedByteCount) {
+            if let formattedByteCount = byteCountFormatter.string(for: attachment.unencryptedResourceByteCount) {
                 stackView.addArrangedSubview(buildValueLabel(
                     name: OWSLocalizedString(
                         "MESSAGE_METADATA_VIEW_ATTACHMENT_FILE_SIZE",

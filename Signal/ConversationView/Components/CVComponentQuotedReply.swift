@@ -123,7 +123,7 @@ private class QuotedMessageViewAdapter: QuotedMessageViewDelegate {
             guard let message = TSMessage.anyFetchMessage(uniqueId: interactionUniqueId, transaction: tx) else {
                 return
             }
-            DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForMessage(
+            DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForMessage(
                 message,
                 priority: .userInitiated,
                 tx: tx.asV2Write

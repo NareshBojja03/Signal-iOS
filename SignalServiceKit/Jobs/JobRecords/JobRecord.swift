@@ -24,6 +24,7 @@ extension JobRecord: NeedsFactoryInitializationFromRecordType {
 
         // MARK: Values originally from SDSRecordType
 
+        case tsAttachmentMultisend = 58
         case incomingContactSync = 61
         case legacyMessageDecrypt = 53
         case localUserLeaveGroup = 74
@@ -36,7 +37,6 @@ extension JobRecord: NeedsFactoryInitializationFromRecordType {
 
         case callRecordDeleteAll = 100
         case bulkDeleteInteractionJobRecord = 101
-        case backupReceiptsCredentialRedemption = 102
     }
 
     static var recordTypeCodingKey: JobRecordColumns {
@@ -49,6 +49,7 @@ extension JobRecord: NeedsFactoryInitializationFromRecordType {
         }
 
         switch jobRecordType {
+        case .tsAttachmentMultisend: return TSAttachmentMultisendJobRecord.self
         case .incomingContactSync: return IncomingContactSyncJobRecord.self
         case .legacyMessageDecrypt: return LegacyMessageDecryptJobRecord.self
         case .localUserLeaveGroup: return LocalUserLeaveGroupJobRecord.self
@@ -58,7 +59,6 @@ extension JobRecord: NeedsFactoryInitializationFromRecordType {
         case .sessionReset: return SessionResetJobRecord.self
         case .callRecordDeleteAll: return CallRecordDeleteAllJobRecord.self
         case .bulkDeleteInteractionJobRecord: return BulkDeleteInteractionJobRecord.self
-        case .backupReceiptsCredentialRedemption: return BackupReceiptCredentialRedemptionJobRecord.self
         }
     }
 }
@@ -67,6 +67,9 @@ extension JobRecord.JobRecordType {
     var jobRecordLabel: String {
         // These values are persisted and must not change, even if they're misspelled.
         switch self {
+        case .tsAttachmentMultisend:
+            // label is serialized and must remain unchanged.
+            return "BroadcastMediaMessage"
         case .incomingContactSync:
             return "IncomingContactSync"
         case .legacyMessageDecrypt:
@@ -85,8 +88,6 @@ extension JobRecord.JobRecordType {
             return "CallRecordDeleteAll"
         case .bulkDeleteInteractionJobRecord:
             return "BulkDeleteInteraction"
-        case .backupReceiptsCredentialRedemption:
-            return "BackupReceiptCredentialRedemption"
         }
     }
 }

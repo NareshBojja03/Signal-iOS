@@ -135,7 +135,7 @@ public class OutgoingMessageFactory: NSObject, Factory {
             isViewOnceMessage: isViewOnceMessageBuilder(),
             isViewOnceComplete: false,
             wasRemotelyDeleted: false,
-            groupChangeProtoData: groupChangeProtoDataBuilder(),
+            changeActionsProtoData: changeActionsProtoDataBuilder(),
             storyAuthorAci: storyAuthorAciBuilder(),
             storyTimestamp: storyTimestampBuilder(),
             storyReactionEmoji: storyReactionEmojiBuilder(),
@@ -145,6 +145,10 @@ public class OutgoingMessageFactory: NSObject, Factory {
             messageSticker: messageStickerBuilder(),
             giftBadge: giftBadgeBuilder()
         ).build(transaction: transaction)
+        let attachmentIds = attachmentIdsBuilder(transaction)
+        if !attachmentIds.isEmpty {
+            message.setLegacyBodyAttachmentIds(attachmentIds)
+        }
         return message
     }
 
@@ -183,6 +187,10 @@ public class OutgoingMessageFactory: NSObject, Factory {
         return .none
     }
 
+    public var attachmentIdsBuilder: (SDSAnyWriteTransaction) -> [String] = { _ in
+        return []
+    }
+
     public var expiresInSecondsBuilder: () -> UInt32? = {
         return nil
     }
@@ -211,7 +219,7 @@ public class OutgoingMessageFactory: NSObject, Factory {
         return false
     }
 
-    public var groupChangeProtoDataBuilder: () -> Data? = {
+    public var changeActionsProtoDataBuilder: () -> Data? = {
         return nil
     }
 
@@ -310,6 +318,10 @@ public class IncomingMessageFactory: NSObject, Factory {
             paymentNotification: paymentNotificationBuilder()
         )
         let item = builder.build()
+        let attachmentIds = attachmentIdsBuilder(transaction)
+        if !attachmentIds.isEmpty {
+            item.setLegacyBodyAttachmentIds(attachmentIds)
+        }
         item.anyInsert(transaction: transaction)
         return item
     }
@@ -355,6 +367,10 @@ public class IncomingMessageFactory: NSObject, Factory {
                 return CommonGenerator.address()
             }
         }().aci!
+    }
+
+    public var attachmentIdsBuilder: (SDSAnyWriteTransaction) -> [String] = { _ in
+        return []
     }
 
     public var expiresInSecondsBuilder: () -> UInt32 = {
@@ -430,7 +446,7 @@ public class ConversationFactory: NSObject {
 
     @discardableResult
     public func createSentMessage(
-        bodyAttachmentDataSources: [AttachmentDataSource],
+        bodyAttachmentDataSources: [TSResourceDataSource],
         transaction: SDSAnyWriteTransaction
     ) -> TSOutgoingMessage {
         let outgoingFactory = OutgoingMessageFactory()
@@ -445,7 +461,7 @@ public class ConversationFactory: NSObject {
             _ = try! unpreparedMessage.prepare(tx: asyncTransaction)
 
             for attachment in message.allAttachments(transaction: asyncTransaction) {
-                guard let stream = attachment.asStream() else {
+                guard let stream = attachment.asResourceStream() else {
                     continue
                 }
                 let transitTierInfo = Attachment.TransitTierInfo(
@@ -459,7 +475,7 @@ public class ConversationFactory: NSObject {
                     incrementalMacInfo: nil,
                     lastDownloadAttemptTimestamp: nil
                 )
-                try! (DependenciesBridge.shared.attachmentStore as? AttachmentUploadStore)?.markUploadedToTransitTier(
+                try! (DependenciesBridge.shared.tsResourceStore as? TSResourceUploadStore)?.updateAsUploaded(
                     attachmentStream: stream,
                     info: transitTierInfo,
                     tx: asyncTransaction.asV2Write

@@ -5,6 +5,7 @@
 
 #import "TSOutgoingMessage.h"
 #import "OWSOutgoingSyncMessage.h"
+#import "TSAttachmentStream.h"
 #import "TSContactThread.h"
 #import "TSGroupThread.h"
 #import "TSQuotedMessage.h"
@@ -80,10 +81,10 @@ NSUInteger const TSOutgoingMessageSchemaVersion = 1;
                           sortId:(uint64_t)sortId
                        timestamp:(uint64_t)timestamp
                   uniqueThreadId:(NSString *)uniqueThreadId
+                   attachmentIds:(nullable NSArray<NSString *> *)attachmentIds
                             body:(nullable NSString *)body
                       bodyRanges:(nullable MessageBodyRanges *)bodyRanges
                     contactShare:(nullable OWSContact *)contactShare
-        deprecated_attachmentIds:(nullable NSArray<NSString *> *)deprecated_attachmentIds
                        editState:(TSEditState)editState
                  expireStartedAt:(uint64_t)expireStartedAt
               expireTimerVersion:(nullable NSNumber *)expireTimerVersion
@@ -120,10 +121,10 @@ NSUInteger const TSOutgoingMessageSchemaVersion = 1;
                             sortId:sortId
                          timestamp:timestamp
                     uniqueThreadId:uniqueThreadId
+                     attachmentIds:attachmentIds
                               body:body
                         bodyRanges:bodyRanges
                       contactShare:contactShare
-          deprecated_attachmentIds:deprecated_attachmentIds
                          editState:editState
                    expireStartedAt:expireStartedAt
                 expireTimerVersion:expireTimerVersion
@@ -243,7 +244,7 @@ NSUInteger const TSOutgoingMessageSchemaVersion = 1;
     _groupMetaMessage = [[self class] groupMetaMessageForBuilder:outgoingMessageBuilder];
     _hasSyncedTranscript = NO;
     _outgoingMessageSchemaVersion = TSOutgoingMessageSchemaVersion;
-    _changeActionsProtoData = outgoingMessageBuilder.groupChangeProtoData;
+    _changeActionsProtoData = outgoingMessageBuilder.changeActionsProtoData;
     _isVoiceMessage = outgoingMessageBuilder.isVoiceMessage;
 
     return self;
@@ -263,7 +264,7 @@ NSUInteger const TSOutgoingMessageSchemaVersion = 1;
     _groupMetaMessage = [[self class] groupMetaMessageForBuilder:outgoingMessageBuilder];
     _hasSyncedTranscript = NO;
     _outgoingMessageSchemaVersion = TSOutgoingMessageSchemaVersion;
-    _changeActionsProtoData = outgoingMessageBuilder.groupChangeProtoData;
+    _changeActionsProtoData = outgoingMessageBuilder.changeActionsProtoData;
     _isVoiceMessage = outgoingMessageBuilder.isVoiceMessage;
 
     return self;

@@ -12,7 +12,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 100)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -27,7 +26,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 100)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 1,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -43,7 +41,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 3)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -56,7 +53,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 0)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -68,7 +64,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 100)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -108,7 +103,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 10)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -133,7 +127,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 10)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -156,7 +149,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 10)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -179,7 +171,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 100)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -215,7 +206,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 10)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 1,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -269,7 +259,6 @@ public class TaskQueueLoaderTest: XCTestCase {
         let runner = MockRunner(numRecords: 10)
         let loader = TaskQueueLoader(
             maxConcurrentTasks: 1,
-            dateProvider: { Date() },
             db: InMemoryDB(),
             runner: runner
         )
@@ -307,75 +296,20 @@ public class TaskQueueLoaderTest: XCTestCase {
         XCTAssertEqual(runner.completedTasks.count, 1)
     }
 
-    func testNextRetryTimestamp() async throws {
-        let now = Date()
-
-        var firstRecord = MockTaskRecord(id: 0)
-        firstRecord.nextRetryTimestamp = now.addingTimeInterval(0.1).ows_millisecondsSince1970
-        let records = [firstRecord] + (1..<10).map(MockTaskRecord.init(id:))
-        let runner = MockRunner(store: MockStore(records: records))
-
-        var sleepContinuation: CheckedContinuation<Void, Never>?
-
-        let loader = TaskQueueLoader(
-            maxConcurrentTasks: 4,
-            dateProvider: { Date() },
-            db: InMemoryDB(),
-            runner: runner,
-            sleep: { nanoseconds in
-                XCTAssertEqual(nanoseconds, 100 * NSEC_PER_MSEC)
-                XCTAssertNil(sleepContinuation)
-                await withCheckedContinuation { continuation in
-                    sleepContinuation = continuation
-                }
-            }
-        )
-
-        var completedTaskCount = 0
-        runner.taskRunner = { id in
-            if id == 0 {
-                XCTAssertEqual(completedTaskCount, 9)
-            } else {
-                // The others should all finish before then because
-                // they should just run and finish instantly.
-                XCTAssert(Date().timeIntervalSince(now) < 0.1)
-                completedTaskCount += 1
-                if completedTaskCount == 9 {
-                    sleepContinuation?.resume()
-                }
-            }
-            return .success
-        }
-
-        try await loader.loadAndRunTasks()
-        XCTAssertEqual(runner.completedTasks.count, 10)
-        XCTAssertEqual(runner.failedTasks.count, 0)
-    }
-
     // MARK: - Mocks
 
     struct MockError: Error {}
 
     struct MockTaskRecord: TaskRecord, Equatable {
         let id: Int
-        var nextRetryTimestamp: UInt64?
-
-        init(id: Int) {
-            self.id = id
-            self.nextRetryTimestamp = nil
-        }
     }
 
     class MockStore: TaskRecordStore {
 
         var records: AtomicArray<MockTaskRecord>
 
-        convenience init(numRecords: Int) {
-            self.init(records: (1..<(numRecords + 1)).map(MockTaskRecord.init(id:)))
-        }
-
-        init(records: [MockTaskRecord]) {
-            self.records = AtomicArray(records, lock: .init())
+        init(numRecords: Int) {
+            records = AtomicArray((1..<(numRecords + 1)).map(MockTaskRecord.init(id:)), lock: .init())
         }
 
         func peek(
@@ -395,12 +329,8 @@ public class TaskQueueLoaderTest: XCTestCase {
 
         let store: MockStore
 
-        convenience init(numRecords: Int, doLog: Bool = false) {
-            self.init(store: MockStore(numRecords: numRecords))
-        }
-
-        init(store: MockStore) {
-            self.store = store
+        init(numRecords: Int, doLog: Bool = false) {
+            self.store = MockStore(numRecords: numRecords)
         }
 
         var completedTasks = AtomicArray<Int>(lock: .init())

@@ -137,6 +137,9 @@ class StoriesViewController: OWSViewController, StoryListDataSourceDelegate, Hom
 
         timestampUpdateTimer?.invalidate()
         timestampUpdateTimer = nil
+
+        navigationController?.setNavigationBarHidden(false, animated: animated)
+        (tabBarController as? HomeTabBarController)?.setTabBarHidden(false, animated: animated)
     }
 
     override func viewDidDisappear(_ animated: Bool) {

@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import LibSignalClient
-
 final class MessageBackupIndividualCallArchiver {
     typealias Details = MessageBackup.InteractionArchiveDetails
     typealias ArchiveChatUpdateMessageResult = MessageBackup.ArchiveInteractionResult<Details>
@@ -97,11 +95,6 @@ final class MessageBackupIndividualCallArchiver {
             case .read: true
             case .unread: false
             }
-        } else {
-            /// This property is non-optional, but we only track it for calls
-            /// with an `associatedCallRecord`. For those without, mark them as
-            /// read.
-            individualCallUpdate.read = true
         }
 
         var chatUpdateMessage = BackupProto_ChatUpdateMessage()
@@ -189,30 +182,17 @@ final class MessageBackupIndividualCallArchiver {
             return .messageFailure([.restoreFrameError(.invalidProtoData(.individualCallUnrecognizedType), chatItem.id)])
         }
 
-        let callerAci: Aci?
-        switch callRecordDirection {
-        case .outgoing:
-            callerAci = context.recipientContext.localIdentifiers.aci
-        case .incoming:
-            // Note: we may not _have_ an aci if this call
-            // was made before the introduction of acis.
-            callerAci = contactThread.contactAddress.aci
-        }
-
         let individualCallInteraction = TSCall(
             callType: callInteractionType,
             offerType: callInteractionOfferType,
             thread: contactThread,
             sentAtTimestamp: chatItem.dateSent
         )
-
         do {
             try interactionStore.insert(
                 individualCallInteraction,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                callerAci: callerAci,
-                wasRead: individualCall.read,
                 context: context
             )
         } catch let error {
@@ -220,26 +200,22 @@ final class MessageBackupIndividualCallArchiver {
         }
 
         if individualCall.hasCallID {
-            let callRecord: CallRecord
-            do {
-                callRecord = try individualCallRecordManager.createRecordForInteraction(
-                    individualCallInteraction: individualCallInteraction,
-                    individualCallInteractionRowId: individualCallInteraction.sqliteRowId!,
-                    contactThread: contactThread,
-                    contactThreadRowId: chatThread.threadRowId,
-                    callId: individualCall.callID,
-                    callType: callRecordType,
-                    callDirection: callRecordDirection,
-                    individualCallStatus: callRecordStatus,
-                    callEventTimestamp: individualCall.startedCallTimestamp,
-                    shouldSendSyncMessage: false,
-                    tx: context.tx
-                )
-                if individualCall.read {
-                    try callRecordStore.markAsRead(callRecord: callRecord, tx: context.tx)
-                }
-            } catch {
-                return .messageFailure([.restoreFrameError(.databaseInsertionFailed(error), chatItem.id)])
+            let callRecord = individualCallRecordManager.createRecordForInteraction(
+                individualCallInteraction: individualCallInteraction,
+                individualCallInteractionRowId: individualCallInteraction.sqliteRowId!,
+                contactThread: contactThread,
+                contactThreadRowId: chatThread.threadRowId,
+                callId: individualCall.callID,
+                callType: callRecordType,
+                callDirection: callRecordDirection,
+                individualCallStatus: callRecordStatus,
+                callEventTimestamp: individualCall.startedCallTimestamp,
+                shouldSendSyncMessage: false,
+                tx: context.tx
+            )
+
+            if individualCall.read {
+                callRecordStore.markAsRead(callRecord: callRecord, tx: context.tx)
             }
         }
 

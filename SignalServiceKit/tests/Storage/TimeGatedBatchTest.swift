@@ -9,17 +9,17 @@ import GRDB
 @testable import SignalServiceKit
 
 class DBTimeBatchingTest: XCTestCase {
-    func testEnumerateAllElements() async {
+    func testEnumerateAllElements() {
         let elements = [1, 2, 3, 4]
         var seenElements = [Int]()
-        await TimeGatedBatch.enumerateObjects(elements, db: InMemoryDB()) { item, tx in
+        TimeGatedBatch.enumerateObjects(elements, db: InMemoryDB()) { item, tx in
             seenElements.append(item)
         }
         XCTAssertEqual(seenElements, elements)
     }
 
-    func testEnumerateSeparateTransactions() async {
-        let uniqueTransactions = await countUniqueTransactions(
+    func testEnumerateSeparateTransactions() {
+        let uniqueTransactions = countUniqueTransactions(
             enumerationCount: 100,
             yieldTxAfter: -1
         )
@@ -27,8 +27,8 @@ class DBTimeBatchingTest: XCTestCase {
         XCTAssertEqual(uniqueTransactions, 100)
     }
 
-    func testEnumerateSingleTransaction() async {
-        let uniqueTransactions = await countUniqueTransactions(
+    func testEnumerateSingleTransaction() {
+        let uniqueTransactions = countUniqueTransactions(
             enumerationCount: 1,
             yieldTxAfter: .infinity
         )
@@ -39,7 +39,7 @@ class DBTimeBatchingTest: XCTestCase {
     private func countUniqueTransactions(
         enumerationCount: Int,
         yieldTxAfter: TimeInterval
-    ) async -> Int {
+    ) -> Int {
         var uniqueRetainedTransactions = 0
         let db = MockDB(
             retainedTransactionBlock: {
@@ -52,7 +52,7 @@ class DBTimeBatchingTest: XCTestCase {
         var currentTransaction: DBWriteTransaction?
         defer { _ = currentTransaction }
 
-        await TimeGatedBatch.enumerateObjects(
+        TimeGatedBatch.enumerateObjects(
             1...enumerationCount,
             db: db,
             yieldTxAfter: yieldTxAfter
@@ -63,19 +63,14 @@ class DBTimeBatchingTest: XCTestCase {
         return uniqueRetainedTransactions
     }
 
-    func testEnumerateThrownError() async {
+    func testEnumerateThrownError() {
         var seenElements = [Int]()
-        do {
-            try await TimeGatedBatch.enumerateObjects(1...100, db: InMemoryDB(), block: { item, tx in
-                seenElements.append(item)
-                if item == 5 {
-                    throw OWSGenericError("")
-                }
-            })
-            XCTFail("Must throw error.")
-        } catch {
-            // Ok
-        }
+        XCTAssertThrowsError(try TimeGatedBatch.enumerateObjects(1...100, db: InMemoryDB(), block: { item, tx in
+            seenElements.append(item)
+            if item == 5 {
+                throw OWSGenericError("")
+            }
+        }))
         XCTAssertEqual(seenElements, [1, 2, 3, 4, 5])
     }
 
@@ -356,6 +351,28 @@ private class MockDB: DB {
         } catch {
             return Promise<T>(error: error)
         }
+    }
+
+    public func writePromiseWithTxCompletion<T>(
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line,
+        _ block: @escaping (MockTransaction) -> TransactionCompletion<T>
+    ) -> Guarantee<T> {
+        let promise: Promise<T> = writePromise(
+            file: file,
+            function: function,
+            line: line,
+            { tx in
+                switch block(tx) {
+                case .commit(let t):
+                    return t
+                case .rollback(let t):
+                    return t
+                }
+            }
+        )
+        return promise.recover({ _ in fatalError() })
     }
 
     // MARK: - Value Methods

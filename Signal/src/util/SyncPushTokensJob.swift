@@ -8,6 +8,7 @@ import SignalServiceKit
 class SyncPushTokensJob: NSObject {
     enum Mode {
         case normal
+        case forceUpload
         case forceRotation
         case rotateIfEligible
     }
@@ -25,7 +26,7 @@ class SyncPushTokensJob: NSObject {
 
     func run() async throws {
         switch mode {
-        case .normal:
+        case .normal, .forceUpload:
             // Don't rotate.
             return try await run(shouldRotateAPNSToken: false)
         case .forceRotation:
@@ -56,25 +57,37 @@ class SyncPushTokensJob: NSObject {
 
         let pushToken = regResult.apnsToken
 
-        let reason: String
+        Logger.info("Fetched pushToken: \(redact(pushToken))")
+
+        var shouldUploadTokens = false
 
         if SSKEnvironment.shared.preferencesRef.pushToken != pushToken {
-            reason = "changed"
+            Logger.info("Push tokens changed.")
+            shouldUploadTokens = true
+        } else if mode == .forceUpload {
+            Logger.info("Forced uploading, even though tokens didn't change.")
+            shouldUploadTokens = true
         } else if AppVersionImpl.shared.lastAppVersion != AppVersionImpl.shared.currentAppVersion {
-            reason = "upgraded"
+            Logger.info("Uploading due to fresh install or app upgrade.")
+            shouldUploadTokens = true
         } else if !Self.hasUploadedTokensOnce.get() {
-            reason = "launched"
-        } else {
+            Logger.info("Uploading for app launch.")
+            shouldUploadTokens = true
+        }
+
+        guard shouldUploadTokens else {
             Logger.info("No reason to upload pushToken: \(redact(pushToken))")
             return
         }
 
-        Logger.warn("Uploading push token; reason: \(reason), pushToken: \(redact(pushToken))")
+        Logger.warn("uploading tokens to account servers. pushToken: \(redact(pushToken))")
         try await self.updatePushTokens(pushToken: pushToken, auth: auth)
 
         await recordPushTokensLocally(pushToken: pushToken)
 
         Self.hasUploadedTokensOnce.set(true)
+
+        Logger.info("completed successfully.")
     }
 
     class func run(mode: Mode = .normal) {

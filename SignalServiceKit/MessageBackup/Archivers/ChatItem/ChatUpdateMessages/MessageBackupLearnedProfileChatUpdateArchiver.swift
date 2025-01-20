@@ -21,6 +21,7 @@ final class MessageBackupLearnedProfileChatUpdateArchiver {
 
     func archiveLearnedProfileChatUpdate(
         infoMessage: TSInfoMessage,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         func messageFailure(
@@ -111,20 +112,11 @@ final class MessageBackupLearnedProfileChatUpdateArchiver {
             timestamp: chatItem.dateSent,
             displayNameBefore: displayNameBefore
         )
-
-        guard let directionalDetails = chatItem.directionalDetails else {
-            return .messageFailure([.restoreFrameError(
-                .invalidProtoData(.chatItemMissingDirectionalDetails),
-                chatItem.id
-            )])
-        }
-
         do {
             try interactionStore.insert(
                 learnedProfileKeyInfoMessage,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                directionalDetails: directionalDetails,
                 context: context
             )
         } catch let error {

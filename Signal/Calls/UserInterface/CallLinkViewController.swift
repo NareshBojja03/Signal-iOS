@@ -146,10 +146,14 @@ final class CallLinkViewController: OWSTableViewController2 {
                 name: callLinkAdminManager.editCallNameButtonTitle,
                 accessoryType: .disclosureIndicator,
                 actionBlock: { [unowned self] in
-                    EditCallLinkNameViewController(
-                        oldName: self.callLinkState?.name ?? "",
-                        setNewName: callLinkAdminManager.updateName(_:)
-                    ).presentInNavController(from: self)
+                    let editNameViewController = EditCallLinkNameViewController(
+                        oldCallName: self.callLinkState?.name ?? "",
+                        setNewCallName: callLinkAdminManager.updateName(_:)
+                    )
+                    self.presentFormSheet(
+                        OWSNavigationController(rootViewController: editNameViewController),
+                        animated: true
+                    )
                 }
             ))
             settingItems.append(.switch(
@@ -457,7 +461,7 @@ private class CallLinkCardView: UIView {
             label.setCompressionResistanceHigh()
             label.text = CallStrings.joinCallPillButtonTitle
             label.font = UIFont.dynamicTypeSubheadlineClamped.semibold()
-            label.textColor = Theme.joinButtonTextColor
+            label.textColor = Theme.accentBlueColor
             view.isUserInteractionEnabled = false
 
             self.clipsToBounds = true
@@ -531,20 +535,5 @@ private class CallLinkCardView: UIView {
         static let textStackSpacing: CGFloat = 2
 
         static let circleViewDimension: CGFloat = CommonCallLinksUI.Constants.circleViewDimension
-    }
-}
-
-private extension Theme {
-    class var joinButtonTextColor: UIColor {
-        // When we're in dark theme, we actually want the color corresponding
-        // with the _high contrast_ dark theme, due to the background color
-        // of the button. Design requested this exception.
-        let darkThemeTraits = UITraitCollection(traitsFrom: [
-            UITraitCollection(userInterfaceStyle: .dark),
-            UITraitCollection(accessibilityContrast: .high)
-        ])
-        let darkThemeColor = UIColor.Signal.ultramarine.resolvedColor(with: darkThemeTraits)
-        let lightThemeColor = UIColor.Signal.ultramarine.resolvedColor(with: UITraitCollection(userInterfaceStyle: .light))
-        return isDarkThemeEnabled ? darkThemeColor : lightThemeColor
     }
 }

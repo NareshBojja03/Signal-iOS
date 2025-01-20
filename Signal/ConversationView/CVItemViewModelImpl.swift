@@ -33,7 +33,7 @@ public class CVComponentStateWrapper: NSObject, CVItemViewModel {
         return componentState.stickerMetadata
     }
 
-    public var stickerAttachment: AttachmentStream? {
+    public var stickerAttachment: TSResourceStream? {
         AssertIsOnMainThread()
 
         return componentState.stickerAttachment
@@ -51,7 +51,7 @@ public class CVComponentStateWrapper: NSObject, CVItemViewModel {
         return componentState.linkPreviewModel
     }
 
-    public var linkPreviewAttachment: Attachment? {
+    public var linkPreviewAttachment: TSResource? {
         AssertIsOnMainThread()
 
         return componentState.linkPreview?.linkPreviewAttachment
@@ -137,19 +137,19 @@ public class CVItemViewModelImpl: CVComponentStateWrapper {
         return (interaction as? TSMessage)?.wasRemotelyDeleted == true
     }
 
-    public var audioAttachmentStream: AttachmentStream? {
+    public var audioAttachmentStream: TSResourceStream? {
         AssertIsOnMainThread()
 
         return componentState.audioAttachmentStream?.attachmentStream
     }
 
-    public var genericAttachmentStream: AttachmentStream? {
+    public var genericAttachmentStream: TSResourceStream? {
         AssertIsOnMainThread()
 
         return componentState.genericAttachmentStream?.attachmentStream
     }
 
-    public var bodyMediaAttachmentStreams: [AttachmentStream] {
+    public var bodyMediaAttachmentStreams: [TSResourceStream] {
         AssertIsOnMainThread()
 
         return componentState.bodyMediaAttachmentStreams.map(\.attachmentStream)
@@ -162,13 +162,13 @@ public class CVItemViewModelImpl: CVComponentStateWrapper {
         }
         if
             let audioAttachment = componentState.audioAttachment?.attachment,
-            audioAttachment.asStream() == nil
+            audioAttachment.asResourceStream() == nil
         {
             return true
         }
         if
             let genericAttachment = componentState.genericAttachment?.attachment.attachment,
-            genericAttachment.attachment.asStream() == nil
+            genericAttachment.attachment.asResourceStream() == nil
         {
             return true
         }
@@ -181,7 +181,7 @@ public class CVItemViewModelImpl: CVComponentStateWrapper {
         guard let bodyMedia = componentState.bodyMedia else {
             return false
         }
-        return bodyMedia.items.contains(where: { $0.attachment.attachment.attachment.asStream() == nil })
+        return bodyMedia.items.contains(where: { $0.attachment.attachment.attachment.asResourceStream() == nil })
     }
 }
 
@@ -218,18 +218,18 @@ extension CVItemViewModelImpl {
         !shareableAttachments.isEmpty
     }
 
-    private var shareableAttachments: [ShareableAttachment] {
+    private var shareableAttachments: [ShareableTSResource] {
         guard !isViewOnce else {
             return []
         }
 
         if let attachment = self.componentState.audioAttachmentStream {
-            return [try? attachment.asShareableAttachment()].compacted()
+            return [try? attachment.asShareableResource()].compacted()
         } else if let attachment = self.componentState.genericAttachmentStream {
-            return [try? attachment.asShareableAttachment()].compacted()
+            return [try? attachment.asShareableResource()].compacted()
         } else {
             return self.componentState.bodyMediaAttachmentStreams.compactMap { attachment in
-                return try? attachment.asShareableAttachment()
+                return try? attachment.asShareableResource()
             }
         }
     }
@@ -284,11 +284,11 @@ public extension CVComponentState {
         bodyText?.displayableText
     }
 
-    var audioAttachmentStream: ReferencedAttachmentStream? {
+    var audioAttachmentStream: ReferencedTSResourceStream? {
         audioAttachment?.attachmentStream
     }
 
-    var genericAttachmentStream: ReferencedAttachmentStream? {
+    var genericAttachmentStream: ReferencedTSResourceStream? {
         guard
             let reference = genericAttachment?.attachment.attachment.reference,
             let stream = genericAttachment?.attachmentStream
@@ -298,11 +298,11 @@ public extension CVComponentState {
         return .init(reference: reference, attachmentStream: stream)
     }
 
-    var bodyMediaAttachmentStreams: [ReferencedAttachmentStream] {
+    var bodyMediaAttachmentStreams: [ReferencedTSResourceStream] {
         guard let bodyMedia = self.bodyMedia else {
             return []
         }
-        return bodyMedia.items.compactMap { (item) -> ReferencedAttachmentStream? in
+        return bodyMedia.items.compactMap { (item) -> ReferencedTSResourceStream? in
             guard let stream = item.attachmentStream else {
                 return nil
             }
@@ -321,7 +321,7 @@ public extension CVComponentState {
         sticker?.stickerMetadata
     }
 
-    var stickerAttachment: AttachmentStream? {
+    var stickerAttachment: TSResourceStream? {
         sticker?.attachmentStream?.attachmentStream
     }
 

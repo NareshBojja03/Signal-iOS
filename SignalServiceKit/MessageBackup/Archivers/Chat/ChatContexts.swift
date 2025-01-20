@@ -92,19 +92,9 @@ extension MessageBackup {
 
         private var currentChatId = ChatId(value: 1)
         private let map = SharedMap<ThreadUniqueId, ChatId>()
-        public var gv1ThreadIds = Set<ThreadUniqueId>()
-
-        public enum CachedThreadInfo {
-            case groupThread
-            // Contact threads may be _missing_ their address, which
-            // will likely cause partial failures downstream.
-            case contactThread(contactAddress: MessageBackup.ContactAddress?)
-        }
-
-        private let threadCache = SharedMap<ChatId, CachedThreadInfo>()
+        private let threadCache = SharedMap<ChatId, TSThread>()
 
         internal init(
-            backupPurpose: MessageBackupPurpose,
             currentBackupAttachmentUploadEra: String?,
             backupAttachmentUploadManager: BackupAttachmentUploadManager,
             customChatColorContext: CustomChatColorArchivingContext,
@@ -114,7 +104,6 @@ extension MessageBackup {
             self.customChatColorContext = customChatColorContext
             self.recipientContext = recipientContext
             super.init(
-                backupPurpose: backupPurpose,
                 currentBackupAttachmentUploadEra: currentBackupAttachmentUploadEra,
                 backupAttachmentUploadManager: backupAttachmentUploadManager,
                 tx: tx
@@ -126,13 +115,7 @@ extension MessageBackup {
                 currentChatId = ChatId(value: currentChatId.value + 1)
             }
             map[ThreadUniqueId(thread: thread)] = currentChatId
-            if let contactThread = thread as? TSContactThread {
-                threadCache[currentChatId] = .contactThread(
-                    contactAddress: contactThread.contactAddress.asSingleServiceIdBackupAddress()
-                )
-            } else if thread is TSGroupThread {
-                threadCache[currentChatId] = .groupThread
-            }
+            threadCache[currentChatId] = thread
             return currentChatId
         }
 
@@ -141,7 +124,7 @@ extension MessageBackup {
             get { map[threadUniqueId] }
         }
 
-        internal subscript(_ chatId: ChatId) -> CachedThreadInfo? {
+        internal subscript(_ chatId: ChatId) -> TSThread? {
             // swiftlint:disable:next implicit_getter
             get { threadCache[chatId] }
         }
@@ -195,7 +178,7 @@ extension MessageBackup {
             case .contact(let tSContactThread):
                 contactThreadMap[chatId] = (thread.threadRowId, tSContactThread)
             case .groupV2(let tSGroupThread):
-                groupIdMap[chatId] = (thread.threadRowId, MessageBackup.GroupId(groupModel: tSGroupThread.groupModel))
+                groupIdMap[chatId] = (thread.threadRowId, tSGroupThread.groupId)
             }
             recipientToChatMap[recipientId] = chatId
         }
@@ -230,12 +213,6 @@ extension MessageBackup {
         public struct PostFrameRestoreActions {
             var isPinned: Bool
             var lastVisibleInteractionRowId: Int64?
-            var hadAnyUnreadMessages: Bool = false
-
-            /// Maintained for group chats only.
-            /// Maps a group member's aci (including the local user's aci) to the
-            /// largest timestamp for messages sent by that member.
-            var groupMemberLastInteractionTimestamp = SharedMap<Aci, UInt64>()
 
             var shouldBeMarkedVisible: Bool {
                 isPinned || lastVisibleInteractionRowId != nil
@@ -257,7 +234,6 @@ extension MessageBackup {
 
         func updateLastVisibleInteractionRowId(
             interactionRowId: Int64,
-            wasRead: Bool,
             chatId: ChatId
         ) {
             var actions = postFrameRestoreActions[chatId] ?? .default
@@ -269,24 +245,7 @@ extension MessageBackup {
             {
                 actions.lastVisibleInteractionRowId = interactionRowId
             }
-            actions.hadAnyUnreadMessages = actions.hadAnyUnreadMessages || !wasRead
             postFrameRestoreActions[chatId] = actions
-        }
-
-        func updateGroupMemberLastInteractionTimestamp(
-            groupThread: TSGroupThread,
-            chatId: ChatId,
-            senderAci: Aci,
-            timestamp: UInt64
-        ) {
-            let actions = postFrameRestoreActions[chatId] ?? .default
-            let oldTimestamp = actions.groupMemberLastInteractionTimestamp[senderAci]
-            if
-                oldTimestamp == nil
-                || oldTimestamp! < timestamp
-            {
-                actions.groupMemberLastInteractionTimestamp[senderAci] = timestamp
-            }
         }
     }
 
@@ -324,13 +283,11 @@ extension MessageBackup {
         private let map = SharedMap<CustomChatColor.Key, CustomChatColorId>()
 
         internal override init(
-            backupPurpose: MessageBackupPurpose,
             currentBackupAttachmentUploadEra: String?,
             backupAttachmentUploadManager: BackupAttachmentUploadManager,
             tx: DBWriteTransaction
         ) {
             super.init(
-                backupPurpose: backupPurpose,
                 currentBackupAttachmentUploadEra: currentBackupAttachmentUploadEra,
                 backupAttachmentUploadManager: backupAttachmentUploadManager,
                 tx: tx

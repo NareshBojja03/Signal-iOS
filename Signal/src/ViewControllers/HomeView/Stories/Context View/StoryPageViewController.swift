@@ -560,9 +560,9 @@ extension StoryPageViewController: UIViewControllerTransitioningDelegate {
     }
 
     private func storyThumbnailSize(for presentingMessage: StoryMessage) throws -> CGSize? {
-        let attachment: Attachment?
+        let attachment: TSResource?
         switch presentingMessage.attachment {
-        case .media:
+        case .file, .foreignReferenceAttachment:
             attachment = SSKEnvironment.shared.databaseStorageRef.read { tx in
                 return presentingMessage.fileAttachment(tx: tx)
             }?.attachment
@@ -573,7 +573,7 @@ extension StoryPageViewController: UIViewControllerTransitioningDelegate {
             throw OWSAssertionError("Unexpectedly missing attachment for story message")
         }
 
-        if let stream = attachment.asStream(), let thumbnailImage = stream.thumbnailImageSync(quality: .small) {
+        if let stream = attachment.asResourceStream(), let thumbnailImage = stream.thumbnailImageSync(quality: .small) {
             return thumbnailImage.size
         } else {
             return nil
@@ -583,7 +583,7 @@ extension StoryPageViewController: UIViewControllerTransitioningDelegate {
     private func storyView(for presentingMessage: StoryMessage) -> UIView? {
         let storyView: UIView
         switch presentingMessage.attachment {
-        case .media:
+        case .file, .foreignReferenceAttachment:
             guard let attachment = SSKEnvironment.shared.databaseStorageRef.read(block: { presentingMessage.fileAttachment(tx: $0) })?.attachment else {
                 // Can happen if the story was deleted by the sender while in the viewer.
                 return nil
@@ -592,7 +592,7 @@ extension StoryPageViewController: UIViewControllerTransitioningDelegate {
             let view = UIView()
             storyView = view
 
-            if let stream = attachment.asStream(), let thumbnailImage = stream.thumbnailImageSync(quality: .small) {
+            if let stream = attachment.asResourceStream(), let thumbnailImage = stream.thumbnailImageSync(quality: .small) {
                 let blurredImageView = UIImageView()
                 blurredImageView.contentMode = .scaleAspectFill
                 blurredImageView.image = thumbnailImage
@@ -609,7 +609,7 @@ extension StoryPageViewController: UIViewControllerTransitioningDelegate {
                 imageView.image = thumbnailImage
                 view.addSubview(imageView)
                 imageView.autoPinEdgesToSuperviewEdges()
-            } else if let blurHash = attachment.blurHash, let blurHashImage = BlurHash.image(for: blurHash) {
+            } else if let blurHash = attachment.resourceBlurHash, let blurHashImage = BlurHash.image(for: blurHash) {
                 let blurHashImageView = UIImageView()
                 blurHashImageView.contentMode = .scaleAspectFill
                 blurHashImageView.image = blurHashImage

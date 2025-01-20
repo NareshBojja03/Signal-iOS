@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import LibSignalClient
 import SignalServiceKit
 import SignalUI
 import UIKit
@@ -11,11 +10,15 @@ import UIKit
 /// For internal (nightly) use only. Produces MessageBackupErrorPresenterInternal.
 class MessageBackupErrorPresenterFactoryInternal: MessageBackupErrorPresenterFactory {
     func build(
+        appReadiness: AppReadiness,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         tsAccountManager: TSAccountManager
     ) -> MessageBackupErrorPresenter {
         return MessageBackupErrorPresenterInternal(
+            appReadiness: appReadiness,
             db: db,
+            keyValueStoreFactory: keyValueStoreFactory,
             tsAccountManager: tsAccountManager
         )
     }
@@ -24,23 +27,36 @@ class MessageBackupErrorPresenterFactoryInternal: MessageBackupErrorPresenterFac
 /// For internal (nightly) use only. Presents MessageBackupInternalErrorViewController when backups emits errors.
 class MessageBackupErrorPresenterInternal: MessageBackupErrorPresenter {
 
+    private let appReadiness: AppReadiness
     private let db: any DB
     private let tsAccountManager: TSAccountManager
 
     private let kvStore: KeyValueStore
 
     private static let stringifiedErrorsKey = "stringifiedErrors"
-    private static let validationErrorKey = "validationError"
-    private static let hadFatalErrorKey = "hadFatalError"
     private static let hasBeenDisplayedKey = "hasBeenDisplayed"
 
     init(
+        appReadiness: AppReadiness,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         tsAccountManager: TSAccountManager
     ) {
+        self.appReadiness = appReadiness
         self.db = db
         self.tsAccountManager = tsAccountManager
-        self.kvStore = KeyValueStore(collection: "MessageBackupErrorPresenterImpl")
+        self.kvStore = keyValueStoreFactory.keyValueStore(collection: "MessageBackupErrorPresenterImpl")
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(presentErrorsIfNeededWithDelay),
+            name: .registrationStateDidChange,
+            object: nil
+        )
+
+        appReadiness.runNowOrWhenUIDidBecomeReadySync { [weak self] in
+            self?.presentErrorsIfNeededWithDelay()
+        }
     }
 
     func persistErrors(_ errors: [SignalServiceKit.MessageBackup.CollapsedErrorLog], tx outerTx: DBWriteTransaction) {
@@ -52,11 +68,9 @@ class MessageBackupErrorPresenterInternal: MessageBackupErrorPresenter {
             return
         }
 
-        let hadFatalError = errors.contains(where: \.wasFatal)
         let stringified = errors
             .map {
                 var text = ($0.typeLogString) + "\n"
-                + "wasFatal: \($0.wasFatal)\n"
                 + "Repeated \($0.errorCount) times, from: \($0.idLogStrings)\n"
                 + "Example callsite: \($0.exampleCallsiteString)"
                 if let exampleProtoFrameJson = $0.exampleProtoFrameJson {
@@ -75,49 +89,60 @@ class MessageBackupErrorPresenterInternal: MessageBackupErrorPresenter {
 
             self.db.write { innerTx in
                 self.kvStore.setString(stringified, key: Self.stringifiedErrorsKey, transaction: innerTx)
-                self.kvStore.setBool(hadFatalError, key: Self.hadFatalErrorKey, transaction: innerTx)
                 self.kvStore.setBool(false, key: Self.hasBeenDisplayedKey, transaction: innerTx)
+
+                innerTx.addAsyncCompletion(on: DispatchQueue.main) { [weak self] in
+                    self?.presentErrorsIfNeeded()
+                }
             }
         }
     }
 
-    func persistValidationError(_ error: MessageBackupValidationError) async {
-        await self.db.awaitableWrite { tx in
-            self.kvStore.setString(error.errorMessage, key: Self.validationErrorKey, transaction: tx)
-            self.kvStore.setBool(false, key: Self.hasBeenDisplayedKey, transaction: tx)
+    private var forceDuringRegistration = false
+
+    func forcePresentDuringRegistration(completion: @escaping () -> Void) {
+        self.forceDuringRegistration = true
+        self.presentErrorsIfNeeded(completion: completion)
+    }
+
+    @objc
+    private func presentErrorsIfNeededWithDelay() {
+        // Introduce a small delay to get the UI set up.
+        DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(2)) {
+            self.presentErrorsIfNeeded()
         }
     }
 
-    func presentOverTopmostViewController(completion: @escaping () -> Void) {
+    private func presentErrorsIfNeeded(completion: (() -> Void)? = nil) {
+        defer { self.forceDuringRegistration = false }
         guard FeatureFlags.messageBackupErrorDisplay else {
-            completion()
+            completion?()
+            return
+        }
+        guard forceDuringRegistration || appReadiness.isUIReady else {
+            completion?()
             return
         }
         let isRegistered = tsAccountManager.registrationStateWithMaybeSneakyTransaction.isRegistered
-        let errorString: String?
-        let hadFatalError: Bool
-        let validationErrorString: String?
-        (errorString, hadFatalError, validationErrorString) = db.write { tx in
-            let hadFatalError = kvStore.getBool(Self.hadFatalErrorKey, defaultValue: false, transaction: tx)
+        guard forceDuringRegistration || isRegistered else {
+            completion?()
+            return
+        }
+        let errorString: String? = db.write { tx in
             if kvStore.getBool(Self.hasBeenDisplayedKey, defaultValue: false, transaction: tx) {
-                return (nil, hadFatalError, nil)
+                return nil
             }
             let errorString = kvStore.getString(Self.stringifiedErrorsKey, transaction: tx)
-            let validationErrorString = self.kvStore.getString(Self.validationErrorKey, transaction: tx)
             kvStore.setBool(true, key: Self.hasBeenDisplayedKey, transaction: tx)
-            kvStore.setString(nil, key: Self.stringifiedErrorsKey, transaction: tx)
-            kvStore.setString(nil, key: Self.validationErrorKey, transaction: tx)
-            return (errorString, hadFatalError, validationErrorString)
+            return errorString
         }
-        guard errorString != nil || validationErrorString != nil else {
-            completion()
+        guard let errorString else {
+            completion?()
             return
         }
 
         let vc = MessageBackupInternalErrorViewController(
             errorString: errorString,
-            hadFatalError: hadFatalError,
-            validationErrorString: validationErrorString,
             isRegistered: isRegistered,
             completion: completion
         )
@@ -140,38 +165,11 @@ private class MessageBackupInternalErrorViewController: OWSViewController {
     // MARK: Initializers
 
     fileprivate init(
-        errorString: String?,
-        hadFatalError: Bool,
-        validationErrorString: String?,
+        errorString: String,
         isRegistered: Bool,
         completion: (() -> Void)?
     ) {
-        var text: String
-        if hadFatalError {
-            text = "!!!Backup import or export FAILED!!!"
-        } else {
-            text = "Backup import or export succeeded with errors"
-        }
-        text.append("""
-            \n\nPlease send the errors below to your nearest iOS dev.\n
-            Feel free to edit to remove any private info before sending.\n\n
-            """)
-
-        text.append("\n" + AppVersionImpl.shared.currentAppVersion4.debugDescription + "\n")
-
-        if let errorString, let validationErrorString {
-            text.append("Hit both iOS and validator errors\n\n")
-            text.append("------Validator error------\n")
-            text.append(validationErrorString)
-            text.append("\n\n------iOS errors------\n")
-            text.append(errorString)
-        } else  if let errorString {
-            text.append(errorString)
-        } else  if let validationErrorString {
-            text.append("------Validator error------\n")
-            text.append(validationErrorString)
-        }
-        self.originalText = text
+        self.originalText = errorString
         self.isRegistered = isRegistered
         self.completion = completion
         super.init()

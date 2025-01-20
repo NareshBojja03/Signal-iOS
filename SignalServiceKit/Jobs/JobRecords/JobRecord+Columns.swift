@@ -49,10 +49,19 @@ extension JobRecord {
         case ICSJR_digest
         case ICSJR_plaintextLength
 
+        // MARK: IncomingContactSyncJobRecord & IncomingGroupSyncJobRecord
+
+        case legacyAttachmentId = "attachmentId"
+
         // MARK: LocalUserLeaveGroupJobRecord
 
         case replacementAdminAciString = "replacementAdminUuid"
         case waitForMessageProcessing
+
+        // MARK: TSAttachmentMultisendJobRecord
+
+        case attachmentIdMap
+        case unsavedMessagesToSend
 
         // MARK: SessionResetJobRecord
 
@@ -108,9 +117,5 @@ extension JobRecord {
         case BDIJR_anchorMessageRowId = "BDIJR_anchorMessageRowId"
         case BDIJR_fullThreadDeletionAnchorMessageRowId = "BDIJR_fullThreadDeletionAnchorMessageRowId"
         case BDIJR_threadUniqueId = "BDIJR_threadUniqueId"
-
-        // MARK: BackupReceiptCredentialRedemptionJobRecord
-
-        case BRCRJR_state = "BRCRJR_state"
     }
 }

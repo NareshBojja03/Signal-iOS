@@ -18,8 +18,6 @@ public protocol PendingAttachment {
     var sourceFilename: String? { get }
     var validatedContentType: Attachment.ContentType { get }
     var orphanRecordId: OrphanedAttachmentRecord.IDType { get }
-
-    mutating func removeBorderlessRenderingFlagIfPresent()
 }
 
 public protocol RevalidatedAttachment {

@@ -62,7 +62,7 @@ class BlockingManagerStateTests: SSKBaseTest {
         // Remove both a known entry and a (likely) non-entry
         XCTAssertNotNil(dut.removeBlockedGroup(victimGroup.groupId))
         XCTAssertTrue(dut.removeBlockedRecipientId(victimRecipientId))
-        XCTAssertNil(dut.removeBlockedGroup(TSGroupModel.generateRandomGroupId(.V2)))
+        XCTAssertNil(dut.removeBlockedGroup(TSGroupModel.generateRandomV1GroupId()))
         XCTAssertFalse(dut.removeBlockedRecipientId(generateRecipientId()))
 
         // Verify — One and only one item in each set should have been removed
@@ -195,7 +195,7 @@ class BlockingManagerStateTests: SSKBaseTest {
         typealias Key = BlockingManager.State.PersistenceKey
         let storage = BlockingManager.State.keyValueStore
         SSKEnvironment.shared.databaseStorageRef.write {
-            storage.setObject("", key: Key.Legacy.syncedBlockedPhoneNumbersKey.rawValue, transaction: $0.asV2Write)
+            storage.setObject("", key: Key.Legacy.syncedBlockedPhoneNumbersKey.rawValue, transaction: $0)
         }
 
         SSKEnvironment.shared.databaseStorageRef.read {
@@ -339,6 +339,6 @@ class BlockingManagerStateTests: SSKBaseTest {
     }
 
     func generateRandomGroupModel() -> TSGroupModel {
-        GroupManager.fakeGroupModel(groupId: TSGroupModel.generateRandomGroupId(.V2))!
+        GroupManager.fakeGroupModel(groupId: TSGroupModel.generateRandomV1GroupId())!
     }
 }

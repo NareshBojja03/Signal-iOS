@@ -94,7 +94,7 @@ public class RegistrationCoordinatorLoaderImpl: RegistrationCoordinatorLoader {
     }
 
     private lazy var kvStore: KeyValueStore = {
-        KeyValueStore(collection: Constants.collectionName)
+        deps.keyValueStoreFactory.keyValueStore(collection: Constants.collectionName)
     }()
 
     private let deps: RegistrationCoordinatorDependencies

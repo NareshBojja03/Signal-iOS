@@ -66,7 +66,6 @@ message ManifestRecord {
   uint64 version = 1;
   uint32 sourceDevice = 3;
   repeated Key keys = 2;
-  bytes recordIkm = 4;
 }
 
 message StorageRecord {
@@ -188,17 +187,6 @@ message AccountRecord {
     Color color = 3; // color of the QR code itself
   }
 
-  message IAPSubscriberData {
-    bytes subscriberId = 1;
-
-    oneof iapSubscriptionId {
-      // Identifies an Android Play Store IAP subscription.
-      string purchaseToken = 2;
-      // Identifies an iOS App Store IAP subscription.
-      uint64 originalTransactionId = 3;
-    }
-  }
-
   bytes profileKey = 1;
   string givenName = 2;
   string familyName = 3;
@@ -218,10 +206,10 @@ message AccountRecord {
   uint32 universalExpireTimer = 17;
   string e164 = 19;
   repeated string preferredReactionEmoji = 20;
-  bytes donorSubscriberID = 21;
-  string donorSubscriberCurrencyCode = 22;
+  bytes subscriberID = 21;
+  string subscriberCurrencyCode = 22;
   bool displayBadgesOnProfile = 23;
-  bool donorSubscriptionManuallyCancelled = 24;
+  bool subscriptionManuallyCancelled = 24;
   bool keepMutedChatsArchived = 25;
   bool myStoryPrivacyHasBeenSet = 26; // Removed 'has' prefix on spec definition to avoid name conflict.
   bool viewedOnboardingStory = 27; // Removed 'has' prefix on spec definition to avoid name conflict.
@@ -233,10 +221,6 @@ message AccountRecord {
   string username = 33;
   bool completedUsernameOnboarding = 34; // Removed 'has' prefix on spec definition to avoid name conflict.
   UsernameLink usernameLink = 35;
-  reserved /*backupsSubscriberId*/ 36;
-  reserved /*backupsSubscriberCurrencyCode*/ 37;
-  reserved /*backupsSubscriptionManuallyCancelled*/ 38;
-  IAPSubscriberData backupSubscriberData = 41;
 }
 
 message StoryDistributionListRecord {

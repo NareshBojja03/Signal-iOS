@@ -63,6 +63,9 @@ final class AdHocCallStateObserver {
         self.furthestJoinLevel = joinLevel
         db.write { tx in
             do {
+                guard FeatureFlags.callLinkSync else {
+                    return
+                }
                 let rootKey = callLinkCall.callLink.rootKey
                 var (callLink, inserted) = try callLinkStore.fetchOrInsert(rootKey: rootKey, tx: tx)
                 if inserted {

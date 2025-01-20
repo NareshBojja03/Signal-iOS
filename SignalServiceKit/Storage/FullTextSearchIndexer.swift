@@ -160,11 +160,11 @@ extension FullTextSearchIndexer {
         return normalizeText(bodyText)
     }
 
-    public static func insert(_ message: TSMessage, tx: SDSAnyWriteTransaction) throws {
+    public static func insert(_ message: TSMessage, tx: SDSAnyWriteTransaction) {
         guard let ftsContent = indexableContent(for: message, tx: tx) else {
             return
         }
-        try executeUpdate(
+        executeUpdate(
             sql: """
             INSERT INTO \(contentTableName)
             (\(collectionColumn), \(uniqueIdColumn), \(ftsContentColumn))
@@ -176,13 +176,13 @@ extension FullTextSearchIndexer {
         )
     }
 
-    public static func update(_ message: TSMessage, tx: SDSAnyWriteTransaction) throws {
-        try delete(message, tx: tx)
-        try insert(message, tx: tx)
+    public static func update(_ message: TSMessage, tx: SDSAnyWriteTransaction) {
+        delete(message, tx: tx)
+        insert(message, tx: tx)
     }
 
-    public static func delete(_ message: TSMessage, tx: SDSAnyWriteTransaction) throws {
-        try executeUpdate(
+    public static func delete(_ message: TSMessage, tx: SDSAnyWriteTransaction) {
+        executeUpdate(
             sql: """
             DELETE FROM \(contentTableName)
             WHERE \(uniqueIdColumn) == ?
@@ -197,19 +197,11 @@ extension FullTextSearchIndexer {
         sql: String,
         arguments: StatementArguments,
         tx: SDSAnyWriteTransaction
-    ) throws {
-        let database = tx.unwrapGrdbWrite.database
-        do {
-            let statement = try database.cachedStatement(sql: sql)
-            try statement.setArguments(arguments)
-            try statement.execute()
-        } catch {
-            DatabaseCorruptionState.flagDatabaseCorruptionIfNecessary(
-                userDefaults: CurrentAppContext().appUserDefaults(),
-                error: error
-            )
-            throw error
-        }
+    ) {
+        tx.unwrapGrdbWrite.executeAndCacheStatement(
+            sql: sql,
+            arguments: arguments
+        )
     }
 
     // MARK: - Querying

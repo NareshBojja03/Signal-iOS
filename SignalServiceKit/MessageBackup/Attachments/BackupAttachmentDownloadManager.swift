@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import LibSignalClient
 
 public protocol BackupAttachmentDownloadManager {
 
@@ -59,6 +58,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
         backupAttachmentDownloadStore: BackupAttachmentDownloadStore,
         dateProvider: @escaping DateProvider,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         mediaBandwidthPreferenceStore: MediaBandwidthPreferenceStore,
         messageBackupKeyMaterial: MessageBackupKeyMaterial,
         messageBackupRequestManager: MessageBackupRequestManager,
@@ -81,9 +81,11 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
             attachmentStore: attachmentStore,
             attachmentUploadStore: attachmentUploadStore,
             db: db,
+            keyValueStoreFactory: keyValueStoreFactory,
             messageBackupRequestManager: messageBackupRequestManager,
             messageBackupKeyMaterial: messageBackupKeyMaterial,
             orphanedBackupAttachmentStore: orphanedBackupAttachmentStore,
+            svr: svr,
             tsAccountManager: tsAccountManager
         )
 
@@ -100,7 +102,6 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
         )
         self.taskQueue = TaskQueueLoader(
             maxConcurrentTasks: Constants.numParallelDownloads,
-            dateProvider: dateProvider,
             db: db,
             runner: taskRunner
         )
@@ -162,7 +163,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
     }
 
     public func restoreAttachmentsIfNeeded() async throws {
-        guard FeatureFlags.messageBackupFileAlpha || FeatureFlags.linkAndSync else {
+        guard FeatureFlags.messageBackupFileAlpha else {
             return
         }
         guard appReadiness.isAppReady else {
@@ -180,9 +181,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
             Logger.info("Skipping backup attachment downloads while not on wifi")
             return
         }
-        if FeatureFlags.messageBackupRemoteExportAlpha {
-            try await listMediaManager.queryListMediaIfNeeded()
-        }
+        try await listMediaManager.queryListMediaIfNeeded()
         try await taskQueue.loadAndRunTasks()
     }
 
@@ -236,6 +235,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
         private let messageBackupRequestManager: MessageBackupRequestManager
         private let messageBackupKeyMaterial: MessageBackupKeyMaterial
         private let orphanedBackupAttachmentStore: OrphanedBackupAttachmentStore
+        private let svr: SecureValueRecovery
         private let tsAccountManager: TSAccountManager
 
         private let kvStore: KeyValueStore
@@ -244,18 +244,21 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
             attachmentStore: AttachmentStore,
             attachmentUploadStore: AttachmentUploadStore,
             db: any DB,
+            keyValueStoreFactory: KeyValueStoreFactory,
             messageBackupRequestManager: MessageBackupRequestManager,
             messageBackupKeyMaterial: MessageBackupKeyMaterial,
             orphanedBackupAttachmentStore: OrphanedBackupAttachmentStore,
+            svr: SecureValueRecovery,
             tsAccountManager: TSAccountManager
         ) {
             self.attachmentStore = attachmentStore
             self.attachmentUploadStore = attachmentUploadStore
             self.db = db
-            self.kvStore = KeyValueStore(collection: "ListBackupMediaManager")
+            self.kvStore = keyValueStoreFactory.keyValueStore(collection: "ListBackupMediaManager")
             self.messageBackupRequestManager = messageBackupRequestManager
             self.messageBackupKeyMaterial = messageBackupKeyMaterial
             self.orphanedBackupAttachmentStore = orphanedBackupAttachmentStore
+            self.svr = svr
             self.tsAccountManager = tsAccountManager
         }
 
@@ -283,7 +286,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
                     self.tsAccountManager.localIdentifiers(tx: tx)?.aci,
                     currentUploadEra,
                     try self.needsToQueryListMedia(currentUploadEra: currentUploadEra, tx: tx),
-                    try messageBackupKeyMaterial.backupKey(type: .media, tx: tx)
+                    svr.data(for: .backupKey, transaction: tx)
                 )
             }
             guard needsToQuery else {
@@ -293,9 +296,11 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
             guard let localAci else {
                 throw OWSAssertionError("Not registered")
             }
+            guard let backupKey else {
+                throw OWSAssertionError("Missing backup key")
+            }
 
             let messageBackupAuth = try await messageBackupRequestManager.fetchBackupServiceAuth(
-                for: .media,
                 localAci: localAci,
                 auth: .implicit()
             )
@@ -549,7 +554,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
         /// Today, this loads the map into memory. If the memory load of this dictionary ever becomes
         /// a problem, we can write it to an ephemeral sqlite table with a UNIQUE mediaId column.
         private func buildMediaIdMap(
-            backupKey: BackupKey,
+            backupKey: SVR.DerivedKeyData,
             tx: DBReadTransaction
         ) throws -> [Data: LocalAttachment] {
             var map = [Data: LocalAttachment]()
@@ -558,7 +563,11 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
                     owsFailDebug("Query returned attachment without media name!")
                     return
                 }
-                let fullsizeMediaId = Data(try backupKey.deriveMediaId(mediaName))
+                let fullsizeMediaId = try self.messageBackupKeyMaterial.mediaId(
+                    mediaName: mediaName,
+                    type: .attachment,
+                    backupKey: backupKey
+                )
                 map[fullsizeMediaId] = LocalAttachment(
                     attachment: attachment,
                     isThumbnail: false,
@@ -569,9 +578,11 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
                     || attachment.thumbnailMediaTierInfo != nil
                 {
                     // Also prep a thumbnail media name.
-                    let thumbnailMediaId = Data(try backupKey.deriveMediaId(
-                        AttachmentBackupThumbnail.thumbnailMediaName(fullsizeMediaName: mediaName)
-                    ))
+                    let thumbnailMediaId = try self.messageBackupKeyMaterial.mediaId(
+                        mediaName: mediaName,
+                        type: .thumbnail,
+                        backupKey: backupKey
+                    )
                     map[thumbnailMediaId] = LocalAttachment(
                         attachment: attachment,
                         isThumbnail: true,
@@ -821,17 +832,15 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
             }
 
             let canDownloadMediaTierFullsize =
-                FeatureFlags.messageBackupFileAlpha
-                && attachment.mediaTierInfo != nil
+                attachment.mediaTierInfo != nil
                 && (isRecent || shouldStoreAllMediaLocally)
 
             let canDownloadTransitTierFullsize: Bool
             if let transitTierInfo = attachment.transitTierInfo {
-                let timestampForComparison = max(transitTierInfo.uploadTimestamp, attachmentTimestamp ?? 0)
                 // Download if the upload was < 45 days old,
                 // otherwise don't bother trying automatically.
                 // (The user could still try a manual download later).
-                canDownloadTransitTierFullsize = Date(millisecondsSince1970: timestampForComparison)
+                canDownloadTransitTierFullsize = Date(millisecondsSince1970: transitTierInfo.uploadTimestamp)
                     .addingTimeInterval(45 * kDayInterval)
                     .isAfter(dateProvider())
             } else {
@@ -839,8 +848,7 @@ public class BackupAttachmentDownloadManagerImpl: BackupAttachmentDownloadManage
             }
 
             let canDownloadThumbnail =
-                FeatureFlags.messageBackupFileAlpha
-                && AttachmentBackupThumbnail.canBeThumbnailed(attachment)
+                AttachmentBackupThumbnail.canBeThumbnailed(attachment)
                 && attachment.thumbnailMediaTierInfo != nil
 
             let downloadPriority: AttachmentDownloadPriority =

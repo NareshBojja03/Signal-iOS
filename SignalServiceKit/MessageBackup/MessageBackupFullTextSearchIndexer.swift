@@ -31,6 +31,7 @@ public class MessageBackupFullTextSearchIndexerImpl: MessageBackupFullTextSearch
     private let fullTextSearchIndexer: Shims.FullTextSearchIndexer
     private let interactionStore: InteractionStore
     private let kvStore: KeyValueStore
+    private let mentionStore: Shims.MentionStore
     private let searchableNameIndexer: SearchableNameIndexer
     private let taskQueue: SerialTaskQueue
 
@@ -40,6 +41,8 @@ public class MessageBackupFullTextSearchIndexerImpl: MessageBackupFullTextSearch
         db: any DB,
         fullTextSearchIndexer: Shims.FullTextSearchIndexer,
         interactionStore: InteractionStore,
+        keyValueStoreFactory: KeyValueStoreFactory,
+        mentionStore: Shims.MentionStore,
         searchableNameIndexer: SearchableNameIndexer
     ) {
         self.appReadiness = appReadiness
@@ -47,7 +50,8 @@ public class MessageBackupFullTextSearchIndexerImpl: MessageBackupFullTextSearch
         self.db = db
         self.fullTextSearchIndexer = fullTextSearchIndexer
         self.interactionStore = interactionStore
-        self.kvStore = KeyValueStore(collection: "BackupFullTextSearchIndexerImpl")
+        self.kvStore = keyValueStoreFactory.keyValueStore(collection: "BackupFullTextSearchIndexerImpl")
+        self.mentionStore = mentionStore
         self.searchableNameIndexer = searchableNameIndexer
         self.taskQueue = SerialTaskQueue()
 
@@ -133,50 +137,29 @@ public class MessageBackupFullTextSearchIndexerImpl: MessageBackupFullTextSearch
                 )
                 var processedCount = 0
 
-                do {
-                    while let interaction = try cursor.next() {
-                        let nowMs = self.dateProvider().ows_millisecondsSince1970
-                        if nowMs - startTimeMs > Constants.batchDurationMs {
-                            Logger.info("Bailing on batch after \(processedCount) interactions")
-                            finalizeBatch(tx: tx)
-                            return true
-                        }
-                        try self.index(interaction, tx: tx)
-                        maxInteractionRowIdSoFar = interaction.sqliteRowId
-                        processedCount += 1
+                while let interaction = try cursor.next() {
+                    let nowMs = self.dateProvider().ows_millisecondsSince1970
+                    if nowMs - startTimeMs > Constants.batchDurationMs {
+                        Logger.info("Bailing on batch after \(processedCount) interactions")
+                        finalizeBatch(tx: tx)
+                        return true
                     }
-                    finalizeBatch(tx: tx)
-                    return false
-                } catch let error {
-                    Logger.info("Failed batch after \(processedCount) interactions \(error.grdbErrorForLogging)")
-                    finalizeBatch(tx: tx)
-                    return true
+                    self.index(interaction, tx: tx)
+                    maxInteractionRowIdSoFar = interaction.sqliteRowId
+                    processedCount += 1
                 }
+                finalizeBatch(tx: tx)
+                return false
             }
         }
     }
 
-    private func index(_ interaction: TSInteraction, tx: DBWriteTransaction) throws {
+    private func index(_ interaction: TSInteraction, tx: DBWriteTransaction) {
         guard let message = interaction as? TSMessage else {
             return
         }
-        do {
-            try self.fullTextSearchIndexer.insert(message, tx: tx)
-        } catch let insertError {
-            do {
-                try self.fullTextSearchIndexer.update(message, tx: tx)
-            } catch {
-                throw insertError
-            }
-        }
-
-        if let bodyRanges = message.bodyRanges {
-            let uniqueMentionedAcis = Set(bodyRanges.mentions.values)
-            for mentionedAci in uniqueMentionedAcis {
-                let mention = TSMention(uniqueMessageId: message.uniqueId, uniqueThreadId: message.uniqueThreadId, aci: mentionedAci)
-                try mention.save(tx.databaseConnection)
-            }
-        }
+        self.fullTextSearchIndexer.insert(message, tx: tx)
+        self.mentionStore.insertMentionsInDatabase(message: message, tx: tx)
     }
 
     // MARK: - State
@@ -220,26 +203,36 @@ public class MessageBackupFullTextSearchIndexerImpl: MessageBackupFullTextSearch
 extension MessageBackupFullTextSearchIndexerImpl {
     public enum Shims {
         public typealias FullTextSearchIndexer = _MessageBackupFullTextSearchIndexerImpl_FullTextSearchIndexerShim
+        public typealias MentionStore = _MessageBackupFullTextSearchIndexerImpl_MentionStoreShim
     }
     public enum Wrappers {
         public typealias FullTextSearchIndexer = _MessageBackupFullTextSearchIndexerImpl_FullTextSearchIndexerWrapper
+        public typealias MentionStore = _MessageBackupFullTextSearchIndexerImpl_MentionStoreWrapper
     }
 }
 
 public protocol _MessageBackupFullTextSearchIndexerImpl_FullTextSearchIndexerShim {
-    func insert(_ message: TSMessage, tx: DBWriteTransaction) throws
-    func update(_ message: TSMessage, tx: DBWriteTransaction) throws
+    func insert(_ message: TSMessage, tx: DBWriteTransaction)
 }
 
 public class _MessageBackupFullTextSearchIndexerImpl_FullTextSearchIndexerWrapper: MessageBackupFullTextSearchIndexerImpl.Shims.FullTextSearchIndexer {
 
     public init() {}
 
-    public func insert(_ message: TSMessage, tx: DBWriteTransaction) throws {
-        try FullTextSearchIndexer.insert(message, tx: SDSDB.shimOnlyBridge(tx))
+    public func insert(_ message: TSMessage, tx: DBWriteTransaction) {
+        FullTextSearchIndexer.insert(message, tx: SDSDB.shimOnlyBridge(tx))
     }
+}
 
-    public func update(_ message: TSMessage, tx: DBWriteTransaction) throws {
-        try FullTextSearchIndexer.update(message, tx: SDSDB.shimOnlyBridge(tx))
+public protocol _MessageBackupFullTextSearchIndexerImpl_MentionStoreShim {
+    func insertMentionsInDatabase(message: TSMessage, tx: DBWriteTransaction)
+}
+
+public class _MessageBackupFullTextSearchIndexerImpl_MentionStoreWrapper: MessageBackupFullTextSearchIndexerImpl.Shims.MentionStore {
+
+    public init() {}
+
+    public func insertMentionsInDatabase(message: TSMessage, tx: DBWriteTransaction) {
+        TSMessage.insertMentionsInDatabase(message: message, tx: SDSDB.shimOnlyBridge(tx))
     }
 }

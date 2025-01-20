@@ -47,8 +47,9 @@ final class InactiveLinkedDeviceFinderTest: XCTestCase {
             dateProvider: { self.mockDateProvider() },
             db: mockDB,
             deviceNameDecrypter: mockDeviceNameDecrypter,
-            deviceService: mockDevicesService,
             deviceStore: mockDeviceStore,
+            devicesService: mockDevicesService,
+            kvStoreFactory: InMemoryKeyValueStoreFactory(),
             remoteConfigProvider: MockRemoteConfigProvider(),
             tsAccountManager: mockTSAccountManager
         )
@@ -197,36 +198,14 @@ private class MockDeviceStore: OWSDeviceStore {
     func fetchAll(tx: DBReadTransaction) -> [OWSDevice] {
         return devices
     }
-
-    func replaceAll(with newDevices: [OWSDevice], tx: any DBWriteTransaction) -> Bool {
-        let isChanging = devices.count == newDevices.count
-        devices = newDevices
-        return isChanging
-    }
-
-    func remove(_ device: OWSDevice, tx: any DBWriteTransaction) {
-        devices.removeAll { _device in
-            device.deviceId == _device.deviceId
-        }
-    }
-
-    func setEncryptedName(_ encryptedName: String, for device: OWSDevice, tx: any DBWriteTransaction) {
-        device.encryptedName = encryptedName
-    }
 }
 
-private class MockDevicesService: OWSDeviceService {
+private class MockDevicesService: InactiveLinkedDeviceFinderImpl.Shims.OWSDevicesService {
     var shouldFail: Bool = false
     var refreshCount: Int = 0
 
-    func refreshDevices() async throws -> Bool {
+    func refreshDevices() async throws {
         refreshCount += 1
         if shouldFail { throw OWSGenericError("") }
-
-        return true
     }
-
-    func unlinkDevice(_ device: OWSDevice) async throws {}
-
-    func renameDevice(device: OWSDevice, toEncryptedName encryptedName: String) async throws {}
 }

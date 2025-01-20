@@ -4,7 +4,19 @@
 //
 
 import Foundation
-public import LibSignalClient
+
+public extension MessageBackup {
+    enum EncryptionMode {
+        /// Export/Import an encrypted backup to/from the remote server.
+        /// The encryption key used derives entirely from the local account keychain.
+        case remote
+        /// Export/Import an encrypted backup used to link a new device.
+        /// The encryption key used is derived from the aci and a 32-byte "ephemeral" backup key.
+        case linknsync(EphemeralBackupKey)
+
+        // TODO: [LocalBackups] introduce local mode with its own key scheme.
+    }
+}
 
 public protocol MessageBackupManager {
 
@@ -27,39 +39,24 @@ public protocol MessageBackupManager {
     /// - SeeAlso ``uploadEncryptedBackup(metadata:localIdentifiers:auth:)``
     func exportEncryptedBackup(
         localIdentifiers: LocalIdentifiers,
-        backupKey: BackupKey,
-        backupPurpose: MessageBackupPurpose,
-        progress: OWSProgressSink?
+        mode: MessageBackup.EncryptionMode
     ) async throws -> Upload.EncryptedBackupUploadMetadata
 
     /// Export a plaintext backup binary at the returned file URL.
-    func exportPlaintextBackup(
-        localIdentifiers: LocalIdentifiers,
-        backupPurpose: MessageBackupPurpose,
-        progress: OWSProgressSink?
-    ) async throws -> URL
+    func exportPlaintextBackup(localIdentifiers: LocalIdentifiers) async throws -> URL
 
     // MARK: - Import
-
-    /// Returns true if this device has ever successfully restored from a backup
-    /// and committed the contents to the database.
-    func hasRestoredFromBackup(tx: DBReadTransaction) -> Bool
 
     /// Import a backup from the encrypted binary file at the given local URL.
     /// - SeeAlso ``downloadEncryptedBackup(localIdentifiers:auth:)``
     func importEncryptedBackup(
         fileUrl: URL,
         localIdentifiers: LocalIdentifiers,
-        backupKey: BackupKey,
-        progress: OWSProgressSink?
+        mode: MessageBackup.EncryptionMode
     ) async throws
 
     /// Import a backup from the plaintext binary file at the given local URL.
-    func importPlaintextBackup(
-        fileUrl: URL,
-        localIdentifiers: LocalIdentifiers,
-        progress: OWSProgressSink?
-    ) async throws
+    func importPlaintextBackup(fileUrl: URL, localIdentifiers: LocalIdentifiers) async throws
 
     // MARK: -
 
@@ -67,7 +64,6 @@ public protocol MessageBackupManager {
     func validateEncryptedBackup(
         fileUrl: URL,
         localIdentifiers: LocalIdentifiers,
-        backupKey: BackupKey,
-        backupPurpose: MessageBackupPurpose
+        mode: MessageBackup.EncryptionMode
     ) async throws
 }

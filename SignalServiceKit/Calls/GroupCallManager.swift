@@ -151,7 +151,8 @@ public class GroupCallManager {
                 // with the staging credentials is expected to fail.
                 self.logger.warn("Expected failure to fetch PeekInfo for \(thread.uniqueId): \(error)")
             } else {
-                owsFailDebug("Failed to fetch PeekInfo for \(thread.uniqueId): \(error)")
+                //owsFailDebug("Failed to fetch PeekInfo for \(thread.uniqueId): \(error)")
+                Logger.warn("Failed to fetch PeekInfo for \(thread.uniqueId): \(error)")
             }
         }
     }
@@ -290,17 +291,13 @@ public class GroupCallManager {
         )
 
         logger.info("Creating record for group call discovered via peek.")
-        do {
-            _ = try groupCallRecordManager.createGroupCallRecordForPeek(
-                callId: callId.rawValue,
-                groupCallInteraction: newGroupCallInteraction,
-                groupCallInteractionRowId: interactionRowId,
-                groupThreadRowId: groupThreadRowId,
-                tx: tx
-            )
-        } catch let error {
-            owsFailBeta("Failed to insert call record: \(error)")
-        }
+        _ = groupCallRecordManager.createGroupCallRecordForPeek(
+            callId: callId.rawValue,
+            groupCallInteraction: newGroupCallInteraction,
+            groupCallInteractionRowId: interactionRowId,
+            groupThreadRowId: groupThreadRowId,
+            tx: tx
+        )
 
         return newGroupCallInteraction
     }

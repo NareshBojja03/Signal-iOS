@@ -261,11 +261,7 @@ class DebugUICallsTab: DebugUIPage {
             callStatus: .individual(individualCallStatus),
             callBeganTimestamp: callInteraction.timestamp
         )
-        do {
-            _ = try callRecordStore.insert(callRecord: callRecord, tx: tx.asV2Write)
-        } catch let error {
-            owsFailBeta("Failed to insert call record: \(error)")
-        }
+        _ = callRecordStore.insert(callRecord: callRecord, tx: tx.asV2Write)
     }
 
     // MARK: Group calls
@@ -354,11 +350,7 @@ class DebugUICallsTab: DebugUIPage {
             callStatus: .group(groupCallStatus),
             callBeganTimestamp: callInteraction.timestamp
         )
-        do {
-            _ = try callRecordStore.insert(callRecord: callRecord, tx: tx.asV2Write)
-        } catch let error {
-            owsFailBeta("Failed to insert call record: \(error)")
-        }
+        _ = callRecordStore.insert(callRecord: callRecord, tx: tx.asV2Write)
     }
 
     // MARK: Thread enumeration

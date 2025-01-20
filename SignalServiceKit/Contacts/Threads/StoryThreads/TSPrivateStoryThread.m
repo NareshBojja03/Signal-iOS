@@ -6,6 +6,13 @@
 #import "TSPrivateStoryThread.h"
 #import <SignalServiceKit/SignalServiceKit-Swift.h>
 
+@interface TSPrivateStoryThread ()
+
+@property (nonatomic) BOOL allowsReplies;
+@property (nonatomic) NSString *name;
+
+@end
+
 @implementation TSPrivateStoryThread
 
 - (instancetype)initWithUniqueId:(NSString *)uniqueId
@@ -116,6 +123,34 @@ lastVisibleSortIdOnScreenPercentageObsolete:lastVisibleSortIdOnScreenPercentageO
     }
 
     return _name;
+}
+
+- (void)updateWithAllowsReplies:(BOOL)allowsReplies
+           updateStorageService:(BOOL)updateStorageService
+                    transaction:(SDSAnyWriteTransaction *)transaction
+{
+    [self anyUpdatePrivateStoryThreadWithTransaction:transaction
+                                               block:^(TSPrivateStoryThread *thread) {
+                                                   thread.allowsReplies = allowsReplies;
+                                               }];
+
+    if (updateStorageService) {
+        [SSKEnvironment.shared.storageServiceManagerObjcRef
+            recordPendingUpdatesWithUpdatedStoryDistributionListIds:@[ self.distributionListIdentifier ]];
+    }
+}
+
+- (void)updateWithName:(NSString *)name
+    updateStorageService:(BOOL)updateStorageService
+             transaction:(SDSAnyWriteTransaction *)transaction
+{
+    [self anyUpdatePrivateStoryThreadWithTransaction:transaction
+                                               block:^(TSPrivateStoryThread *thread) { thread.name = name; }];
+
+    if (updateStorageService) {
+        [SSKEnvironment.shared.storageServiceManagerObjcRef
+            recordPendingUpdatesWithUpdatedStoryDistributionListIds:@[ self.distributionListIdentifier ]];
+    }
 }
 
 @end

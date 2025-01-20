@@ -26,14 +26,14 @@ extension ThreadUtil {
             let unpreparedMessage: UnpreparedOutgoingMessage
             do {
                 let messageBody = try messageBody.map {
-                    try DependenciesBridge.shared.attachmentContentValidator
+                    try DependenciesBridge.shared.tsResourceContentValidator
                         .prepareOversizeTextIfNeeded(from: $0)
                 } ?? nil
                 let linkPreviewDataSource = try linkPreviewDraft.map {
-                    try DependenciesBridge.shared.linkPreviewManager.buildDataSource(from: $0)
+                    try DependenciesBridge.shared.linkPreviewManager.buildDataSource(from: $0, ownerType: .message)
                 }
                 let mediaAttachments = try mediaAttachments.map {
-                    try $0.forSending()
+                    try $0.forSending(ownerType: .message)
                 }
                 let quotedReplyDraft = try quotedReplyDraft.map {
                     try DependenciesBridge.shared.quotedReplyManager.prepareDraftForSending($0)
@@ -81,11 +81,11 @@ extension ThreadUtil {
             let unpreparedMessage: UnpreparedOutgoingMessage
             do {
                 let messageBody = try messageBody.map {
-                    try DependenciesBridge.shared.attachmentContentValidator
+                    try DependenciesBridge.shared.tsResourceContentValidator
                         .prepareOversizeTextIfNeeded(from: $0)
                 } ?? nil
                 let linkPreviewDataSource = try linkPreviewDraft.map {
-                    try DependenciesBridge.shared.linkPreviewManager.buildDataSource(from: $0)
+                    try DependenciesBridge.shared.linkPreviewManager.buildDataSource(from: $0, ownerType: .message)
                 }
 
                 unpreparedMessage = UnpreparedOutgoingMessage.buildForEdit(
@@ -182,22 +182,22 @@ extension UnpreparedOutgoingMessage {
     public static func build(
         thread: TSThread,
         timestamp: UInt64? = nil,
-        messageBody: ValidatedMessageBody?,
+        messageBody: ValidatedTSMessageBody?,
         mediaAttachments: [SignalAttachment.ForSending] = [],
         quotedReplyDraft: DraftQuotedReplyModel.ForSending?,
-        linkPreviewDataSource: LinkPreviewDataSource?,
+        linkPreviewDataSource: LinkPreviewTSResourceDataSource?,
         transaction: SDSAnyReadTransaction
     ) -> UnpreparedOutgoingMessage {
 
         let truncatedBody: MessageBody?
-        let oversizeTextDataSource: AttachmentDataSource?
+        let oversizeTextDataSource: OversizeTextDataSource?
         switch messageBody {
         case .inline(let messageBody):
             truncatedBody = messageBody
             oversizeTextDataSource = nil
         case .oversize(let truncated, let fullsize):
             truncatedBody = truncated
-            oversizeTextDataSource = .pendingAttachment(fullsize)
+            oversizeTextDataSource = fullsize
         case nil:
             truncatedBody = nil
             oversizeTextDataSource = nil
@@ -251,21 +251,21 @@ extension UnpreparedOutgoingMessage {
     public static func buildForEdit(
         thread: TSThread,
         timestamp: UInt64,
-        messageBody: ValidatedMessageBody?,
+        messageBody: ValidatedTSMessageBody?,
         quotedReplyEdit: MessageEdits.Edit<Void>,
-        linkPreviewDataSource: LinkPreviewDataSource?,
+        linkPreviewDataSource: LinkPreviewTSResourceDataSource?,
         editTarget: TSOutgoingMessage
     ) -> UnpreparedOutgoingMessage {
 
         let truncatedBody: MessageBody?
-        let oversizeTextDataSource: AttachmentDataSource?
+        let oversizeTextDataSource: OversizeTextDataSource?
         switch messageBody {
         case .inline(let messageBody):
             truncatedBody = messageBody
             oversizeTextDataSource = nil
         case .oversize(let truncated, let fullsize):
             truncatedBody = truncated
-            oversizeTextDataSource = .pendingAttachment(fullsize)
+            oversizeTextDataSource = fullsize
         case nil:
             truncatedBody = nil
             oversizeTextDataSource = nil

@@ -75,7 +75,9 @@ class BadgeThanksSheetPresenter {
         logger.info("Preparing to present badge thanks sheet.")
 
         firstly(on: DispatchQueue.global()) { () -> Promise<Void> in
-            return Promise.wrapAsync { try await self.badgeStore.populateAssetsOnBadge(self.redemptionSuccess.badge) }
+            return self.badgeStore.populateAssetsOnBadge(
+                self.redemptionSuccess.badge
+            )
         }.map(on: DispatchQueue.main) {
             logger.info("Showing badge thanks sheet on receipt credential redemption.")
 

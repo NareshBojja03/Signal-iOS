@@ -154,28 +154,21 @@ class GroupCall: SignalRingRTC.GroupCallDelegate {
         observers.elements.forEach { $0.groupCallLocalDeviceStateChanged(self) }
     }
 
-    @MainActor
-    private var groupCallRemoteDeviceStatesChangedObserverTask: Task<Void, Never>?
+    private var remoteStateChangeDebounceId: UUID?
     @MainActor
     func groupCall(onRemoteDeviceStatesChanged groupCall: SignalRingRTC.GroupCall) {
-        // Debounce this event 0.25s to avoid spamming the calls UI with group changes.
-        groupCallRemoteDeviceStatesChangedObserverTask?.cancel()
-        groupCallRemoteDeviceStatesChangedObserverTask = Task { [weak self] in
-            do {
-                try await Task.sleep(nanoseconds: 250_000_000)
-            } catch is CancellationError {
-                return
-            } catch {
-                owsFailDebug("unexpected error: \(error)")
-                return
+        // Debounce this event 0.5s to avoid spamming the calls UI with group changes.
+        let debounceId = UUID()
+        self.remoteStateChangeDebounceId = debounceId
+        firstly(on: DispatchQueue.main){ () -> Guarantee<Void> in
+            return Guarantee.after(wallInterval: 0.25)
+        }.done(on: DispatchQueue.main) {
+            if
+                let id = self.remoteStateChangeDebounceId,
+                debounceId == id
+            {
+                self.observers.elements.forEach { $0.groupCallRemoteDeviceStatesChanged(self) }
             }
-
-            guard let self else { return }
-
-            for element in observers.elements {
-                element.groupCallRemoteDeviceStatesChanged(self)
-            }
-            groupCallRemoteDeviceStatesChangedObserverTask = nil
         }
     }
 
@@ -215,10 +208,5 @@ class GroupCall: SignalRingRTC.GroupCallDelegate {
         self.hasInvokedConnectMethod = false
 
         observers.elements.forEach { $0.groupCallEnded(self, reason: reason) }
-    }
-
-    @MainActor
-    func groupCall(onSpeakingNotification groupCall: SignalRingRTC.GroupCall, event: SpeechEvent) {
-
     }
 }

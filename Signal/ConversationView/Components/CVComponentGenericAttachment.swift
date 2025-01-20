@@ -13,9 +13,9 @@ public class CVComponentGenericAttachment: CVComponentBase, CVComponent {
     public var componentKey: CVComponentKey { .genericAttachment }
 
     private let genericAttachment: CVComponentState.GenericAttachment
-    private var attachment: ReferencedAttachment { genericAttachment.attachment.attachment }
-    private var attachmentStream: AttachmentStream? { genericAttachment.attachmentStream }
-    private var attachmentPointer: AttachmentTransitPointer? { genericAttachment.attachmentPointer }
+    private var attachment: ReferencedTSResource { genericAttachment.attachment.attachment }
+    private var attachmentStream: TSResourceStream? { genericAttachment.attachmentStream }
+    private var attachmentPointer: TSResourcePointer? { genericAttachment.attachmentPointer }
 
     init(itemModel: CVItemModel, genericAttachment: CVComponentState.GenericAttachment) {
         self.genericAttachment = genericAttachment
@@ -142,7 +142,7 @@ public class CVComponentGenericAttachment: CVComponentBase, CVComponent {
         if let attachmentPointer = self.genericAttachment.attachmentPointer {
             var textComponents = [String]()
 
-            if let byteCount = attachmentPointer.info.unencryptedByteCount, byteCount > 0 {
+            if let byteCount = attachmentPointer.resource.unencryptedResourceByteCount, byteCount > 0 {
                 textComponents.append(OWSFormat.localizedFileSizeString(from: Int64(byteCount)))
             }
 
@@ -157,8 +157,9 @@ public class CVComponentGenericAttachment: CVComponentBase, CVComponent {
                 text = textComponents.joined(separator: " • ")
             }
         } else if let attachmentStream = attachmentStream {
-            let fileSize = attachmentStream.unencryptedByteCount
-            text = OWSFormat.localizedFileSizeString(from: Int64(fileSize))
+            if let fileSize = attachmentStream.unencryptedResourceByteCount {
+                text = OWSFormat.localizedFileSizeString(from: Int64(fileSize))
+            }
         } else if let _ = self.genericAttachment.attachmentBackupThumbnail {
             // TODO[Backups]: Handle similar to attachment pointers above
             owsFailDebug("Not implemented yet")
@@ -328,20 +329,27 @@ public class CVComponentGenericAttachment: CVComponentBase, CVComponent {
     public func createQLPreviewController() -> QLPreviewController? {
         guard #available(iOS 14.8, *) else { return nil }
 
-        guard let attachmentStream else {
+        switch attachmentStream?.concreteStreamType {
+        case nil:
             return nil
+        case .legacy(let tsAttachmentStream):
+            guard
+                let url = tsAttachmentStream.originalMediaURL,
+                QLPreviewController.canPreview(url as NSURL)
+            else {
+                return nil
+            }
+        case .v2(let attachmentStream):
+            let sourceFilename = genericAttachment.attachment.attachment.reference.sourceFilename
+            guard let url = try? attachmentStream.makeDecryptedCopy(filename: sourceFilename) else {
+                return nil
+            }
+            guard QLPreviewController.canPreview(url as NSURL) else {
+                try? OWSFileSystem.deleteFile(url: url)
+                return nil
+            }
+            self.qlPreviewTmpFileUrl = url
         }
-
-        let sourceFilename = genericAttachment.attachment.attachment.reference.sourceFilename
-        guard let url = try? attachmentStream.makeDecryptedCopy(filename: sourceFilename) else {
-            return nil
-        }
-        guard QLPreviewController.canPreview(url as NSURL) else {
-            try? OWSFileSystem.deleteFile(url: url)
-            return nil
-        }
-        self.qlPreviewTmpFileUrl = url
-
         let previewController = QLPreviewController()
         previewController.dataSource = self
         previewController.delegate = self
@@ -360,7 +368,7 @@ public class CVComponentGenericAttachment: CVComponentBase, CVComponent {
     }
 
     public func showShareUI(from view: UIView) {
-        guard let attachmentStream = try? genericAttachment.attachment.attachment.asReferencedStream?.asShareableAttachment() else {
+        guard let attachmentStream = try? genericAttachment.attachment.attachment.asReferencedStream?.asShareableResource() else {
             owsFailDebug("should not show the share UI unless there's a downloaded attachment")
             return
         }
@@ -411,9 +419,12 @@ extension CVComponentGenericAttachment: QLPreviewControllerDataSource, QLPreview
         owsAssertDebug(index == 0)
 
         let url: URL? = {
-            if attachmentStream != nil {
+            switch attachmentStream?.concreteStreamType {
+            case .legacy(let tsAttachmentStream):
+                return tsAttachmentStream.originalMediaURL
+            case .v2:
                 return qlPreviewTmpFileUrl
-            } else {
+            case nil:
                 return nil
             }
         }()

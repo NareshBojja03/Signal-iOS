@@ -14,11 +14,6 @@ public protocol AppVersion {
     /// launch, this will match `currentAppVersion`.
     var firstAppVersion: String { get }
 
-    /// The version of the app that was first launched, of the app instance that generated the backup
-    /// this app instance restored from, or nil if not restored from a backup.
-    /// Version string may have originated from a non-iOS client.
-    var firstBackupAppVersion: String? { get }
-
     /// The version of the app the last time it was launched. `nil` if the app
     /// hasn't been launched.
     var lastAppVersion: String? { get }
@@ -46,14 +41,10 @@ public protocol AppVersion {
     func mainAppLaunchDidComplete()
     func saeLaunchDidComplete()
     func nseLaunchDidComplete()
-    func didRestoreFromBackup(
-        backupCurrentAppVersion: String?,
-        backupFirstAppVersion: String?
-    )
 }
 
 extension AppVersion {
-    public var currentAppVersion4: AppVersionNumber4 {
+    var currentAppVersion4: AppVersionNumber4 {
         return try! AppVersionNumber4(AppVersionNumber(currentAppVersion))
     }
 }
@@ -112,8 +103,6 @@ private func formatForLogging(_ versionNumber: String?) -> String {
 
 public class AppVersionImpl: AppVersion {
     private let firstVersionKey = "kNSUserDefaults_FirstAppVersion"
-    private let backupAppVersionKey = "kNSUserDefaults_BackupAppVersion"
-    private let firstBackupAppVersionKey = "kNSUserDefaults_FirstBackupAppVersion"
     private let lastVersionKey = "kNSUserDefaults_LastVersion"
     private let lastCompletedLaunchVersionKey = "kNSUserDefaults_LastCompletedLaunchAppVersion"
     private let lastCompletedMainAppLaunchVersionKey = "kNSUserDefaults_LastCompletedLaunchAppVersion_MainApp"
@@ -152,20 +141,6 @@ public class AppVersionImpl: AppVersion {
     /// launch, this will match `currentAppVersion`.
     public var firstAppVersion: String {
         return userDefaults.string(forKey: firstVersionKey) ?? currentAppVersion
-    }
-
-    /// The app version string of the app instance that generated the backup this app instance restored from,
-    /// or nil if not restored from a backup.
-    /// Version string may have originated from a non-iOS client.
-    private var backupAppVersion: String? {
-        return userDefaults.string(forKey: backupAppVersionKey)
-    }
-
-    /// The version of the app that was first launched, of the app instance that generated the backup
-    /// this app instance restored from, or nil if not restored from a backup.
-    /// Version string may have originated from a non-iOS client.
-    public var firstBackupAppVersion: String? {
-        return userDefaults.string(forKey: firstBackupAppVersionKey)
     }
 
     /// The version of the app the last time it was launched. `nil` if the app
@@ -249,12 +224,6 @@ public class AppVersionImpl: AppVersion {
 
     private func startupLogging() {
         Logger.info("firstAppVersion: \(formatForLogging(firstAppVersion))")
-        if let backupAppVersion {
-            Logger.info("backupAppVersion: \(formatForLogging(backupAppVersion))")
-        }
-        if let firstBackupAppVersion {
-            Logger.info("firstBackupAppVersion: \(formatForLogging(firstBackupAppVersion))")
-        }
         Logger.info("lastAppVersion: \(formatForLogging(lastAppVersion))")
         Logger.info("currentAppVersion: \(formatForLogging(currentAppVersion))")
         Logger.info("lastCompletedLaunchAppVersion: \(formatForLogging(lastCompletedLaunchAppVersion))")
@@ -306,18 +275,6 @@ public class AppVersionImpl: AppVersion {
     public func nseLaunchDidComplete() {
         Logger.info("")
         lastCompletedLaunchNSEAppVersion = currentAppVersion
-    }
-
-    public func didRestoreFromBackup(
-        backupCurrentAppVersion: String?,
-        backupFirstAppVersion: String?
-    ) {
-        if let backupCurrentAppVersion {
-            userDefaults.set(backupCurrentAppVersion, forKey: backupAppVersionKey)
-        }
-        if let backupFirstAppVersion {
-            userDefaults.set(backupFirstAppVersion, forKey: firstBackupAppVersionKey)
-        }
     }
 }
 
@@ -383,8 +340,6 @@ public class MockAppVerion: AppVersion {
 
     public var firstAppVersion: String = "1.0"
 
-    public var firstBackupAppVersion: String?
-
     public var lastAppVersion: String? = "1.0"
 
     public var currentAppVersion: String = "1.0.0.0"
@@ -408,11 +363,6 @@ public class MockAppVerion: AppVersion {
     public func saeLaunchDidComplete() {}
 
     public func nseLaunchDidComplete() {}
-
-    public func didRestoreFromBackup(
-        backupCurrentAppVersion: String?,
-        backupFirstAppVersion: String?
-    ) {}
 }
 
 #endif

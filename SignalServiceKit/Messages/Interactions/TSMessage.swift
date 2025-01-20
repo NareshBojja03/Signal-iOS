@@ -17,41 +17,26 @@ public extension TSMessage {
     // MARK: - Attachments
 
     func hasBodyAttachments(transaction: SDSAnyReadTransaction) -> Bool {
-        guard let sqliteRowId else { return false }
-        return DependenciesBridge.shared.attachmentStore
-            .fetchReferences(
-                owners: [
-                    .messageOversizeText(messageRowId: sqliteRowId),
-                    .messageBodyAttachment(messageRowId: sqliteRowId)
-                ],
-                tx: transaction.asV2Read
-            )
+        return DependenciesBridge.shared.tsResourceStore
+            .bodyAttachments(for: self, tx: transaction.asV2Read)
             .isEmpty.negated
     }
 
     func hasMediaAttachments(transaction: SDSAnyReadTransaction) -> Bool {
-        guard let sqliteRowId else { return false }
-        return DependenciesBridge.shared.attachmentStore
-            .fetchFirstReference(
-                owner: .messageBodyAttachment(messageRowId: sqliteRowId),
-                tx: transaction.asV2Read
-            ) != nil
+        return DependenciesBridge.shared.tsResourceStore
+            .bodyMediaAttachments(for: self, tx: transaction.asV2Read)
+            .isEmpty.negated
     }
 
-    func oversizeTextAttachment(transaction: SDSAnyReadTransaction) -> Attachment? {
-        guard let sqliteRowId else { return nil }
-        return DependenciesBridge.shared.attachmentStore
-            .fetchFirstReferencedAttachment(
-                for: .messageOversizeText(messageRowId: sqliteRowId),
-                tx: transaction.asV2Read
-            )?
-            .attachment
+    func oversizeTextAttachment(transaction: SDSAnyReadTransaction) -> TSResource? {
+        return DependenciesBridge.shared.tsResourceStore
+            .oversizeTextAttachment(for: self, tx: transaction.asV2Read)?
+            .fetch(tx: transaction)
     }
 
-    func allAttachments(transaction: SDSAnyReadTransaction) -> [Attachment] {
-        guard let sqliteRowId else { return [] }
-        return DependenciesBridge.shared.attachmentStore
-            .allAttachments(forMessageWithRowId: sqliteRowId, tx: transaction.asV2Read)
+    func allAttachments(transaction: SDSAnyReadTransaction) -> [TSResource] {
+        return DependenciesBridge.shared.tsResourceStore
+            .allAttachments(for: self, tx: transaction.asV2Read)
             .fetchAll(tx: transaction)
     }
 
@@ -59,32 +44,32 @@ public extension TSMessage {
     /// If you want a constant string representing the body of this message, this is it.
     @objc(rawBodyWithTransaction:)
     func rawBody(transaction: SDSAnyReadTransaction) -> String? {
-        if let oversizeText = try? self.oversizeTextAttachment(transaction: transaction)?.asStream()?.decryptedLongText() {
+        if let oversizeText = try? self.oversizeTextAttachment(transaction: transaction)?.asResourceStream()?.decryptedLongText() {
             return oversizeText
         }
         return self.body?.nilIfEmpty
     }
 
-    func failedAttachments(transaction: SDSAnyReadTransaction) -> [AttachmentTransitPointer] {
-        let attachments: [Attachment] = allAttachments(transaction: transaction)
+    func failedAttachments(transaction: SDSAnyReadTransaction) -> [TSResourcePointer] {
+        let attachments: [TSResource] = allAttachments(transaction: transaction)
         let states: [AttachmentDownloadState] = [.failed]
         return Self.onlyAttachmentPointers(attachments: attachments, withStateIn: Set(states), tx: transaction)
     }
 
-    func failedOrPendingAttachments(transaction: SDSAnyReadTransaction) -> [AttachmentTransitPointer] {
-        let attachments: [Attachment] = allAttachments(transaction: transaction)
+    func failedOrPendingAttachments(transaction: SDSAnyReadTransaction) -> [TSResourcePointer] {
+        let attachments: [TSResource] = allAttachments(transaction: transaction)
         let states: [AttachmentDownloadState] = [.failed, .none]
         return Self.onlyAttachmentPointers(attachments: attachments, withStateIn: Set(states), tx: transaction)
     }
 
     private static func onlyAttachmentPointers(
-        attachments: [Attachment],
+        attachments: [TSResource],
         withStateIn states: Set<AttachmentDownloadState>,
         tx: SDSAnyReadTransaction
-    ) -> [AttachmentTransitPointer] {
-        return attachments.compactMap { attachment -> AttachmentTransitPointer? in
+    ) -> [TSResourcePointer] {
+        return attachments.compactMap { attachment -> TSResourcePointer? in
             guard
-                attachment.asStream() == nil,
+                attachment.asResourceStream() == nil,
                 let attachmentPointer = attachment.asTransitTierPointer()
             else {
                 return nil
@@ -101,56 +86,54 @@ public extension TSMessage {
 
     @objc
     func removeBodyMediaAttachments(tx: SDSAnyWriteTransaction) {
-        guard let sqliteRowId else { return }
-        try? DependenciesBridge.shared.attachmentManager.removeAllAttachments(
-            from: [.messageBodyAttachment(messageRowId: sqliteRowId)],
+        try? DependenciesBridge.shared.tsResourceManager.removeAttachments(
+            from: self,
+            with: .bodyAttachment,
             tx: tx.asV2Write
         )
     }
 
     @objc
     func removeOversizeTextAttachment(tx: SDSAnyWriteTransaction) {
-        guard let sqliteRowId else { return }
-        try? DependenciesBridge.shared.attachmentManager.removeAllAttachments(
-            from: [.messageOversizeText(messageRowId: sqliteRowId)],
+        try? DependenciesBridge.shared.tsResourceManager.removeAttachments(
+            from: self,
+            with: .oversizeText,
             tx: tx.asV2Write
         )
     }
 
     @objc
     func removeLinkPreviewAttachment(tx: SDSAnyWriteTransaction) {
-        guard let sqliteRowId else { return }
-        try? DependenciesBridge.shared.attachmentManager.removeAllAttachments(
-            from: [.messageLinkPreview(messageRowId: sqliteRowId)],
+        try? DependenciesBridge.shared.tsResourceManager.removeAttachments(
+            from: self,
+            with: .linkPreview,
             tx: tx.asV2Write
         )
     }
 
     @objc
     func removeStickerAttachment(tx: SDSAnyWriteTransaction) {
-        guard let sqliteRowId else { return }
-        try? DependenciesBridge.shared.attachmentManager.removeAllAttachments(
-            from: [.messageSticker(messageRowId: sqliteRowId)],
+        try? DependenciesBridge.shared.tsResourceManager.removeAttachments(
+            from: self,
+            with: .sticker,
             tx: tx.asV2Write
         )
     }
 
     @objc
     func removeContactShareAvatarAttachment(tx: SDSAnyWriteTransaction) {
-        guard let sqliteRowId else { return }
-        try? DependenciesBridge.shared.attachmentManager.removeAllAttachments(
-            from: [.messageContactAvatar(messageRowId: sqliteRowId)],
+        try? DependenciesBridge.shared.tsResourceManager.removeAttachments(
+            from: self,
+            with: .contactAvatar,
             tx: tx.asV2Write
         )
     }
 
     @objc
     func removeAllAttachments(tx: SDSAnyWriteTransaction) {
-        guard let sqliteRowId else { return }
-        try? DependenciesBridge.shared.attachmentManager.removeAllAttachments(
-            from: AttachmentReference.MessageOwnerTypeRaw.allCases.map {
-                $0.with(messageRowId: sqliteRowId)
-            },
+        try? DependenciesBridge.shared.tsResourceManager.removeAttachments(
+            from: self,
+            with: .allTypes,
             tx: tx.asV2Write
         )
     }
@@ -585,13 +568,14 @@ public extension TSMessage {
             }
         }
 
-        let mediaAttachment: ReferencedAttachment?
+        let mediaAttachment: ReferencedTSResource?
         if
-            let sqliteRowId,
-            let attachment = DependenciesBridge.shared.attachmentStore
-                .fetchFirstReferencedAttachment(for: .messageBodyAttachment(messageRowId: sqliteRowId), tx: tx.asV2Read)
+            let reference = DependenciesBridge.shared.tsResourceStore
+            .bodyMediaAttachments(for: self, tx: tx.asV2Read)
+            .first,
+            let attachment = reference.fetch(tx: tx)
         {
-            mediaAttachment = attachment
+            mediaAttachment = .init(reference: reference, attachment: attachment)
         } else {
             mediaAttachment = nil
         }
@@ -691,20 +675,12 @@ public extension TSMessage {
 
     @objc
     internal func _anyDidInsert(tx: SDSAnyWriteTransaction) {
-        do {
-            try FullTextSearchIndexer.insert(self, tx: tx)
-        } catch {
-            owsFail("Error: \(error)")
-        }
+        FullTextSearchIndexer.insert(self, tx: tx)
     }
 
     @objc
     internal func _anyDidUpdate(tx: SDSAnyWriteTransaction) {
-        do {
-            try FullTextSearchIndexer.update(self, tx: tx)
-        } catch {
-            owsFail("Error: \(error)")
-        }
+        FullTextSearchIndexer.update(self, tx: tx)
     }
 }
 
@@ -718,15 +694,11 @@ extension TSMessage {
         rowId: Int64,
         tx: SDSAnyReadTransaction
     ) -> Bool {
-        var fetchedAttachments: [AttachmentReference]?
-        func fetchAttachments() -> [AttachmentReference] {
+        var fetchedAttachments: [TSResourceReference]?
+        func fetchAttachments() -> [TSResourceReference] {
             if let fetchedAttachments { return fetchedAttachments }
-            guard let sqliteRowId else { return [] }
-            let attachments = DependenciesBridge.shared.attachmentStore.fetchReferences(
-                owners: [
-                    .messageOversizeText(messageRowId: sqliteRowId),
-                    .messageBodyAttachment(messageRowId: sqliteRowId)
-                ],
+            let attachments = DependenciesBridge.shared.tsResourceStore.bodyAttachments(
+                for: self,
                 tx: tx.asV2Read
             )
             fetchedAttachments = attachments

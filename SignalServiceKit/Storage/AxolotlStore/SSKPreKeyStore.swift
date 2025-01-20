@@ -12,17 +12,17 @@ private let tsNextPrekeyIdKey = "TSStorageInternalSettingsNextPreKeyId"
 class SSKPreKeyStore: NSObject {
 
     private let lock: NSRecursiveLock = .init()
-    private let keyStore: KeyValueStore
-    private let metadataStore: KeyValueStore
+    private let keyStore: SDSKeyValueStore
+    private let metadataStore: SDSKeyValueStore
 
     init(for identity: OWSIdentity) {
         switch identity {
         case .aci:
-            keyStore = KeyValueStore(collection: "TSStorageManagerPreKeyStoreCollection")
-            metadataStore = KeyValueStore(collection: "TSStorageInternalSettingsCollection")
+            keyStore = SDSKeyValueStore(collection: "TSStorageManagerPreKeyStoreCollection")
+            metadataStore = SDSKeyValueStore(collection: "TSStorageInternalSettingsCollection")
         case .pni:
-            keyStore = KeyValueStore(collection: "TSStorageManagerPNIPreKeyStoreCollection")
-            metadataStore = KeyValueStore(collection: "TSStorageManagerPNIPreKeyMetadataCollection")
+            keyStore = SDSKeyValueStore(collection: "TSStorageManagerPNIPreKeyStoreCollection")
+            metadataStore = SDSKeyValueStore(collection: "TSStorageManagerPNIPreKeyMetadataCollection")
         }
     }
 
@@ -39,36 +39,32 @@ class SSKPreKeyStore: NSObject {
                 preKeyId += 1
             }
 
-            metadataStore.setInt(Int(preKeyId), key: tsNextPrekeyIdKey, transaction: transaction.asV2Write)
+            metadataStore.setInt(Int(preKeyId), key: tsNextPrekeyIdKey, transaction: transaction)
             return preKeyRecords
         }
     }
 
     func storePreKeyRecords(_ preKeyRecords: [SignalServiceKit.PreKeyRecord], transaction: SDSAnyWriteTransaction) {
         for record in preKeyRecords {
-            keyStore.setPreKeyRecord(record, key: keyValueStoreKey(int: Int(record.id)), transaction: transaction)
+            keyStore.setPreKeyRecord(record, key: SDSKeyValueStore.key(int: Int(record.id)), transaction: transaction)
         }
     }
 
     func loadPreKey(_ preKeyId: Int32, transaction: SDSAnyReadTransaction) -> SignalServiceKit.PreKeyRecord? {
-        keyStore.preKeyRecord(key: keyValueStoreKey(int: Int(preKeyId)), transaction: transaction)
+        keyStore.preKeyRecord(key: SDSKeyValueStore.key(int: Int(preKeyId)), transaction: transaction)
     }
 
     func storePreKey(_ preKeyId: Int32, preKeyRecord: SignalServiceKit.PreKeyRecord, transaction: SDSAnyWriteTransaction) {
-        keyStore.setPreKeyRecord(preKeyRecord, key: keyValueStoreKey(int: Int(preKeyId)), transaction: transaction)
+        keyStore.setPreKeyRecord(preKeyRecord, key: SDSKeyValueStore.key(int: Int(preKeyId)), transaction: transaction)
     }
 
     func removePreKey(_ preKeyId: Int32, transaction: SDSAnyWriteTransaction) {
         Logger.info("Removing prekeyID: \(preKeyId)")
-        keyStore.removeValue(forKey: keyValueStoreKey(int: Int(preKeyId)), transaction: transaction.asV2Write)
-    }
-
-    private func keyValueStoreKey(int: Int) -> String {
-        return NSNumber(value: int).stringValue
+        keyStore.removeValue(forKey: SDSKeyValueStore.key(int: Int(preKeyId)), transaction: transaction)
     }
 
     func cullPreKeyRecords(transaction: SDSAnyWriteTransaction) {
-        var keys = keyStore.allKeys(transaction: transaction.asV2Read)
+        var keys = keyStore.allKeys(transaction: transaction)
         var keysToRemove = Set<String>()
 
         Batching.loop(batchSize: Batching.kDefaultBatchSize) { stop in
@@ -77,7 +73,9 @@ class SSKPreKeyStore: NSObject {
                 stop.pointee = true
                 return
             }
-            guard let record = keyStore.getObject(key, ofClass: SignalServiceKit.PreKeyRecord.self, transaction: transaction.asV2Read) else {
+            let record = keyStore.getObject(forKey: key, transaction: transaction)
+            guard let record = record as? SignalServiceKit.PreKeyRecord else {
+                owsFailDebug("Unexpected value: \(type(of: record))")
                 // TODO: Why this is not being removed is unclear, but the objc code was not removing it so keeping present behavior for now.
                 return
             }
@@ -95,7 +93,7 @@ class SSKPreKeyStore: NSObject {
         guard !keysToRemove.isEmpty else { return }
         Logger.info("Culling prekeys: \(keysToRemove.count)")
         for key in keysToRemove {
-            keyStore.removeValue(forKey: key, transaction: transaction.asV2Write)
+            keyStore.removeValue(forKey: key, transaction: transaction)
         }
     }
 
@@ -103,13 +101,13 @@ class SSKPreKeyStore: NSObject {
     func removeAll(_ transaction: SDSAnyWriteTransaction) {
         Logger.warn("")
 
-        keyStore.removeAll(transaction: transaction.asV2Write)
-        metadataStore.removeAll(transaction: transaction.asV2Write)
+        keyStore.removeAll(transaction: transaction)
+        metadataStore.removeAll(transaction: transaction)
     }
     #endif
 
     private func nextPreKeyId(transaction: SDSAnyReadTransaction) -> Int32 {
-        var lastPreKeyId = metadataStore.getInt(tsNextPrekeyIdKey, defaultValue: 0, transaction: transaction.asV2Read)
+        var lastPreKeyId = metadataStore.getInt(tsNextPrekeyIdKey, defaultValue: 0, transaction: transaction)
         if lastPreKeyId < 0 || lastPreKeyId > Int32.max {
             lastPreKeyId = 0
         }
@@ -151,12 +149,12 @@ extension SSKPreKeyStore: LibSignalClient.PreKeyStore {
 
 }
 
-extension KeyValueStore {
+extension SDSKeyValueStore {
     fileprivate func preKeyRecord(key: String, transaction: SDSAnyReadTransaction) -> SignalServiceKit.PreKeyRecord? {
-        return getObject(key, ofClass: SignalServiceKit.PreKeyRecord.self, transaction: transaction.asV2Read)
+        getObject(forKey: key, transaction: transaction) as? SignalServiceKit.PreKeyRecord
     }
 
     fileprivate func setPreKeyRecord(_ record: SignalServiceKit.PreKeyRecord, key: String, transaction: SDSAnyWriteTransaction) {
-        setObject(record, key: key, transaction: transaction.asV2Write)
+        setObject(record, key: key, transaction: transaction)
     }
 }

@@ -152,10 +152,8 @@ class AppSettingsViewController: OWSTableViewController2 {
                 icon: .settingsLinkedDevices,
                 withText: OWSLocalizedString("LINKED_DEVICES_TITLE", comment: "Menu item and navbar title for the device manager"),
                 actionBlock: { [weak self] in
-                    self?.navigationController?.pushViewController(
-                        LinkedDevicesHostingController(),
-                        animated: true
-                    )
+                    let vc = LinkedDevicesTableViewController()
+                    self?.navigationController?.pushViewController(vc, animated: true)
                 }
             ))
         }

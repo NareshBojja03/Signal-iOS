@@ -103,13 +103,13 @@ class ConversationSettingsViewController: OWSTableViewController2, BadgeCollecti
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(attachmentsAddedOrRemoved(notification:)),
-            name: MediaGalleryChangeInfo.newAttachmentsAvailableNotification,
+            name: MediaGalleryResource.newAttachmentsAvailableNotification,
             object: nil
         )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(attachmentsAddedOrRemoved(notification:)),
-            name: MediaGalleryChangeInfo.didRemoveAttachmentsNotification,
+            name: MediaGalleryResource.didRemoveAttachmentsNotification,
             object: nil
         )
     }
@@ -863,7 +863,7 @@ class ConversationSettingsViewController: OWSTableViewController2, BadgeCollecti
         navigationController?.pushViewController(tileVC, animated: true)
     }
 
-    func showMediaPageView(for attachmentStream: ReferencedAttachmentStream) {
+    func showMediaPageView(for attachmentStream: ReferencedTSResourceStream) {
         guard let vc = MediaPageViewController(
             initialMediaAttachment: attachmentStream,
             thread: thread,
@@ -879,13 +879,13 @@ class ConversationSettingsViewController: OWSTableViewController2, BadgeCollecti
 
     let maximumRecentMedia = 4
     private(set) var recentMedia = OrderedDictionary<
-        AttachmentReferenceId,
-        (attachment: ReferencedAttachmentStream, imageView: UIImageView)
+        MediaGalleryResourceId,
+        (attachment: ReferencedTSResourceStream, imageView: UIImageView)
     >() {
         didSet { AssertIsOnMainThread() }
     }
 
-    private lazy var mediaGalleryFinder = MediaGalleryAttachmentFinder(
+    private lazy var mediaGalleryFinder = MediaGalleryResourceFinder(
         thread: thread,
         filter: .defaultMediaType(for: AllMediaCategory.defaultValue)
     )
@@ -909,7 +909,7 @@ class ConversationSettingsViewController: OWSTableViewController2, BadgeCollecti
             }
 
             result.append(
-                key: attachmentStream.reference.referenceId,
+                key: attachmentStream.reference.mediaGalleryResourceId,
                 value: (attachmentStream, imageView)
             )
         })
@@ -992,7 +992,7 @@ class ConversationSettingsViewController: OWSTableViewController2, BadgeCollecti
     private func attachmentsAddedOrRemoved(notification: Notification) {
         AssertIsOnMainThread()
 
-        let attachments = notification.object as! [MediaGalleryChangeInfo]
+        let attachments = notification.object as! [MediaGalleryResource.ChangedResourceInfo]
         guard attachments.contains(where: { $0.threadGrdbId == thread.sqliteRowId }) else {
             return
         }
@@ -1083,7 +1083,7 @@ extension ConversationSettingsViewController: MediaPresentationContextProvider {
         let mediaViewShape: MediaViewShape
         switch item {
         case .gallery(let galleryItem):
-            guard let imageView = recentMedia[galleryItem.attachmentStream.reference.referenceId]?.imageView else { return nil }
+            guard let imageView = recentMedia[galleryItem.attachmentStream.reference.mediaGalleryResourceId]?.imageView else { return nil }
             mediaView = imageView
             mediaViewShape = .rectangle(imageView.layer.cornerRadius)
         case .image:

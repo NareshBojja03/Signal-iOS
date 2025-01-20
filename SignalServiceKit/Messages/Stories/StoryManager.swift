@@ -148,7 +148,7 @@ public class StoryManager: NSObject {
         } else if existingStory == nil {
             let message = try StoryMessage.create(withSentTranscript: proto, transaction: transaction)
 
-            DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(message, tx: transaction.asV2Write)
+            DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(message, tx: transaction.asV2Write)
 
             SSKEnvironment.shared.disappearingMessagesJobRef.scheduleRun(by: message.timestamp + storyLifetimeMillis)
 
@@ -213,7 +213,7 @@ public class StoryManager: NSObject {
 
     @objc
     public class func hasSetMyStoriesPrivacy(transaction: SDSAnyReadTransaction) -> Bool {
-        return keyValueStore.getBool(hasSetMyStoriesPrivacyKey, defaultValue: false, transaction: transaction.asV2Read)
+        return keyValueStore.getBool(hasSetMyStoriesPrivacyKey, defaultValue: false, transaction: transaction)
     }
 
     @objc
@@ -226,7 +226,7 @@ public class StoryManager: NSObject {
             // Don't trigger account record updates unneccesarily!
             return
         }
-        keyValueStore.setBool(hasSet, key: hasSetMyStoriesPrivacyKey, transaction: transaction.asV2Write)
+        keyValueStore.setBool(hasSet, key: hasSetMyStoriesPrivacyKey, transaction: transaction)
         if shouldUpdateStorageService {
             SSKEnvironment.shared.storageServiceManagerRef.recordPendingLocalAccountUpdates()
         }
@@ -240,17 +240,14 @@ public class StoryManager: NSObject {
     /// * We have not already exceeded the limit for how many unviewed stories we should download for this context
     private class func startAutomaticDownloadIfNecessary(for message: StoryMessage, transaction: SDSAnyWriteTransaction) {
 
-        let attachmentPointerToDownload: AttachmentTransitPointer?
+        let attachmentPointerToDownload: TSResourcePointer?
         switch message.attachment {
-        case .media:
-            let attachment = message.id.map { rowId in
-                return DependenciesBridge.shared.attachmentStore
-                    .fetchFirstReferencedAttachment(
-                        for: .storyMessageMedia(storyMessageRowId: rowId),
-                        tx: transaction.asV2Read
-                    )?.attachment
-            } ?? nil
-            if attachment?.asStream() != nil {
+        case .file, .foreignReferenceAttachment:
+            let attachment = DependenciesBridge.shared.tsResourceStore.mediaAttachment(
+                for: message,
+                tx: transaction.asV2Read
+            )?.fetch(tx: transaction)
+            if attachment?.asResourceStream() != nil {
                 // Already downloaded!
                 return
             } else {
@@ -259,13 +256,13 @@ public class StoryManager: NSObject {
         case .text:
             // We always auto-download non-file story attachments, this will generally only be link preview thumbnails.
             Logger.info("Automatically enqueueing download of non-file based story with timestamp \(message.timestamp)")
-            DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(message, tx: transaction.asV2Write)
+            DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(message, tx: transaction.asV2Write)
             return
         }
 
         guard
             let attachmentPointer = attachmentPointerToDownload,
-            attachmentPointer.attachment.asStream() == nil
+            attachmentPointer.resource.asResourceStream() == nil
         else {
             // Already downloaded or couldn't find it, nothing to do.
             return
@@ -277,12 +274,12 @@ public class StoryManager: NSObject {
             switch otherMessage.attachment {
             case .text:
                 unviewedDownloadedStoriesForContext += 1
-            case .media:
+            case .file, .foreignReferenceAttachment:
                 guard let attachment = otherMessage.fileAttachment(tx: transaction) else {
                     owsFailDebug("Missing attachment")
                     return
                 }
-                if attachment.attachment.asStream() != nil {
+                if attachment.attachment.asResourceStream() != nil {
                     unviewedDownloadedStoriesForContext += 1
                 } else if
                     let pointer = attachment.attachment.asTransitTierPointer(),
@@ -299,6 +296,10 @@ public class StoryManager: NSObject {
 
         guard unviewedDownloadedStoriesForContext < perContextAutomaticDownloadLimit else {
             Logger.info("Skipping automatic download of attachments for story with timestamp \(message.timestamp), automatic download limit exceeded for context \(message.context)")
+            DependenciesBridge.shared.tsResourceManager.markPointerAsPendingManualDownload(
+                attachmentPointer,
+                tx: transaction.asV2Write
+            )
             return
         }
 
@@ -318,6 +319,10 @@ public class StoryManager: NSObject {
             Self.enqueueDownloadOfAttachmentsForStoryMessage(message, tx: transaction.asV2Write)
         } else {
             Logger.info("Skipping automatic download of attachments for story with timestamp \(message.timestamp), context \(message.context) not recently active")
+            DependenciesBridge.shared.tsResourceManager.markPointerAsPendingManualDownload(
+                attachmentPointer,
+                tx: transaction.asV2Write
+            )
         }
     }
 
@@ -326,7 +331,7 @@ public class StoryManager: NSObject {
         _ message: StoryMessage,
         tx: DBWriteTransaction
     ) {
-        DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(
+        DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(
             message,
             tx: tx
         )
@@ -340,7 +345,7 @@ public extension Notification.Name {
 }
 
 extension StoryManager {
-    private static let keyValueStore = KeyValueStore(collection: "StoryManager")
+    private static let keyValueStore = SDSKeyValueStore(collection: "StoryManager")
     private static let areStoriesEnabledKey = "areStoriesEnabled"
 
     private static var areStoriesEnabledCache = AtomicBool(true, lock: .sharedGlobal)
@@ -350,7 +355,7 @@ extension StoryManager {
     public static var areStoriesEnabled: Bool { areStoriesEnabledCache.get() }
 
     public static func setAreStoriesEnabled(_ areStoriesEnabled: Bool, shouldUpdateStorageService: Bool = true, transaction: SDSAnyWriteTransaction) {
-        keyValueStore.setBool(areStoriesEnabled, key: areStoriesEnabledKey, transaction: transaction.asV2Write)
+        keyValueStore.setBool(areStoriesEnabled, key: areStoriesEnabledKey, transaction: transaction)
         areStoriesEnabledCache.set(areStoriesEnabled)
 
         if shouldUpdateStorageService {
@@ -364,7 +369,7 @@ extension StoryManager {
 
     /// Have stories been enabled by the local user. This never factors in any remote information, like is the feature available to the user.
     public static func areStoriesEnabled(transaction: SDSAnyReadTransaction) -> Bool {
-        keyValueStore.getBool(areStoriesEnabledKey, defaultValue: true, transaction: transaction.asV2Read)
+        keyValueStore.getBool(areStoriesEnabledKey, defaultValue: true, transaction: transaction)
     }
 
     private static func cacheAreStoriesEnabled() {
@@ -411,12 +416,12 @@ extension StoryManager {
     @Atomic public private(set) static var areViewReceiptsEnabled: Bool = false
 
     public static func areViewReceiptsEnabled(transaction: SDSAnyReadTransaction) -> Bool {
-        keyValueStore.getBool(areViewReceiptsEnabledKey, transaction: transaction.asV2Read) ?? OWSReceiptManager.areReadReceiptsEnabled(transaction: transaction)
+        keyValueStore.getBool(areViewReceiptsEnabledKey, transaction: transaction) ?? OWSReceiptManager.areReadReceiptsEnabled(transaction: transaction)
     }
 
     // TODO: should this live on OWSReceiptManager?
     public static func setAreViewReceiptsEnabled(_ enabled: Bool, shouldUpdateStorageService: Bool = true, transaction: SDSAnyWriteTransaction) {
-        keyValueStore.setBool(enabled, key: areViewReceiptsEnabledKey, transaction: transaction.asV2Write)
+        keyValueStore.setBool(enabled, key: areViewReceiptsEnabledKey, transaction: transaction)
         areViewReceiptsEnabled = enabled
 
         if shouldUpdateStorageService {

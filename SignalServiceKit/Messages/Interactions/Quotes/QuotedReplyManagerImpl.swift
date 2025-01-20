@@ -8,16 +8,16 @@ import LibSignalClient
 
 public class QuotedReplyManagerImpl: QuotedReplyManager {
 
-    private let attachmentManager: AttachmentManager
-    private let attachmentStore: AttachmentStore
-    private let attachmentValidator: AttachmentContentValidator
+    private let attachmentManager: TSResourceManager
+    private let attachmentStore: TSResourceStore
+    private let attachmentValidator: TSResourceContentValidator
     private let db: any DB
     private let tsAccountManager: TSAccountManager
 
     public init(
-        attachmentManager: AttachmentManager,
-        attachmentStore: AttachmentStore,
-        attachmentValidator: AttachmentContentValidator,
+        attachmentManager: TSResourceManager,
+        attachmentStore: TSResourceStore,
+        attachmentValidator: TSResourceContentValidator,
         db: any DB,
         tsAccountManager: TSAccountManager
     ) {
@@ -107,8 +107,7 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 bodyRanges: nil,
                 bodySource: .remote,
                 receivedQuotedAttachmentInfo: nil,
-                isGiftBadge: true,
-                isTargetMessageViewOnce: false
+                isGiftBadge: true
             ))
         }
 
@@ -127,16 +126,30 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
             do {
                 let thumbnailAttachmentBuilder = try attachmentManager.createAttachmentPointerBuilder(
                     from: thumbnailProto,
+                    ownerType: .message,
                     tx: tx
                 )
-                attachmentBuilder = thumbnailAttachmentBuilder.wrap {
-                    return QuotedAttachmentInfo(
-                        info: .forThumbnailReference(
-                            withOriginalAttachmentMimeType: mimeType,
-                            originalAttachmentSourceFilename: sourceFilename
-                        ),
-                        renderingFlag: .fromProto(thumbnailProto)
-                    )
+                attachmentBuilder = thumbnailAttachmentBuilder.wrap { attachmentInfo in
+                    switch attachmentInfo {
+                    case .legacy(let attachmentId):
+                        return QuotedAttachmentInfo(
+                            info: .withLegacyAttachmentId(
+                                attachmentId,
+                                ofType: .untrustedPointer,
+                                originalAttachmentMimeType: mimeType,
+                                originalAttachmentSourceFilename: sourceFilename
+                            ),
+                            renderingFlag: .fromProto(thumbnailProto)
+                        )
+                    case .v2:
+                        return QuotedAttachmentInfo(
+                            info: .forV2ThumbnailReference(
+                                withOriginalAttachmentMimeType: mimeType,
+                                originalAttachmentSourceFilename: sourceFilename
+                            ),
+                            renderingFlag: .fromProto(thumbnailProto)
+                        )
+                    }
                 }
             } catch {
                 // Invalid proto!
@@ -167,8 +180,7 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 bodyRanges: bodyRanges,
                 bodySource: .remote,
                 receivedQuotedAttachmentInfo: attachmentInfo?.info,
-                isGiftBadge: false,
-                isTargetMessageViewOnce: false
+                isGiftBadge: false
             )
         }
 
@@ -206,15 +218,18 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
 
         if originalMessage.isViewOnceMessage {
             // We construct a quote that does not include any of the quoted message's renderable content.
+            let body = OWSLocalizedString(
+                "PER_MESSAGE_EXPIRATION_NOT_VIEWABLE",
+                comment: "inbox cell and notification text for an already viewed view-once media message."
+            )
             return .withoutFinalizer(TSQuotedMessage(
                 timestamp: originalMessage.timestamp,
                 authorAddress: authorAddress,
-                body: nil,
+                body: body,
                 bodyRanges: nil,
                 bodySource: .local,
                 receivedQuotedAttachmentInfo: nil,
-                isGiftBadge: false,
-                isTargetMessageViewOnce: true
+                isGiftBadge: false
             ))
         }
 
@@ -284,8 +299,7 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 bodyRanges: bodyRanges,
                 bodySource: .local,
                 receivedQuotedAttachmentInfo: attachmentInfo?.info,
-                isGiftBadge: isGiftBadge,
-                isTargetMessageViewOnce: false
+                isGiftBadge: isGiftBadge
             )
         }
 
@@ -308,22 +322,24 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
         }
 
         if
-            let originalMessageRowId = originalMessage.sqliteRowId,
             let originalReference = attachmentStore.attachmentToUseInQuote(
-                originalMessageRowId: originalMessageRowId,
+                originalMessage: originalMessage,
                 tx: tx
             ),
             let originalAttachment = attachmentStore.fetch(
-                id: originalReference.attachmentRowId,
+                [originalReference.resourceId],
                 tx: tx
-            )
+            ).first
         {
-            return attachmentManager.createQuotedReplyMessageThumbnailBuilder(
-                from: .fromOriginalAttachment(
-                    originalAttachment,
-                    originalReference: originalReference,
-                    thumbnailPointerFromSender: quoteProto.attachments.first?.thumbnail
-                ),
+            guard let originalMessageRowId = originalMessage.sqliteRowId else {
+                owsFailDebug("Quoting uninserted message")
+                return nil
+            }
+            return attachmentManager.newQuotedReplyMessageThumbnailBuilder(
+                originalAttachment: originalAttachment,
+                originalReference: originalReference,
+                fallbackQuoteProto: quoteProto,
+                originalMessageRowId: originalMessageRowId,
                 tx: tx
             )
         } else {
@@ -400,12 +416,9 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
 
         if originalMessage.messageSticker != nil {
             guard
-                let originalMessageRowId = originalMessage.sqliteRowId,
-                let attachment = attachmentStore.fetchFirstReferencedAttachment(
-                    for: .messageSticker(messageRowId: originalMessageRowId),
-                    tx: tx
-                ),
-                let stickerData = try? attachment.attachment.asStream()?.decryptedRawData()
+                let attachmentRef = attachmentStore.stickerAttachment(for: originalMessage, tx: tx),
+                let attachment = attachmentStore.fetch(attachmentRef.resourceId, tx: tx),
+                let stickerData = try? attachment.asResourceStream()?.decryptedRawData()
             else {
                 owsFailDebug("Couldn't load sticker data")
                 return nil
@@ -461,20 +474,18 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
 
             return createDraftReply(content: .attachment(
                 nil,
-                attachmentRef: attachment.reference,
-                attachment: attachment.attachment,
+                attachmentRef: attachmentRef,
+                attachment: attachment,
                 thumbnailImage: resizedThumbnailImage
             ))
         }
 
-        if
-            let originalMessageRowId = originalMessage.sqliteRowId,
-            let attachmentRef = attachmentStore.attachmentToUseInQuote(originalMessageRowId: originalMessageRowId, tx: tx)
-        {
-            let attachment = attachmentStore.fetch(id: attachmentRef.attachmentRowId, tx: tx)
+        if let attachmentRef = attachmentStore.attachmentToUseInQuote(originalMessage: originalMessage, tx: tx) {
+            let attachment = attachmentStore.fetch(attachmentRef.resourceId, tx: tx)
             if
-                let stream = attachment?.asStream(),
-                stream.contentType.isVisualMedia,
+                let stream = attachment?.asResourceStream(),
+                stream.cachedContentType?.isVisualMedia
+                    ?? MimeTypeUtil.isSupportedVisualMediaMimeType(stream.mimeType),
                 let thumbnailImage = stream.thumbnailImageSync(quality: .small)
             {
 
@@ -490,14 +501,14 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 return createDraftReply(content: .attachment(
                     originalMessageBody(),
                     attachmentRef: attachmentRef,
-                    attachment: stream.attachment,
+                    attachment: stream,
                     thumbnailImage: resizedThumbnailImage
                 ))
             } else if attachment?.mimeType == MimeType.textXSignalPlain.rawValue {
                 // If the attachment is "oversize text", try the quote as a reply to text, not as
                 // a reply to an attachment.
                 if
-                    let oversizeTextData = try? attachment?.asStream()?.decryptedRawData(),
+                    let oversizeTextData = try? attachment?.asResourceStream()?.decryptedRawData(),
                     let oversizeText = String(data: oversizeTextData, encoding: .utf8)
                 {
                     // We don't need to include the entire text body of the message, just
@@ -516,7 +527,7 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                     originalMessageBody(),
                     attachmentRef: attachmentRef,
                     attachment: attachment,
-                    thumbnailImage: attachment.blurHash.flatMap(BlurHash.image(for:))
+                    thumbnailImage: attachment.resourceBlurHash.flatMap(BlurHash.image(for:))
                 ))
             } else if
                 let stub = QuotedMessageAttachmentReference.Stub(
@@ -581,12 +592,12 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 {
                     switch attachmentReference {
                     case .thumbnail(let attachmentRef):
-                        if let attachment = attachmentStore.fetch(id: attachmentRef.attachmentRowId, tx: tx) {
+                        if let attachment = attachmentStore.fetch(attachmentRef.resourceId, tx: tx) {
                             return .attachment(
                                 messageBody,
                                 attachmentRef: attachmentRef,
                                 attachment: attachment,
-                                thumbnailImage: attachment.asStream()?.thumbnailImageSync(quality: .small)
+                                thumbnailImage: attachment.asResourceStream()?.thumbnailImageSync(quality: .small)
                             )
                         } else if let messageBody {
                             return .text(messageBody)
@@ -626,7 +637,6 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 originalMessageTimestamp: draft.originalMessageTimestamp,
                 originalMessageAuthorAddress: draft.originalMessageAuthorAddress,
                 originalMessageIsGiftBadge: draft.content.isGiftBadge,
-                originalMessageIsViewOnce: draft.content.isViewOnce,
                 threadUniqueId: draft.threadUniqueId,
                 quoteBody: draft.bodyForSending,
                 attachment: nil,
@@ -639,8 +649,8 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
         // Find the original message and any attachment
         let (originalMessage, originalAttachmentReference, originalAttachment): (
             TSMessage?,
-            AttachmentReference?,
-            Attachment?
+            TSResourceReference?,
+            TSResource?
         ) = db.read { tx in
             guard
                 let originalMessageTimestamp = draft.originalMessageTimestamp,
@@ -654,32 +664,46 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 return (nil, nil, nil)
             }
             let attachmentReference = attachmentStore.attachmentToUseInQuote(
-                originalMessageRowId: originalMessage.sqliteRowId!,
+                originalMessage: originalMessage,
                 tx: tx
             )
-            let attachment = attachmentStore.fetch(ids: [attachmentReference?.attachmentRowId].compacted(), tx: tx).first
+            let attachment = attachmentStore.fetch([attachmentReference?.resourceId].compacted(), tx: tx).first
             return (originalMessage, attachmentReference, attachment)
         }
+        guard let originalMessage else {
+            return .init(
+                originalMessageTimestamp: draft.originalMessageTimestamp,
+                originalMessageAuthorAddress: draft.originalMessageAuthorAddress,
+                originalMessageIsGiftBadge: draft.content.isGiftBadge,
+                threadUniqueId: draft.threadUniqueId,
+                quoteBody: draft.bodyForSending,
+                attachment: nil,
+                quotedMessageFromEdit: nil
+            )
+        }
+        // We just fetched it, safe to unwrap.
+        let originalMessageRowId = originalMessage.sqliteRowId!
 
         let quoteAttachment = { () -> DraftQuotedReplyModel.ForSending.Attachment? in
             guard let originalAttachmentReference, let originalAttachment else {
                 return nil
             }
             let isVisualMedia: Bool = {
-                if let contentType = originalAttachment.asStream()?.contentType {
-                    return contentType.isVisualMedia
+                if let cachedContentType = originalAttachment.asResourceStream()?.cachedContentType {
+                    return cachedContentType.isVisualMedia
                 } else {
                     return MimeTypeUtil.isSupportedVisualMediaMimeType(originalAttachment.mimeType)
                 }
             }()
-            guard isVisualMedia, let originalAttachmentStream = originalAttachment.asStream() else {
+            guard isVisualMedia, let originalAttachmentStream = originalAttachment.asResourceStream() else {
                 // Just return a stub for non-visual or undownloaded media.
                 return .stub(.init(mimeType: originalAttachment.mimeType, sourceFilename: originalAttachmentReference.sourceFilename))
             }
             do {
                 let dataSource = try attachmentValidator.prepareQuotedReplyThumbnail(
                     fromOriginalAttachment: originalAttachmentStream,
-                    originalReference: originalAttachmentReference
+                    originalReference: originalAttachmentReference,
+                    originalMessageRowId: originalMessageRowId
                 )
                 return .thumbnail(dataSource: dataSource)
             } catch {
@@ -692,7 +716,6 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
             originalMessageTimestamp: draft.originalMessageTimestamp,
             originalMessageAuthorAddress: draft.originalMessageAuthorAddress,
             originalMessageIsGiftBadge: draft.content.isGiftBadge,
-            originalMessageIsViewOnce: draft.content.isViewOnce,
             threadUniqueId: draft.threadUniqueId,
             quoteBody: draft.bodyForSending,
             attachment: quoteAttachment,
@@ -728,8 +751,7 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 bodyRanges: nil,
                 bodySource: .remote,
                 quotedAttachmentInfo: nil,
-                isGiftBadge: false,
-                isTargetMessageViewOnce: false
+                isGiftBadge: false
             ))
         }
 
@@ -742,8 +764,7 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 body: body?.text,
                 bodyRanges: body?.ranges,
                 quotedAttachmentForSending: attachmentInfo?.info,
-                isGiftBadge: draft.originalMessageIsGiftBadge,
-                isTargetMessageViewOnce: draft.originalMessageIsViewOnce
+                isGiftBadge: draft.originalMessageIsGiftBadge
             )
         }
 
@@ -761,10 +782,15 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
                 renderingFlag: .default
             )))
         case .thumbnail(let dataSource):
-            let attachmentBuilder = attachmentManager.createQuotedReplyMessageThumbnailBuilder(
-                from: dataSource,
-                tx: tx
-            )
+            guard
+                let attachmentBuilder = attachmentManager.newQuotedReplyMessageThumbnailBuilder(
+                    from: dataSource,
+                    fallbackQuoteProto: nil,
+                    tx: tx
+                )
+            else {
+                return .withoutFinalizer(buildQuotedMessage(nil))
+            }
             return attachmentBuilder.wrap(buildQuotedMessage(_:))
         }
     }
@@ -818,15 +844,6 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
             quoteBuilder.setType(.giftBadge)
         }
 
-        if quote.isTargetMessageViewOnce {
-            if !hasQuotedText {
-                quoteBuilder.setText(OWSLocalizedString(
-                    "PER_MESSAGE_EXPIRATION_NOT_VIEWABLE",
-                    comment: "inbox cell and notification text for an already viewed view-once media message."
-                ))
-            }
-        }
-
         guard hasQuotedText || hasQuotedAttachment || hasQuotedGiftBadge else {
             throw OWSAssertionError("Invalid quoted message data.")
         }
@@ -852,18 +869,18 @@ public class QuotedReplyManagerImpl: QuotedReplyManager {
 
             if
                 let attachment = attachmentStore.fetch(
-                    id: attachmentRef.attachmentRowId,
+                    attachmentRef.resourceId,
                     tx: tx
                 )
             {
                 mimeType = attachment.mimeType
                 if
-                    let pointer = attachment.asTransitTierPointer()
-                {
-                    let attachmentProto = attachmentManager.buildProtoForSending(
+                    let pointer = attachment.asTransitTierPointer(),
+                    let attachmentProto = DependenciesBridge.shared.tsResourceManager.buildProtoForSending(
                         from: attachmentRef,
                         pointer: pointer
                     )
+                {
                     builder.setThumbnail(attachmentProto)
                 }
             } else {

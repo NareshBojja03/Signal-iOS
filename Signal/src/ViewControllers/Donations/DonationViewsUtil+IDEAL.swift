@@ -250,9 +250,10 @@ extension DonationViewsUtil {
                 guard let monthlyDonation = donationStore.getPendingSubscription(tx: tx.asV2Read) else {
                     return .value(nil)
                 }
-                return Promise.wrapAsync {
-                    try await SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(monthlyDonation.newSubscriptionLevel.badge)
-                }.map {
+                return SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(
+                    monthlyDonation.newSubscriptionLevel.badge
+                )
+                .map {
                     return monthlyDonation.newSubscriptionLevel.badge
                 }
             }

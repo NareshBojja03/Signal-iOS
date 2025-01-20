@@ -70,19 +70,14 @@ extension Upload.CDN0 {
         var textParts = uploadForm.asOrderedDictionary
         textParts.append(key: "Content-Type", value: MimeType.applicationOctetStream.rawValue)
 
-        do {
-            _ = try await cdn0UrlSession.performMultiPartUpload(
-                request: request,
-                fileUrl: dataFileUrl,
-                name: "file",
-                fileName: "file",
-                mimeType: MimeType.applicationOctetStream.rawValue,
-                textParts: textParts
-            )
-        } catch {
-            Logger.warn("\(error)")
-            throw error
-        }
+        _ = try await cdn0UrlSession.multiPartUploadTaskPromise(
+            request: request,
+            fileUrl: dataFileUrl,
+            name: "file",
+            fileName: "file",
+            mimeType: MimeType.applicationOctetStream.rawValue,
+            textParts: textParts
+        ).awaitable()
 
         return uploadForm.key
     }

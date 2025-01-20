@@ -64,23 +64,12 @@ final class MessageBackupGroupUpdateMessageArchiver {
         case .precomputed(let persistableGroupUpdateItemsWrapper):
             groupUpdateItems = persistableGroupUpdateItemsWrapper.updateItems
         }
-        return archiveGroupUpdateItems(
-            groupUpdateItems,
-            for: infoMessage,
-            context: context
-        )
-    }
 
-    func archiveGroupUpdateItems(
-        _ groupUpdateItems: [TSInfoMessage.PersistableGroupUpdateItem],
-        for interaction: TSInteraction,
-        context: MessageBackup.ChatArchivingContext
-    ) -> ArchiveChatUpdateMessageResult {
         var partialErrors = [ArchiveFrameError]()
 
         let contentsResult = Self.archiveGroupUpdates(
             groupUpdates: groupUpdateItems,
-            interactionId: interaction.uniqueInteractionId,
+            interactionId: infoMessage.uniqueInteractionId,
             localIdentifiers: context.recipientContext.localIdentifiers,
             partialErrors: &partialErrors
         )
@@ -100,7 +89,7 @@ final class MessageBackupGroupUpdateMessageArchiver {
         let details = Details(
             author: context.recipientContext.localRecipientId,
             directionalDetails: .directionless(directionlessDetails),
-            dateCreated: interaction.timestamp,
+            dateCreated: infoMessage.timestamp,
             expireStartDate: nil,
             expiresInMs: nil,
             isSealedSender: false,
@@ -234,20 +223,11 @@ final class MessageBackupGroupUpdateMessageArchiver {
             groupThread: groupThread,
             updateItems: persistableUpdates
         )
-
-        guard let directionalDetails = chatItem.directionalDetails else {
-            return .messageFailure([.restoreFrameError(
-                .invalidProtoData(.chatItemMissingDirectionalDetails),
-                chatItem.id
-            )])
-        }
-
         do {
             try interactionStore.insert(
                 infoMessage,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                directionalDetails: directionalDetails,
                 context: context
             )
         } catch let error {

@@ -222,8 +222,16 @@ class ChatsSettingsViewController: OWSTableViewController2 {
             )
 
             StoryMessage.anyRemoveAllWithInstantiation(transaction: transaction)
+            // V2 attachments have owner deletion cascade rules defined in sql,
+            // no need for an explicit delete here.
+            TSAttachment.anyRemoveAllWithInstantiation(transaction: transaction)
+
+            // Deleting attachments above should be enough to remove any gallery items, but
+            // we redunantly clean up *all* gallery items to be safe.
+            MediaGalleryRecordManager.didRemoveAllContent(transaction: transaction)
         }
 
+        TSAttachmentStream.deleteAttachmentsFromDisk()
         AttachmentStream.deleteAllAttachmentFiles()
     }
 }

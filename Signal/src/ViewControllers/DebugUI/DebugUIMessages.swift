@@ -1219,8 +1219,8 @@ class DebugUIMessages: DebugUIPage {
     private enum FakeMessageContent {
         case incomingTextOnly(String)
         case outgoingTextOnly(String)
-        case outgoingAttachments([AttachmentDataSource])
-        case incomingAttachments([AttachmentDataSource])
+        case outgoingAttachments([TSResourceDataSource])
+        case incomingAttachments([TSResourceDataSource])
     }
 
     private static func createFakeMessageContents(
@@ -1244,28 +1244,32 @@ class DebugUIMessages: DebugUIPage {
             case 1:
                 contents.append(.outgoingTextOnly(randomText))
             case 2:
-                let attachmentDataSource = try DependenciesBridge.shared.attachmentContentValidator.validateContents(
+                let attachmentDataSource = try DependenciesBridge.shared.tsResourceContentValidator.validateContents(
                     data: UIImage.image(color: .blue, size: .square(100)).jpegData(compressionQuality: 0.1)!,
                     mimeType: "image/jpg",
+                    sourceFilename: "test.jpg",
+                    caption: nil,
                     renderingFlag: .default,
-                    sourceFilename: "test.jpg"
+                    ownerType: .message
                 )
-                contents.append(.incomingAttachments([.from(pendingAttachment: attachmentDataSource)]))
+                contents.append(.incomingAttachments([attachmentDataSource]))
             case 3:
                 let attachmentCount = Int.random(in: 0...SignalAttachment.maxAttachmentsAllowed)
-                var attachmentDataSources = [AttachmentDataSource]()
+                var attachmentDataSources = [TSResourceDataSource]()
                 for _ in (0..<attachmentCount) {
-                    let dataSource = try DependenciesBridge.shared.attachmentContentValidator.validateContents(
+                    let dataSource = try DependenciesBridge.shared.tsResourceContentValidator.validateContents(
                         dataSource: DataSourceValue(
                             ImageFactory().buildPNGData(),
                             fileExtension: "png"
                         ),
                         shouldConsume: true,
                         mimeType: "image/png",
+                        sourceFilename: "test.png",
+                        caption: nil,
                         renderingFlag: .default,
-                        sourceFilename: "test.png"
+                        ownerType: .message
                     )
-                    attachmentDataSources.append(.from(pendingAttachment: dataSource))
+                    attachmentDataSources.append(dataSource)
                 }
                 contents.append(.outgoingAttachments(attachmentDataSources))
             default:
@@ -1315,19 +1319,9 @@ class DebugUIMessages: DebugUIPage {
                 message.anyInsert(transaction: transaction)
                 message.debugonly_markAsReadNow(transaction: transaction)
 
-                try? DependenciesBridge.shared.attachmentManager.createAttachmentStreams(
-                    consuming: dataSources.map { dataSource in
-                        return .init(
-                            dataSource: dataSource,
-                            owner: .messageBodyAttachment(.init(
-                                messageRowId: message.sqliteRowId!,
-                                receivedAtTimestamp: message.receivedAtTimestamp,
-                                threadRowId: thread.sqliteRowId!,
-                                isViewOnce: message.isViewOnceMessage,
-                                isPastEditRevision: message.isPastEditRevision()
-                            ))
-                        )
-                    },
+                try? DependenciesBridge.shared.tsResourceManager.createBodyMediaAttachmentStreams(
+                    consuming: dataSources,
+                    message: message,
                     tx: transaction.asV2Write
                 )
 
@@ -1366,7 +1360,7 @@ class DebugUIMessages: DebugUIPage {
         if let groupThread = thread as? TSGroupThread, groupThread.isGroupV2Thread {
             let groupModel = groupThread.groupModel as! TSGroupModelV2
 
-            let groupContext = try! GroupsV2Protos.buildGroupContextProto(groupModel: groupModel, groupChangeProtoData: nil)
+            let groupContext = try! SSKEnvironment.shared.groupsV2Ref.buildGroupContextV2Proto(groupModel: groupModel, changeActionsProtoData: nil)
             dataMessageBuilder.setGroupV2(groupContext)
         }
 
@@ -1664,8 +1658,7 @@ class DebugUIMessages: DebugUIPage {
             owner: .quotedReplyAttachment(.init(
                 messageRowId: message.sqliteRowId!,
                 receivedAtTimestamp: message.receivedAtTimestamp,
-                threadRowId: thread.sqliteRowId!,
-                isPastEditRevision: message.isPastEditRevision()
+                threadRowId: thread.sqliteRowId!
             )),
             tx: transaction.asV2Write
         )
@@ -1781,8 +1774,7 @@ class DebugUIMessages: DebugUIPage {
             owner: .quotedReplyAttachment(.init(
                 messageRowId: message.sqliteRowId!,
                 receivedAtTimestamp: message.receivedAtTimestamp,
-                threadRowId: thread.sqliteRowId!,
-                isPastEditRevision: message.isPastEditRevision()
+                threadRowId: thread.sqliteRowId!
             )),
             tx: transaction.asV2Write
         )

@@ -18,6 +18,7 @@ class LocalUsernameManagerTests: XCTestCase {
     private var mockUsernameApiClient: MockUsernameApiClient!
     private var mockUsernameLinkManager: MockUsernameLinkManager!
 
+    private var kvStoreFactory: KeyValueStoreFactory!
     private var kvStore: KeyValueStore!
 
     private var localUsernameManager: LocalUsernameManager!
@@ -31,7 +32,8 @@ class LocalUsernameManagerTests: XCTestCase {
         mockUsernameApiClient = MockUsernameApiClient()
         mockUsernameLinkManager = MockUsernameLinkManager()
 
-        kvStore = KeyValueStore(collection: "localUsernameManager")
+        kvStoreFactory = InMemoryKeyValueStoreFactory()
+        kvStore = kvStoreFactory.keyValueStore(collection: "localUsernameManager")
 
         setLocalUsernameManager(maxNetworkRequestRetries: 0)
     }
@@ -39,6 +41,7 @@ class LocalUsernameManagerTests: XCTestCase {
     private func setLocalUsernameManager(maxNetworkRequestRetries: Int) {
         localUsernameManager = LocalUsernameManagerImpl(
             db: mockDB,
+            kvStoreFactory: kvStoreFactory,
             reachabilityManager: mockReachabilityManager,
             schedulers: TestSchedulers(scheduler: testScheduler),
             storageServiceManager: mockStorageServiceManager,
@@ -92,7 +95,7 @@ class LocalUsernameManagerTests: XCTestCase {
     }
 
     func testUsernameQRCodeColorChanges() {
-        func color() -> SignalBrandedQRCodes.QRCodeColor {
+        func color() -> Usernames.QRCodeColor {
             return mockDB.read { tx in
                 return localUsernameManager.usernameLinkQRCodeColor(tx: tx)
             }
@@ -752,7 +755,7 @@ private extension Usernames.RemoteMutationResult<Void> {
 
 private extension OWSHTTPError {
     static var mockNetworkFailure: OWSHTTPError {
-        return .networkFailure
+        return .networkFailure(requestUrl: URL(string: "https://signal.org")!)
     }
 }
 
@@ -787,10 +790,7 @@ private class MockStorageServiceManager: StorageServiceManager {
         didRecordPendingLocalAccountUpdates = true
     }
 
-    func setLocalIdentifiers(_ localIdentifiers: LocalIdentifiers) { owsFail("Not implemented!") }
-    func currentManifestVersion(tx: DBReadTransaction) -> UInt64 { owsFail("Not implemented") }
-    func currentManifestHasRecordIkm(tx: DBReadTransaction) -> Bool { owsFail("Not implemented") }
-    func waitForPendingRestores() -> Promise<Void> { owsFail("Not implemented") }
+    func waitForPendingRestores() -> Promise<Void> { Promise.value(()) }
     func resetLocalData(transaction: DBWriteTransaction) { owsFail("Not implemented!") }
     func recordPendingUpdates(updatedRecipientUniqueIds: [RecipientUniqueId]) { owsFail("Not implemented!") }
     func recordPendingUpdates(updatedAddresses: [SignalServiceAddress]) { owsFail("Not implemented!") }
@@ -798,7 +798,7 @@ private class MockStorageServiceManager: StorageServiceManager {
     func recordPendingUpdates(updatedStoryDistributionListIds: [Data]) { owsFail("Not implemented!") }
     func recordPendingUpdates(callLinkRootKeys: [CallLinkRootKey]) { owsFail("Not implemented!") }
     func recordPendingUpdates(groupModel: TSGroupModel) { owsFail("Not implemented!") }
+    func setLocalIdentifiers(_ localIdentifiers: LocalIdentifiersObjC) { owsFail("Not implemented!") }
     func backupPendingChanges(authedDevice: AuthedDevice) { owsFail("Not implemented!") }
     func restoreOrCreateManifestIfNecessary(authedDevice: AuthedDevice) -> Promise<Void> { owsFail("Not implemented!") }
-    func rotateManifest(mode: ManifestRotationMode, authedDevice: AuthedDevice) async throws { owsFail("Not implemented!") }
 }

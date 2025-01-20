@@ -62,8 +62,8 @@ public class StickerManager: NSObject {
 
     // MARK: - Properties
 
-    public static let store = KeyValueStore(collection: "recentStickers")
-    public static let emojiMapStore = KeyValueStore(collection: "emojiMap")
+    public static let store = SDSKeyValueStore(collection: "recentStickers")
+    public static let emojiMapStore = SDSKeyValueStore(collection: "emojiMap")
 
     public enum InstallMode: Int {
         case doNotInstall
@@ -79,15 +79,11 @@ public class StickerManager: NSObject {
 
     // MARK: - Initializers
 
-    init(
-        appReadiness: AppReadiness,
-        dateProvider: @escaping DateProvider
-    ) {
+    init(appReadiness: AppReadiness) {
 
         // Task queue to install any sticker packs restored from a backup
         self.queueLoader = TaskQueueLoader(
             maxConcurrentTasks: 4,
-            dateProvider: dateProvider,
             db: DependenciesBridge.shared.db,
             runner: StickerPackDownloadTaskRunner(
                 store: StickerPackDownloadTaskRecordStore(
@@ -1232,7 +1228,7 @@ public class StickerManager: NSObject {
 // These methods are used to maintain a "string set":
 // A set (no duplicates) of strings stored as a list.
 // As a bonus, the set is stored in order of descending recency.
-private extension KeyValueStore {
+private extension SDSKeyValueStore {
     func prependToOrderedUniqueArray(
         key: String,
         value: String,
@@ -1241,28 +1237,35 @@ private extension KeyValueStore {
     ) {
         // Prepend value to ensure descending order of recency.
         var orderedArray = [value]
-        if let storedValue = getStringArray(key, transaction: tx.asV2Read) {
+        if let storedValue = getObject(forKey: key, transaction: tx) as? [String] {
             orderedArray += storedValue.filter { $0 != value }
         }
         if let maxCount {
             orderedArray = Array(orderedArray.prefix(maxCount))
         }
-        setObject(orderedArray, key: key, transaction: tx.asV2Write)
+        setObject(orderedArray, key: key, transaction: tx)
     }
 
     func removeFromOrderedUniqueArray(key: String, value: String, tx: SDSAnyWriteTransaction) {
         var orderedArray = [String]()
-        if let storedValue = getStringArray(key, transaction: tx.asV2Read) {
+        if let storedValue = getObject(forKey: key, transaction: tx) as? [String] {
             guard storedValue.contains(value) else {
                 // No work to do.
                 return
             }
             orderedArray += storedValue.filter { $0 != value }
         }
-        setObject(orderedArray, key: key, transaction: tx.asV2Write)
+        setObject(orderedArray, key: key, transaction: tx)
     }
 
     func orderedUniqueArray(forKey key: String, tx: SDSAnyReadTransaction) -> [String] {
-        return getStringArray(key, transaction: tx.asV2Read) ?? []
+        guard let object = getObject(forKey: key, transaction: tx) else {
+            return []
+        }
+        guard let orderedArray = object as? [String] else {
+            owsFailDebug("Value has unexpected type \(type(of: object)).")
+            return []
+        }
+        return orderedArray
     }
 }

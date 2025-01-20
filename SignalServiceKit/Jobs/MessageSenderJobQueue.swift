@@ -316,10 +316,7 @@ public class MessageSenderJobQueue: NSObject {
         guard let runningDurableOperation = self.state.update(block: { $0.runningOperations.first }) else {
             return nil
         }
-
-        DispatchQueue.main.async {
-            runningDurableOperation.runAnyQueuedRetry()
-        }
+        runningDurableOperation.runAnyQueuedRetry()
 
         return runningDurableOperation
     }
@@ -331,7 +328,7 @@ public class MessageSenderJobQueue: NSObject {
     }
 }
 
-private class MessageSenderOperation: OWSOperation, @unchecked Sendable {
+private class MessageSenderOperation: OWSOperation {
 
     // MARK: DurableOperation
 
@@ -352,8 +349,9 @@ private class MessageSenderOperation: OWSOperation, @unchecked Sendable {
         self.job = job
         self.future = future
 
-        let retryCount = UInt(max(0, self.maxRetries - Int(job.record.failureCount)))
-        super.init(retryCount: retryCount)
+        super.init()
+
+        self.remainingRetries = UInt(max(0, self.maxRetries - Int(job.record.failureCount)))
     }
 
     // MARK: OWSOperation

@@ -5,19 +5,19 @@
 
 import Foundation
 
-extension TSPrivateStoryThread {
+public extension TSPrivateStoryThread {
     @objc
-    public class var myStoryUniqueId: String {
+    class var myStoryUniqueId: String {
         // My Story always uses a UUID of all 0s
         "00000000-0000-0000-0000-000000000000"
     }
 
-    public class func getMyStory(transaction: SDSAnyReadTransaction) -> TSPrivateStoryThread! {
+    class func getMyStory(transaction: SDSAnyReadTransaction) -> TSPrivateStoryThread! {
         anyFetchPrivateStoryThread(uniqueId: myStoryUniqueId, transaction: transaction)
     }
 
     @discardableResult
-    public class func getOrCreateMyStory(transaction: SDSAnyWriteTransaction) -> TSPrivateStoryThread! {
+    class func getOrCreateMyStory(transaction: SDSAnyWriteTransaction) -> TSPrivateStoryThread! {
         if let myStory = getMyStory(transaction: transaction) { return myStory }
 
         let myStory = TSPrivateStoryThread(uniqueId: myStoryUniqueId, name: "", allowsReplies: true, addresses: [], viewMode: .blockList)
@@ -28,9 +28,9 @@ extension TSPrivateStoryThread {
     // MARK: -
 
     @objc
-    public var distributionListIdentifier: Data? { UUID(uuidString: uniqueId)?.data }
+    var distributionListIdentifier: Data? { UUID(uuidString: uniqueId)?.data }
 
-    public override func recipientAddresses(with transaction: SDSAnyReadTransaction) -> [SignalServiceAddress] {
+    override func recipientAddresses(with transaction: SDSAnyReadTransaction) -> [SignalServiceAddress] {
         switch storyViewMode {
         case .default:
             owsFailDebug("Unexpectedly have private story with no view mode")
@@ -42,43 +42,11 @@ extension TSPrivateStoryThread {
         }
     }
 
-    // MARK: - updateWith...
+    // MARK: -
 
-    public override func updateWithShouldThreadBeVisible(_ shouldThreadBeVisible: Bool, transaction: SDSAnyWriteTransaction) {
+    override func updateWithShouldThreadBeVisible(_ shouldThreadBeVisible: Bool, transaction: SDSAnyWriteTransaction) {
         super.updateWithShouldThreadBeVisible(shouldThreadBeVisible, transaction: transaction)
         updateWithStoryViewMode(.disabled, transaction: transaction)
-    }
-
-    public func updateWithAllowsReplies(
-        _ allowsReplies: Bool,
-        updateStorageService: Bool,
-        transaction tx: SDSAnyWriteTransaction
-    ) {
-        anyUpdatePrivateStoryThread(transaction: tx) { privateStoryThread in
-            privateStoryThread.allowsReplies = allowsReplies
-        }
-
-        if updateStorageService, let distributionListIdentifier {
-            SSKEnvironment.shared.storageServiceManagerRef.recordPendingUpdates(
-                updatedStoryDistributionListIds: [distributionListIdentifier]
-            )
-        }
-    }
-
-    public func updateWithName(
-        _ name: String,
-        updateStorageService: Bool,
-        transaction tx: SDSAnyWriteTransaction
-    ) {
-        anyUpdatePrivateStoryThread(transaction: tx) { privateStoryThread in
-            privateStoryThread.name = name
-        }
-
-        if updateStorageService, let distributionListIdentifier {
-            SSKEnvironment.shared.storageServiceManagerRef.recordPendingUpdates(
-                updatedStoryDistributionListIds: [distributionListIdentifier]
-            )
-        }
     }
 
     /// Update this private story thread with the given view mode and
@@ -92,7 +60,7 @@ extension TSPrivateStoryThread {
     /// (to `true`), assuming this thread represents "My Story". Only callers
     /// who will be managing that flag's state themselves – at the time of
     /// writing, that is exclusively Backups – should set this to `false`.
-    public func updateWithStoryViewMode(
+    func updateWithStoryViewMode(
         _ storyViewMode: TSThreadStoryViewMode,
         addresses: [SignalServiceAddress],
         updateStorageService: Bool,

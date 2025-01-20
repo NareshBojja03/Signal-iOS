@@ -230,10 +230,11 @@ extension SharingThreadPickerViewController {
                 return .failure(.init(outgoingMessages: [], error: OWSAssertionError("Missing body.")))
             }
 
-            let linkPreviewDataSource: LinkPreviewDataSource?
+            let linkPreviewDataSource: LinkPreviewTSResourceDataSource?
             if let linkPreviewDraft {
                 linkPreviewDataSource = try? DependenciesBridge.shared.linkPreviewManager.buildDataSource(
-                    from: linkPreviewDraft
+                    from: linkPreviewDraft,
+                    ownerType: .message
                 )
             } else {
                 linkPreviewDataSource = nil
@@ -302,9 +303,9 @@ extension SharingThreadPickerViewController {
             }
 
             // This method will also add threads to the profile whitelist.
-            let sendResult = AttachmentMultisend.sendApprovedMedia(
+            let sendResult = TSResourceMultisend.sendApprovedMedia(
                 conversations: selectedConversations,
-                approvedMessageBody: messageBody,
+                approvalMessageBody: messageBody,
                 approvedAttachments: attachments
             )
 
@@ -334,7 +335,7 @@ extension SharingThreadPickerViewController {
         presentOrUpdateSendProgressSheet(attachmentIds: attachmentIds)
     }
 
-    private func presentOrUpdateSendProgressSheet(attachmentIds: [Attachment.IDType]) {
+    private func presentOrUpdateSendProgressSheet(attachmentIds: [TSResourceId]) {
         AssertIsOnMainThread()
 
         if let sendProgressSheet {
@@ -376,7 +377,7 @@ extension SharingThreadPickerViewController {
                 messageBody,
                 to: conversations,
                 db: SSKEnvironment.shared.databaseStorageRef,
-                attachmentValidator: DependenciesBridge.shared.attachmentContentValidator
+                attachmentValidator: DependenciesBridge.shared.tsResourceContentValidator
             )
 
             (preparedNonStoryMessages, nonStorySendPromises) = try await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in

@@ -20,7 +20,7 @@ class RegistrationPhoneNumberInputView: UIStackView {
     private let maxNationalNumberDigits = 50
 
     init(initialPhoneNumber: RegistrationPhoneNumber) {
-        self.country = initialPhoneNumber.country
+        self.countryState = initialPhoneNumber.countryState
 
         super.init(frame: .zero)
 
@@ -51,14 +51,17 @@ class RegistrationPhoneNumberInputView: UIStackView {
 
     // MARK: - Data
 
-    public private(set) var country: PhoneNumberCountry {
+    public private(set) var countryState: RegistrationCountryState {
         didSet { render() }
     }
 
     public var nationalNumber: String { nationalNumberView.text?.asciiDigitsOnly ?? "" }
 
-    public var phoneNumber: RegistrationPhoneNumber {
-        return RegistrationPhoneNumber(country: country, nationalNumber: nationalNumber)
+    public var e164: E164? {
+        return RegistrationPhoneNumber(
+            countryState: countryState,
+            nationalNumber: nationalNumber
+        ).e164
     }
 
     public var isEnabled: Bool = true {
@@ -129,6 +132,7 @@ class RegistrationPhoneNumberInputView: UIStackView {
             "ONBOARDING_PHONE_NUMBER_PLACEHOLDER",
             comment: "Placeholder string for phone number field during registration"
         )
+        result.accessibilityIdentifier = "registration.phonenumber.phoneNumberTextField"
 
         result.delegate = self
 
@@ -145,7 +149,7 @@ class RegistrationPhoneNumberInputView: UIStackView {
         dividerView.backgroundColor = Theme.primaryIconColor
         nationalNumberView.textColor = Theme.primaryTextColor
 
-        countryCodeLabel.text = country.plusPrefixedCallingCode
+        countryCodeLabel.text = countryState.callingCode
         nationalNumberView.isEnabled = isEnabled
     }
 
@@ -188,12 +192,12 @@ extension RegistrationPhoneNumberInputView: UITextFieldDelegate {
 
         if
             textField.text.isEmptyOrNil,
-            let fullE164 = E164(replacementString.removeCharacters(characterSet: CharacterSet(charactersIn: " -()"))),
-            let phoneNumber = RegistrationPhoneNumberParser(phoneNumberUtil: SSKEnvironment.shared.phoneNumberUtilRef).parseE164(fullE164)
+            let fulle164 = E164(replacementString.removeCharacters(characterSet: CharacterSet(charactersIn: " -()"))),
+            let phoneNumber = RegistrationPhoneNumberParser(phoneNumberUtil: SSKEnvironment.shared.phoneNumberUtilRef).parseE164(fulle164)
         {
             // If we got a full e164, it was probably from system autofill.
             // Split out the country code portion.
-            self.country = phoneNumber.country
+            self.countryState = phoneNumber.countryState
             replacementString = phoneNumber.nationalNumber
         }
 
@@ -225,7 +229,7 @@ extension RegistrationPhoneNumberInputView: UITextFieldDelegate {
     }
 
     private func formatNationalNumber(input: String) -> String {
-        return PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(input, plusPrefixedCallingCode: country.plusPrefixedCallingCode)
+        return PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(input, countryCodeString: countryState.callingCode)
     }
 }
 
@@ -234,11 +238,11 @@ extension RegistrationPhoneNumberInputView: UITextFieldDelegate {
 extension RegistrationPhoneNumberInputView: CountryCodeViewControllerDelegate {
     func countryCodeViewController(
         _ vc: CountryCodeViewController,
-        didSelectCountry country: PhoneNumberCountry
+        didSelectCountry newCountryState: RegistrationCountryState
     ) {
-        self.country = country
+        countryState = newCountryState
 
-        nationalNumberView.text = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(nationalNumber, plusPrefixedCallingCode: country.plusPrefixedCallingCode)
+        nationalNumberView.text = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(nationalNumber, countryCodeString: countryState.callingCode)
 
         delegate?.didChange()
     }

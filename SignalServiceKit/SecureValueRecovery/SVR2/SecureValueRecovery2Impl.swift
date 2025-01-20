@@ -17,6 +17,7 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
     private let connectionFactory: SgxWebsocketConnectionFactory
     private let credentialStorage: SVRAuthCredentialStorage
     private let db: any DB
+    private let keyValueStoreFactory: KeyValueStoreFactory
     private let localStorage: SVRLocalStorageInternal
     private let schedulers: Schedulers
     private let storageServiceManager: StorageServiceManager
@@ -33,6 +34,7 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
         connectionFactory: SgxWebsocketConnectionFactory,
         credentialStorage: SVRAuthCredentialStorage,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         schedulers: Schedulers,
         storageServiceManager: StorageServiceManager,
         svrLocalStorage: SVRLocalStorageInternal,
@@ -50,6 +52,7 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
             connectionFactory: connectionFactory,
             credentialStorage: credentialStorage,
             db: db,
+            keyValueStoreFactory: keyValueStoreFactory,
             schedulers: schedulers,
             storageServiceManager: storageServiceManager,
             svrLocalStorage: svrLocalStorage,
@@ -71,6 +74,7 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
         connectionFactory: SgxWebsocketConnectionFactory,
         credentialStorage: SVRAuthCredentialStorage,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         schedulers: Schedulers,
         storageServiceManager: StorageServiceManager,
         svrLocalStorage: SVRLocalStorageInternal,
@@ -87,6 +91,7 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
         self.connectionFactory = connectionFactory
         self.credentialStorage = credentialStorage
         self.db = db
+        self.keyValueStoreFactory = keyValueStoreFactory
         self.schedulers = schedulers
         self.storageServiceManager = storageServiceManager
         self.syncManager = syncManager
@@ -520,7 +525,7 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
             return withStorageServiceKey { $0 }
         case .storageServiceManifest(let version):
             return withStorageServiceKey { Self.deriveStorageServiceManifestKey(version: version, storageServiceKey: $0) }
-        case .legacy_storageServiceRecord(let identifier):
+        case .storageServiceRecord(let identifier):
             return withStorageServiceKey { Self.deriveStorageServiceRecordKey(identifier: identifier, storageServiceKey: $0) }
         case .backupKey:
             return withMasterKey(Self.deriveBackupKey(masterKey:))
@@ -562,13 +567,13 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
     }
 
     private static func deriveStorageServiceRecordKey(identifier: StorageService.StorageIdentifier, storageServiceKey: SVR.DerivedKeyData) -> SVR.DerivedKeyData? {
-        let keyType = SVR.DerivedKey.legacy_storageServiceRecord(identifier: identifier)
+        let keyType = SVR.DerivedKey.storageServiceRecord(identifier: identifier)
         return SVR.DerivedKeyData(keyType.derivedData(from: storageServiceKey.rawData), keyType)
     }
 
     // MARK: - Backup/Expose Request
 
-    private lazy var kvStore = KeyValueStore(collection: "SecureValueRecovery2Impl")
+    private lazy var kvStore = keyValueStoreFactory.keyValueStore(collection: "SecureValueRecovery2Impl")
 
     /// We must be careful to never repeat a backup request when an expose request fails, or
     /// even if an expose request was made. Once we get a success response from a backup
@@ -1643,35 +1648,18 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
             return
         }
 
-        let authedDeviceForStorageServiceSync: AuthedDevice
+        // Trigger a re-creation of the storage manifest, our keys have changed
+        storageServiceManager.resetLocalData(transaction: transaction)
+
+        // If the app is ready start that restoration.
+        guard appReadiness.isAppReady else { return }
+
         switch mode {
-        case .dontSyncStorageService:
-            return
         case .syncStorageService(let authedAccount):
-            authedDeviceForStorageServiceSync = authedAccount.authedDevice(isPrimaryDevice: true)
-        }
+            storageServiceManager.restoreOrCreateManifestIfNecessary(authedDevice: authedAccount.authedDevice(isPrimaryDevice: true))
 
-        /// When the app is ready, trigger a rotation of the Storage Service
-        /// manifest since our SVR master key, which is used to encrypt Storage
-        /// Service manifests, has changed and the remote manifest is now
-        /// encrypted with out-of-date keys.
-        ///
-        /// If possible, though, we'll try and preserve Storage Service records,
-        /// which may be encrypted with a `recordIkm` in the manifest instead of
-        /// the SVR master key. (See: ``StorageServiceRecordIkmMigrator``.)
-        ///
-        /// It's okay if this doesn't succeed (e.g., the rotation fails or is
-        /// interrupted), as the next time we attempt to back up or restore
-        /// we'll run into encryption errors, from which we'll automatically
-        /// recover by creating a new manifest anyway. However, we might as well
-        /// be proactive about that now.
-        appReadiness.runNowOrWhenAppDidBecomeReadyAsync { [storageServiceManager, syncManager] in
-            Task {
-                try? await storageServiceManager.rotateManifest(
-                    mode: .preservingRecordsIfPossible,
-                    authedDevice: authedDeviceForStorageServiceSync
-                )
-
+            let syncManager = self.syncManager
+            storageServiceManager.waitForPendingRestores().observe { _ in
                 // Sync our new keys with linked devices, but wait until the storage
                 // service restore is done. That way we avoid the linked device getting
                 // the new keys first, failing to decrypt old storage service data,
@@ -1681,6 +1669,8 @@ public class SecureValueRecovery2Impl: SecureValueRecovery {
                 // both storage service and the linked device have the latest stuff.
                 syncManager.sendKeysSyncMessage()
             }
+        case .dontSyncStorageService:
+            break
         }
     }
 }

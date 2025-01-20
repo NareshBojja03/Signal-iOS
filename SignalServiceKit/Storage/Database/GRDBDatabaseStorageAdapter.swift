@@ -215,6 +215,20 @@ public class GRDBDatabaseStorageAdapter: NSObject {
         }
     }
 
+    public func resetAllStorage() {
+        Logger.info("")
+
+        // This might be redundant but in the spirit of thoroughness...
+
+        GRDBDatabaseStorageAdapter.removeAllFiles()
+
+        if CurrentAppContext().isMainApp {
+            TSAttachmentStream.deleteAttachmentsFromDisk()
+        }
+
+        // TODO: Delete Profiles on Disk?
+    }
+
     static func prepareDatabase(db: Database, keyFetcher: GRDBKeyFetcher) throws {
         let key = try keyFetcher.fetchString()
         try db.execute(sql: "PRAGMA key = \"\(key)\"")
@@ -619,6 +633,7 @@ extension GRDBDatabaseStorageAdapter: SDSDatabaseStorageAdapter {
                     if (error as? DatabaseError)?.resultCode == .SQLITE_BUSY {
                         // It is expected that the busy-handler (aka busyMode callback)
                         // will abort checkpoints if there is contention.
+                        Logger.warn("Didn't checkpoint because we were busy")
                     } else {
                         owsFailDebug("Checkpoint failed. Error: \(error.grdbErrorForLogging)")
                     }
@@ -766,6 +781,8 @@ private struct GRDBStorage {
                 db.trace { dbQueryLog("\($0)") }
             #endif
             #endif
+
+            MediaGalleryRecordManager.setupDatabaseFunction(database: db)
         }
         configuration.defaultTransactionKind = .immediate
         configuration.allowsUnsafeTransactions = true
@@ -811,7 +828,7 @@ public struct GRDBKeyFetcher {
         return try keychainStorage.dataValue(service: Constants.keyServiceName, key: Constants.keyName)
     }
 
-    public func clear() throws {
+    func clear() throws {
         try keychainStorage.removeValue(service: Constants.keyServiceName, key: Constants.keyName)
     }
 

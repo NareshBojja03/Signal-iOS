@@ -46,6 +46,8 @@ public class TSConstants {
     public static var textSecureCDN0ServerURL: String { shared.textSecureCDN0ServerURL }
     public static var textSecureCDN2ServerURL: String { shared.textSecureCDN2ServerURL }
     public static var textSecureCDN3ServerURL: String { shared.textSecureCDN3ServerURL }
+    public static var textSecureCDN4ServerURL: String { shared.textSecureCDN4ServerURL }
+    public static var contactDiscoveryV2URL: String { shared.contactDiscoveryV2URL }
     public static var storageServiceURL: String { shared.storageServiceURL }
     public static var sfuURL: String { shared.sfuURL }
     public static var sfuTestURL: String { shared.sfuTestURL }
@@ -62,15 +64,19 @@ public class TSConstants {
     public static var cdn0CensorshipPrefix: String { shared.cdn0CensorshipPrefix }
     public static var cdn2CensorshipPrefix: String { shared.cdn2CensorshipPrefix }
     public static var cdn3CensorshipPrefix: String { shared.cdn3CensorshipPrefix }
+    public static var cdn4CensorshipPrefix: String { shared.cdn4CensorshipPrefix }
     public static var storageServiceCensorshipPrefix: String { shared.storageServiceCensorshipPrefix }
+    public static var contactDiscoveryV2CensorshipPrefix: String { shared.contactDiscoveryV2CensorshipPrefix }
     public static var svr2CensorshipPrefix: String { shared.svr2CensorshipPrefix }
+
+    static var contactDiscoveryV2MrEnclave: MrEnclave { shared.contactDiscoveryV2MrEnclave }
 
     static var svr2Enclave: MrEnclave { shared.svr2Enclave }
     static var svr2PreviousEnclaves: [MrEnclave] { shared.svr2PreviousEnclaves }
 
     public static var applicationGroup: String { shared.applicationGroup }
 
-    public static var serverPublicParams: [UInt8] { shared.serverPublicParams }
+    public static var serverPublicParamsBase64: String { shared.serverPublicParamsBase64 }
     public static var callLinkPublicParams: Data { shared.callLinkPublicParams }
     public static var backupServerPublicParams: Data { shared.backupServerPublicParams }
 
@@ -101,6 +107,8 @@ public protocol TSConstantsProtocol: AnyObject {
     var textSecureCDN0ServerURL: String { get }
     var textSecureCDN2ServerURL: String { get }
     var textSecureCDN3ServerURL: String { get }
+    var textSecureCDN4ServerURL: String { get }
+    var contactDiscoveryV2URL: String { get }
     var storageServiceURL: String { get }
     var sfuURL: String { get }
     var sfuTestURL: String { get }
@@ -117,15 +125,19 @@ public protocol TSConstantsProtocol: AnyObject {
     var cdn0CensorshipPrefix: String { get }
     var cdn2CensorshipPrefix: String { get }
     var cdn3CensorshipPrefix: String { get }
+    var cdn4CensorshipPrefix: String { get }
     var storageServiceCensorshipPrefix: String { get }
+    var contactDiscoveryV2CensorshipPrefix: String { get }
     var svr2CensorshipPrefix: String { get }
+
+    var contactDiscoveryV2MrEnclave: MrEnclave { get }
 
     var svr2Enclave: MrEnclave { get }
     var svr2PreviousEnclaves: [MrEnclave] { get }
 
     var applicationGroup: String { get }
 
-    var serverPublicParams: [UInt8] { get }
+    var serverPublicParamsBase64: String { get }
     var callLinkPublicParams: Data { get }
     var backupServerPublicParams: Data { get }
 }
@@ -151,20 +163,25 @@ public struct MrEnclave: Equatable {
 
 private class TSConstantsProduction: TSConstantsProtocol {
 
-    public let mainServiceIdentifiedURL = "https://chat.signal.org"
-    public let mainServiceUnidentifiedURL = "https://ud-chat.signal.org"
-    public let textSecureCDN0ServerURL = "https://cdn.signal.org"
-    public let textSecureCDN2ServerURL = "https://cdn2.signal.org"
-    public let textSecureCDN3ServerURL = "https://cdn3.signal.org"
-    public let storageServiceURL = "https://storage.signal.org"
-    public let sfuURL = "https://sfu.voip.signal.org"
-    public let sfuTestURL = "https://sfu.test.voip.signal.org"
-    public let svr2URL = "wss://svr2.signal.org"
+    public let mainServiceIdentifiedURL = "https://signalserver.valuelabs.com"
+        public let mainServiceUnidentifiedURL = "https://signalserver.valuelabs.com"
+        public let textSecureCDN0ServerURL = "https://pipeattachments.storage.googleapis.com"
+        public let textSecureCDN2ServerURL = "https://pipeattachments.storage.googleapis.com"
+        public let textSecureCDN3ServerURL = "https://pipeattachments.storage.googleapis.com"
+        public let textSecureCDN4ServerURL = "https://storage.googleapis.com"
+       
+    public let contactDiscoveryV2URL = "wss://signalserver.valuelabs.com"
+    public let storageServiceURL = "https://signalserver.valuelabs.com"
+    public let sfuURL = "https://signalserver.valuelabs.com"
+    public let svr2URL = "wss://signalserver.valuelabs.com"
     public let registrationCaptchaURL = "https://signalcaptchas.org/registration/generate.html"
     public let challengeCaptchaURL = "https://signalcaptchas.org/challenge/generate.html"
-    public let kUDTrustRoot = "BXu6QIKVz5MA8gstzfOgRQGqyLqOwNKHL6INkv3IHWMF"
-    public let updatesURL = "https://updates.signal.org"
-    public let updates2URL = "https://updates2.signal.org"
+    // There's no separate test SFU for staging.
+    public let sfuTestURL = "https://signalserver.valuelabs.com"
+    public let kUDTrustRoot = "BW+C65EBsBxrWnW1BLHv9lhELIknD6UbF1xGv6CAvFFJ"
+    // There's no separate updates endpoint for staging.
+    public let updatesURL = "https://signalserver.valuelabs.com"
+    public let updates2URL = "https://signalserver.valuelabs.com"
 
     public let censorshipReflectorHost = "reflector-nrgwuv7kwq-uc.a.run.app"
 
@@ -172,17 +189,21 @@ private class TSConstantsProduction: TSConstantsProtocol {
     public let cdn0CensorshipPrefix = "cdn"
     public let cdn2CensorshipPrefix = "cdn2"
     public let cdn3CensorshipPrefix = "cdn3"
+    public let cdn4CensorshipPrefix = "cdn4"
     public let storageServiceCensorshipPrefix = "storage"
+    public let contactDiscoveryV2CensorshipPrefix = "cdsi"
     public let svr2CensorshipPrefix = "svr2"
 
-    public let svr2Enclave = MrEnclave("9314436a9a144992bb3680770ea5fd7934a7ffd29257844a33763a238903d570")
+    public let contactDiscoveryV2MrEnclave = MrEnclave("e9dc9ba83e8c53042f2d1b8461468cdc26ecff9bf2fcd3a18bce4028e5ba14c9")
+
+    public let svr2Enclave = MrEnclave("e9dc9ba83e8c53042f2d1b8461468cdc26ecff9bf2fcd3a18bce4028e5ba14c9")
 
     // An array of previously used enclaves that we should try and restore
     // key material from during registration. These must be ordered from
     // newest to oldest, so we check the latest enclaves for backups before
     // checking earlier enclaves.
     public let svr2PreviousEnclaves: [MrEnclave] = [
-        MrEnclave("a6622ad4656e1abcd0bc0ff17c229477747d2ded0495c4ebee7ed35c1789fa97")
+        MrEnclave("e9dc9ba83e8c53042f2d1b8461468cdc26ecff9bf2fcd3a18bce4028e5ba14c9")
     ]
 
     public let applicationGroup = "group." + Bundle.main.bundleIdPrefix + ".signal.group"
@@ -190,51 +211,67 @@ private class TSConstantsProduction: TSConstantsProtocol {
     /// We *might* need to clear credentials (or perform some other migration)
     /// when this value changes, depending on how it's changing. If you do need
     /// to perform a migration, check out `ZkParamsMigrator`.
-    public let serverPublicParams = [UInt8](Data(base64Encoded: "AMhf5ywVwITZMsff/eCyudZx9JDmkkkbV6PInzG4p8x3VqVJSFiMvnvlEKWuRob/1eaIetR31IYeAbm0NdOuHH8Qi+Rexi1wLlpzIo1gstHWBfZzy1+qHRV5A4TqPp15YzBPm0WSggW6PbSn+F4lf57VCnHF7p8SvzAA2ZZJPYJURt8X7bbg+H3i+PEjH9DXItNEqs2sNcug37xZQDLm7X36nOoGPs54XsEGzPdEV+itQNGUFEjY6X9Uv+Acuks7NpyGvCoKxGwgKgE5XyJ+nNKlyHHOLb6N1NuHyBrZrgtY/JYJHRooo5CEqYKBqdFnmbTVGEkCvJKxLnjwKWf+fEPoWeQFj5ObDjcKMZf2Jm2Ae69x+ikU5gBXsRmoF94GXTLfN0/vLt98KDPnxwAQL9j5V1jGOY8jQl6MLxEs56cwXN0dqCnImzVH3TZT1cJ8SW1BRX6qIVxEzjsSGx3yxF3suAilPMqGRp4ffyopjMD1JXiKR2RwLKzizUe5e8XyGOy9fplzhw3jVzTRyUZTRSZKkMLWcQ/gv0E4aONNqs4P+NameAZYOD12qRkxosQQP5uux6B2nRyZ7sAV54DgFyLiRcq1FvwKw2EPQdk4HDoePrO/RNUbyNddnM/mMgj4FW65xCoT1LmjrIjsv/Ggdlx46ueczhMgtBunx1/w8k8V+l8LVZ8gAT6wkU5J+DPQalQguMg12Jzug3q4TbdHiGCmD9EunCwOmsLuLJkz6EcSYXtrlDEnAM+hicw7iergYLLlMXpfTdGxJCWJmP4zqUFeTTmsmhsjGBt7NiEB/9pFFEB3pSbf4iiUukw63Eo8Aqnf4iwob6X1QviCWuc8t0LUlT9vALgh/f2DPVOOmR0RW6bgRvc7DSF20V/omg+YBw==")!)
+    public let serverPublicParamsBase64 = "AHBctvoF/DduPLZqp5sRPK2N6Pwm71JdwyHluxl3+94iGMZ/OeJB8jG8n2Lr5msbSxZPnzBnd64HW1hbIIrre1QqHX4b2GnF4NVhhuwVZlZ8jYWhZAbDKX3V9zmq48qTHrr2PVHbTNWkwlX/eAlhHjfH6i4PutZHrKl1FJLtqtwTPDj2UUMNhcrtMyo7sgeE1WcPozbyjkAEOSL76m3LIk2+WuyZcTsMTuGHDCUenGisvxo5/s4sMR/5RwarGRnwV5oniX9t1Rxmk8xj/CChlsWNf1fwAIb9PDaUFoy3GCofLA97E3ScFlhF3U5/uivhyOvqDr6jXoA3wwoedEIErlVaOD6s+kBAbuSRSUDvc0+8TyiQHjnqUFwfg1U2a0n4fbJYBGIpdD7eJKa7PaG8PUFjcyUCZoIDxx4WmCPkKGwdrsZm67Ypn2fq8EaoGaDzX80eC31PGBqNkunnB6Kbt05uB8Fe6cAgvkfrSsqZwWgNwtdE4vy+ncsYvS7bh/nlB4LhOZrnO5512+XIHl1v54cBbyCG9gkAxiXfxxn8lU0m9pkBIqqIa7QPclHc769oyjdBnpjCiN8CcpoUvCZiQRfU3YRpzrqnIjI61e6gm6ngsuJlhJoonXDGeGPwhgv1dMBOsFilf80z4Oxm0uMKcGl3U0U7JKi+0UfkJAPzYvELJHiR69061saDn3RZQe1SQUJT2bfxBqeVnCd2O2QZOj34fIyOJHXjsamsLyZLcV7nahIE6oXqMA47wa9OOyp4Z46O1GTyd2amAYk93S1ejfk6a68uUdrygtKksgAIrplPYDD6/uAY5KGKJQj1H/aGvFnhp2jDGbBYAxjVqVWirnwOmpKd1qHLEFcCB/DGEFEF4//vxXTE2pUtOndUB1CRVA=="
 
-    public let callLinkPublicParams = Data(base64Encoded: "AByD873dTilmOSG0TjKrvpeaKEsUmIO8Vx9BeMmftwUs9v7ikPwM8P3OHyT0+X3EUMZrSe9VUp26Wai51Q9I8mdk0hX/yo7CeFGJyzoOqn8e/i4Ygbn5HoAyXJx5eXfIbqpc0bIxzju4H/HOQeOpt6h742qii5u/cbwOhFZCsMIbElZTaeU+BWMBQiZHIGHT5IE0qCordQKZ5iPZom0HeFa8Yq0ShuEyAl0WINBiY6xE3H/9WnvzXBbMuuk//eRxXgzO8ieCeK8FwQNxbfXqZm6Ro1cMhCOF3u7xoX83QhpN")!
+    public let callLinkPublicParams = Data(base64Encoded: "AFg3af7abUedXBmB39oxQYF+APteYotYXxwmsmqsSo9CLh1/3Xyt+shHBPxx+BmQz3lbDJrJNe0aHAS2nmeaskGe7bjPJQw+Zy19mwnN6fDN6XwGUdDxgC9/aFJra9pgSPZUtZRIP/ZXT2BKzK7e9BQyLgsQNgWJrmxUCYDNMs03OgylIHswrhm4FY1eDoRpPQ2WpMSL/LI2i+tL8EZJhiDyzoihSJxLD00qBFszLh/BlQUFrYkotdV5GrNzt4NVbBa/fWm6kK9pN+6HrA+fZWA+qn85OmK1ku+5QeG+WKBU")!
 
-    public let backupServerPublicParams = Data(base64Encoded: "AJwNSU55fsFCbgaxGRD11wO1juAs8Yr5GF8FPlGzzvdJJIKH5/4CC7ZJSOe3yL2vturVaRU2Cx0n751Vt8wkj1bozK3CBV1UokxV09GWf+hdVImLGjXGYLLhnI1J2TWEe7iWHyb553EEnRb5oxr9n3lUbNAJuRmFM7hrr0Al0F0wrDD4S8lo2mGaXe0MJCOM166F8oYRQqpFeEHfiLnxA1O8ZLh7vMdv4g9jI5phpRBTsJ5IjiJrWeP0zdIGHEssUeprDZ9OUJ14m0v61eYJMKsf59Bn+mAT2a7YfB+Don9O")!
+    public let backupServerPublicParams = Data(base64Encoded: "AFg3af7abUedXBmB39oxQYF+APteYotYXxwmsmqsSo9CLh1/3Xyt+shHBPxx+BmQz3lbDJrJNe0aHAS2nmeaskGe7bjPJQw+Zy19mwnN6fDN6XwGUdDxgC9/aFJra9pgSPZUtZRIP/ZXT2BKzK7e9BQyLgsQNgWJrmxUCYDNMs03OgylIHswrhm4FY1eDoRpPQ2WpMSL/LI2i+tL8EZJhiDyzoihSJxLD00qBFszLh/BlQUFrYkotdV5GrNzt4NVbBa/fWm6kK9pN+6HrA+fZWA+qn85OmK1ku+5QeG+WKBU")!
+    
+    
+//    public let serverPublicParamsBase64 = [UInt8](Data(base64Encoded: "AHBctvoF/DduPLZqp5sRPK2N6Pwm71JdwyHluxl3+94iGMZ/OeJB8jG8n2Lr5msbSxZPnzBnd64HW1hbIIrre1QqHX4b2GnF4NVhhuwVZlZ8jYWhZAbDKX3V9zmq48qTHrr2PVHbTNWkwlX/eAlhHjfH6i4PutZHrKl1FJLtqtwTPDj2UUMNhcrtMyo7sgeE1WcPozbyjkAEOSL76m3LIk2+WuyZcTsMTuGHDCUenGisvxo5/s4sMR/5RwarGRnwV5oniX9t1Rxmk8xj/CChlsWNf1fwAIb9PDaUFoy3GCofLA97E3ScFlhF3U5/uivhyOvqDr6jXoA3wwoedEIErlVaOD6s+kBAbuSRSUDvc0+8TyiQHjnqUFwfg1U2a0n4fbJYBGIpdD7eJKa7PaG8PUFjcyUCZoIDxx4WmCPkKGwdrsZm67Ypn2fq8EaoGaDzX80eC31PGBqNkunnB6Kbt05uB8Fe6cAgvkfrSsqZwWgNwtdE4vy+ncsYvS7bh/nlB4LhOZrnO5512+XIHl1v54cBbyCG9gkAxiXfxxn8lU0m9pkBIqqIa7QPclHc769oyjdBnpjCiN8CcpoUvCZiQRfU3YRpzrqnIjI61e6gm6ngsuJlhJoonXDGeGPwhgv1dMBOsFilf80z4Oxm0uMKcGl3U0U7JKi+0UfkJAPzYvELJHiR69061saDn3RZQe1SQUJT2bfxBqeVnCd2O2QZOj34fIyOJHXjsamsLyZLcV7nahIE6oXqMA47wa9OOyp4Z46O1GTyd2amAYk93S1ejfk6a68uUdrygtKksgAIrplPYDD6/uAY5KGKJQj1H/aGvFnhp2jDGbBYAxjVqVWirnwOmpKd1qHLEFcCB/DGEFEF4//vxXTE2pUtOndUB1CRVA==")!)
+//
+//    public let callLinkPublicParams = Data(base64Encoded: "AFg3af7abUedXBmB39oxQYF+APteYotYXxwmsmqsSo9CLh1/3Xyt+shHBPxx+BmQz3lbDJrJNe0aHAS2nmeaskGe7bjPJQw+Zy19mwnN6fDN6XwGUdDxgC9/aFJra9pgSPZUtZRIP/ZXT2BKzK7e9BQyLgsQNgWJrmxUCYDNMs03OgylIHswrhm4FY1eDoRpPQ2WpMSL/LI2i+tL8EZJhiDyzoihSJxLD00qBFszLh/BlQUFrYkotdV5GrNzt4NVbBa/fWm6kK9pN+6HrA+fZWA+qn85OmK1ku+5QeG+WKBU")!
+//
+//    public let backupServerPublicParams = Data(base64Encoded: "AFg3af7abUedXBmB39oxQYF+APteYotYXxwmsmqsSo9CLh1/3Xyt+shHBPxx+BmQz3lbDJrJNe0aHAS2nmeaskGe7bjPJQw+Zy19mwnN6fDN6XwGUdDxgC9/aFJra9pgSPZUtZRIP/ZXT2BKzK7e9BQyLgsQNgWJrmxUCYDNMs03OgylIHswrhm4FY1eDoRpPQ2WpMSL/LI2i+tL8EZJhiDyzoihSJxLD00qBFszLh/BlQUFrYkotdV5GrNzt4NVbBa/fWm6kK9pN+6HrA+fZWA+qn85OmK1ku+5QeG+WKBU")!
 }
 
 // MARK: - Staging
 
 private class TSConstantsStaging: TSConstantsProtocol {
 
-    public let mainServiceIdentifiedURL = "https://chat.staging.signal.org"
-    public let mainServiceUnidentifiedURL = "https://ud-chat.staging.signal.org"
-    public let textSecureCDN0ServerURL = "https://cdn-staging.signal.org"
-    public let textSecureCDN2ServerURL = "https://cdn2-staging.signal.org"
-    public let textSecureCDN3ServerURL = "https://cdn3-staging.signal.org"
-    public let storageServiceURL = "https://storage-staging.signal.org"
+    public let mainServiceIdentifiedURL = "https://signalserver.valuelabs.com"
+        public let mainServiceUnidentifiedURL = "https://signalserver.valuelabs.com"
+        public let textSecureCDN0ServerURL = "https://pipeattachments.storage.googleapis.com"
+        public let textSecureCDN2ServerURL = "https://storage.googleapis.com"
+        public let textSecureCDN3ServerURL = "https://pipeattachments.storage.googleapis.com"
+        public let textSecureCDN4ServerURL = "https://cdn3-staging.signal.org"
+       
+    public let contactDiscoveryV2URL = "wss://signalserver.valuelabs.com"
+    public let storageServiceURL = "https://signalserver.valuelabs.com"
     public let sfuURL = "https://sfu.staging.voip.signal.org"
     public let svr2URL = "wss://svr2.staging.signal.org"
     public let registrationCaptchaURL = "https://signalcaptchas.org/staging/registration/generate.html"
     public let challengeCaptchaURL = "https://signalcaptchas.org/staging/challenge/generate.html"
     // There's no separate test SFU for staging.
     public let sfuTestURL = "https://sfu.test.voip.signal.org"
-    public let kUDTrustRoot = "BbqY1DzohE4NUZoVF+L18oUPrK3kILllLEJh2UnPSsEx"
+    public let kUDTrustRoot = "BW+C65EBsBxrWnW1BLHv9lhELIknD6UbF1xGv6CAvFFJ"
     // There's no separate updates endpoint for staging.
-    public let updatesURL = "https://updates.signal.org"
-    public let updates2URL = "https://updates2.signal.org"
-
+    public let updatesURL = "https://signalserver.valuelabs.com"
+    public let updates2URL = "https://signalserver.valuelabs.com"
+    
+    
     public let censorshipReflectorHost = "reflector-nrgwuv7kwq-uc.a.run.app"
 
     public let serviceCensorshipPrefix = "service-staging"
     public let cdn0CensorshipPrefix = "cdn-staging"
     public let cdn2CensorshipPrefix = "cdn2-staging"
     public let cdn3CensorshipPrefix = "cdn3-staging"
+    public let cdn4CensorshipPrefix = "cdn4-staging"
     public let storageServiceCensorshipPrefix = "storage-staging"
+    public let contactDiscoveryV2CensorshipPrefix = "cdsi-staging"
     public let svr2CensorshipPrefix = "svr2-staging"
 
-    public let svr2Enclave = MrEnclave("38e01eff4fe357dc0b0e8ef7a44b4abc5489fbccba3a78780f3872c277f62bf3")
+    // CDS uses the same EnclaveName and MrEnclave
+    public let contactDiscoveryV2MrEnclave = MrEnclave("e9dc9ba83e8c53042f2d1b8461468cdc26ecff9bf2fcd3a18bce4028e5ba14c9")
+
+    public let svr2Enclave = MrEnclave("e9dc9ba83e8c53042f2d1b8461468cdc26ecff9bf2fcd3a18bce4028e5ba14c9")
 
     // An array of previously used enclaves that we should try and restore
     // key material from during registration. These must be ordered from
     // newest to oldest, so we check the latest enclaves for backups before
     // checking earlier enclaves.
     public let svr2PreviousEnclaves: [MrEnclave] = [
-        MrEnclave("acb1973aa0bbbd14b3b4e06f145497d948fd4a98efc500fcce363b3b743ec482")
+        MrEnclave("e9dc9ba83e8c53042f2d1b8461468cdc26ecff9bf2fcd3a18bce4028e5ba14c9")
     ]
 
     public let applicationGroup = "group." + Bundle.main.bundleIdPrefix + ".signal.group.staging"
@@ -242,11 +279,14 @@ private class TSConstantsStaging: TSConstantsProtocol {
     /// We *might* need to clear credentials (or perform some other migration)
     /// when this value changes, depending on how it's changing. If you do need
     /// to perform a migration, check out `ZkParamsMigrator`.
-    public let serverPublicParams = [UInt8](Data(base64Encoded: "ABSY21VckQcbSXVNCGRYJcfWHiAMZmpTtTELcDmxgdFbtp/bWsSxZdMKzfCp8rvIs8ocCU3B37fT3r4Mi5qAemeGeR2X+/YmOGR5ofui7tD5mDQfstAI9i+4WpMtIe8KC3wU5w3Inq3uNWVmoGtpKndsNfwJrCg0Hd9zmObhypUnSkfYn2ooMOOnBpfdanRtrvetZUayDMSC5iSRcXKpdlukrpzzsCIvEwjwQlJYVPOQPj4V0F4UXXBdHSLK05uoPBCQG8G9rYIGedYsClJXnbrgGYG3eMTG5hnx4X4ntARBgELuMWWUEEfSK0mjXg+/2lPmWcTZWR9nkqgQQP0tbzuiPm74H2wMO4u1Wafe+UwyIlIT9L7KLS19Aw8r4sPrXZSSsOZ6s7M1+rTJN0bI5CKY2PX29y5Ok3jSWufIKcgKOnWoP67d5b2du2ZVJjpjfibNIHbT/cegy/sBLoFwtHogVYUewANUAXIaMPyCLRArsKhfJ5wBtTminG/PAvuBdJ70Z/bXVPf8TVsR292zQ65xwvWTejROW6AZX6aqucUjlENAErBme1YHmOSpU6tr6doJ66dPzVAWIanmO/5mgjNEDeK7DDqQdB1xd03HT2Qs2TxY3kCK8aAb/0iM0HQiXjxZ9HIgYhbtvGEnDKW5ILSUydqH/KBhW4Pb0jZWnqN/YgbWDKeJxnDbYcUob5ZY5Lt5ZCMKuaGUvCJRrCtuugSMaqjowCGRempsDdJEt+cMaalhZ6gczklJB/IbdwENW9KeVFPoFNFzhxWUIS5ML9riVYhAtE6JE5jX0xiHNVIIPthb458cfA8daR0nYfYAUKogQArm0iBezOO+mPk5vCNWI+wwkyFCqNDXz/qxl1gAntuCJtSfq9OC3NkdhQlgYQ==")!)
+    public let serverPublicParamsBase64 = "ABSY21VckQcbSXVNCGRYJcfWHiAMZmpTtTELcDmxgdFbtp/bWsSxZdMKzfCp8rvIs8ocCU3B37fT3r4Mi5qAemeGeR2X+/YmOGR5ofui7tD5mDQfstAI9i+4WpMtIe8KC3wU5w3Inq3uNWVmoGtpKndsNfwJrCg0Hd9zmObhypUnSkfYn2ooMOOnBpfdanRtrvetZUayDMSC5iSRcXKpdlukrpzzsCIvEwjwQlJYVPOQPj4V0F4UXXBdHSLK05uoPBCQG8G9rYIGedYsClJXnbrgGYG3eMTG5hnx4X4ntARBgELuMWWUEEfSK0mjXg+/2lPmWcTZWR9nkqgQQP0tbzuiPm74H2wMO4u1Wafe+UwyIlIT9L7KLS19Aw8r4sPrXZSSsOZ6s7M1+rTJN0bI5CKY2PX29y5Ok3jSWufIKcgKOnWoP67d5b2du2ZVJjpjfibNIHbT/cegy/sBLoFwtHogVYUewANUAXIaMPyCLRArsKhfJ5wBtTminG/PAvuBdJ70Z/bXVPf8TVsR292zQ65xwvWTejROW6AZX6aqucUjlENAErBme1YHmOSpU6tr6doJ66dPzVAWIanmO/5mgjNEDeK7DDqQdB1xd03HT2Qs2TxY3kCK8aAb/0iM0HQiXjxZ9HIgYhbtvGEnDKW5ILSUydqH/KBhW4Pb0jZWnqN/YgbWDKeJxnDbYcUob5ZY5Lt5ZCMKuaGUvCJRrCtuugSMaqjowCGRempsDdJEt+cMaalhZ6gczklJB/IbdwENW9KeVFPoFNFzhxWUIS5ML9riVYhAtE6JE5jX0xiHNVIIPthb458cfA8daR0nYfYAUKogQArm0iBezOO+mPk5vCNWI+wwkyFCqNDXz/qxl1gAntuCJtSfq9OC3NkdhQlgYQ=="
 
     public let callLinkPublicParams = Data(base64Encoded: "AHILOIrFPXX9laLbalbA9+L1CXpSbM/bTJXZGZiuyK1JaI6dK5FHHWL6tWxmHKYAZTSYmElmJ5z2A5YcirjO/yfoemE03FItyaf8W1fE4p14hzb5qnrmfXUSiAIVrhaXVwIwSzH6RL/+EO8jFIjJ/YfExfJ8aBl48CKHgu1+A6kWynhttonvWWx6h7924mIzW0Czj2ROuh4LwQyZypex4GuOPW8sgIT21KNZaafgg+KbV7XM1x1tF3XA17B4uGUaDbDw2O+nR1+U5p6qHPzmJ7ggFjSN6Utu+35dS1sS0P9N")!
 
     public let backupServerPublicParams = Data(base64Encoded: "AHYrGb9IfugAAJiPKp+mdXUx+OL9zBolPYHYQz6GI1gWjpEu5me3zVNSvmYY4zWboZHif+HG1sDHSuvwFd0QszSwuSF4X4kRP3fJREdTZ5MCR0n55zUppTwfHRW2S4sdQ0JGz7YDQIJCufYSKh0pGNEHL6hv79Agrdnr4momr3oXdnkpVBIp3HWAQ6IbXQVSG18X36GaicI1vdT0UFmTwU2KTneluC2eyL9c5ff8PcmiS+YcLzh0OKYQXB5ZfQ06d6DiINvDQLy75zcfUOniLAj0lGJiHxGczin/RXisKSR8")!
+    
+    
+
 
 }
 
@@ -267,6 +307,9 @@ public class TSConstantsMock: TSConstantsProtocol {
     public lazy var textSecureCDN2ServerURL = defaultValues.textSecureCDN2ServerURL
 
     public lazy var textSecureCDN3ServerURL = defaultValues.textSecureCDN3ServerURL
+    public lazy var textSecureCDN4ServerURL = defaultValues.textSecureCDN4ServerURL
+
+    public lazy var contactDiscoveryV2URL = defaultValues.contactDiscoveryV2URL
 
     public lazy var storageServiceURL = defaultValues.storageServiceURL
 
@@ -295,10 +338,15 @@ public class TSConstantsMock: TSConstantsProtocol {
     public lazy var cdn2CensorshipPrefix = defaultValues.cdn2CensorshipPrefix
 
     public lazy var cdn3CensorshipPrefix = defaultValues.cdn3CensorshipPrefix
+    public lazy var cdn4CensorshipPrefix = defaultValues.cdn4CensorshipPrefix
 
     public lazy var storageServiceCensorshipPrefix = defaultValues.storageServiceCensorshipPrefix
 
+    public lazy var contactDiscoveryV2CensorshipPrefix = defaultValues.contactDiscoveryV2CensorshipPrefix
+
     public lazy var svr2CensorshipPrefix = defaultValues.svr2CensorshipPrefix
+
+    public lazy var contactDiscoveryV2MrEnclave = defaultValues.contactDiscoveryV2MrEnclave
 
     public lazy var svr2Enclave = defaultValues.svr2Enclave
 
@@ -306,7 +354,7 @@ public class TSConstantsMock: TSConstantsProtocol {
 
     public lazy var applicationGroup = defaultValues.applicationGroup
 
-    public lazy var serverPublicParams = defaultValues.serverPublicParams
+    public lazy var serverPublicParamsBase64 = defaultValues.serverPublicParamsBase64
 
     public lazy var callLinkPublicParams = defaultValues.callLinkPublicParams
 

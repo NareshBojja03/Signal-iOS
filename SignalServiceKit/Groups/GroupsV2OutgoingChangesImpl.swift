@@ -241,12 +241,12 @@ public class GroupsV2OutgoingChangesImpl: GroupsV2OutgoingChanges {
         currentGroupModel: TSGroupModelV2,
         currentDisappearingMessageToken: DisappearingMessageToken,
         forceRefreshProfileKeyCredentials: Bool
-    ) async throws -> GroupsV2BuiltGroupChange {
+    ) -> Promise<GroupsV2BuiltGroupChange> {
         guard groupId == currentGroupModel.groupId else {
-            throw OWSAssertionError("Mismatched groupId.")
+            return Promise(error: OWSAssertionError("Mismatched groupId."))
         }
-        guard let localIdentifiers = DependenciesBridge.shared.tsAccountManager.localIdentifiersWithMaybeSneakyTransaction else {
-            throw OWSAssertionError("Missing localIdentifiers.")
+        guard let localAci = DependenciesBridge.shared.tsAccountManager.localIdentifiersWithMaybeSneakyTransaction?.aci else {
+            return Promise(error: OWSAssertionError("Missing localAci."))
         }
 
         // Note that we're calculating the set of users for whom we need
@@ -256,19 +256,22 @@ public class GroupsV2OutgoingChangesImpl: GroupsV2OutgoingChanges {
         //
         // NOTE: We don't (and can't) gather profile key credentials for pending members.
         var newUserAcis: Set<Aci> = Set(membersToAdd.keys)
-        newUserAcis.insert(localIdentifiers.aci)
+        newUserAcis.insert(localAci)
 
-        let profileKeyCredentialMap = try await SSKEnvironment.shared.groupsV2Ref.loadProfileKeyCredentials(
-            for: Array(newUserAcis),
-            forceRefresh: forceRefreshProfileKeyCredentials
-        )
-
-        return try self.buildGroupChangeProto(
-            currentGroupModel: currentGroupModel,
-            currentDisappearingMessageToken: currentDisappearingMessageToken,
-            localIdentifiers: localIdentifiers,
-            profileKeyCredentialMap: profileKeyCredentialMap
-        )
+        return firstly(on: DispatchQueue.global()) { () -> Promise<GroupsV2.ProfileKeyCredentialMap> in
+            return Promise.wrapAsync {
+                try await SSKEnvironment.shared.groupsV2Ref.loadProfileKeyCredentials(
+                    for: Array(newUserAcis),
+                    forceRefresh: forceRefreshProfileKeyCredentials
+                )
+            }
+        }.map(on: DispatchQueue.global()) { (profileKeyCredentialMap: GroupsV2.ProfileKeyCredentialMap) throws -> GroupsV2BuiltGroupChange in
+            try self.buildGroupChangeProto(
+                currentGroupModel: currentGroupModel,
+                currentDisappearingMessageToken: currentDisappearingMessageToken,
+                profileKeyCredentialMap: profileKeyCredentialMap
+            )
+        }
     }
 
     // Given the "current" group state, build a change proto that
@@ -312,12 +315,14 @@ public class GroupsV2OutgoingChangesImpl: GroupsV2OutgoingChanges {
     private func buildGroupChangeProto(
         currentGroupModel: TSGroupModelV2,
         currentDisappearingMessageToken: DisappearingMessageToken,
-        localIdentifiers: LocalIdentifiers,
         profileKeyCredentialMap: GroupsV2.ProfileKeyCredentialMap
     ) throws -> GroupsV2BuiltGroupChange {
         let groupV2Params = try currentGroupModel.groupV2Params()
 
         var actionsBuilder = GroupsProtoGroupChangeActions.builder()
+        guard let localIdentifiers = DependenciesBridge.shared.tsAccountManager.localIdentifiersWithMaybeSneakyTransaction else {
+            throw OWSAssertionError("Missing local identifiers!")
+        }
 
         let localAci = localIdentifiers.aci
 
@@ -331,7 +336,7 @@ public class GroupsV2OutgoingChangesImpl: GroupsV2OutgoingChanges {
         var fullMembers = Set(currentGroupModel.groupMembership.fullMembers.compactMap { $0.serviceId as? Aci })
         var fullMemberAdmins = Set(currentGroupModel.groupMembership.fullMemberAdministrators.compactMap { $0.serviceId as? Aci })
 
-        var groupUpdateMessageBehavior: GroupUpdateMessageBehavior = .sendUpdateToOtherGroupMembers
+        var groupUpdateMessageBehavior: GroupsV2BuiltGroupChange.GroupUpdateMessageBehavior = .sendUpdateToOtherGroupMembers
 
         var didChange = false
 
@@ -778,7 +783,28 @@ public class GroupsV2OutgoingChangesImpl: GroupsV2OutgoingChanges {
             }
         }
 
+        // MARK: - Change action insertion point
+
+        /// This should remain the last change action we consider adding.
+        /// The reason is that we will modify the `groupUpdateMessageBehavior`
+        /// _only_ when the local profile key update is the _sole_ change
+        /// action in this proto.
         if shouldUpdateLocalProfileKey {
+            if DebugFlags.internalLogging { Logger.info("[Scroll Perf Debug] shouldUpdateLocalProfileKey in buildGroupChangesProto") }
+            if !didChange && FeatureFlags.doNotSendGroupChangeMessagesOnProfileKeyRotation {
+                /// When the profile key rotation is the sole change action
+                /// in this proto, we skip the optimization of sending messages
+                /// notifying all group members of this change, instead opting
+                /// for them to pull down shared group state from the server
+                /// at their leisure.
+                ///
+                /// The reason we remove this optimization is that recipient
+                /// hiding and blocking trigger profile key rotations, and
+                /// sending messages (particularly receiving all the receipts
+                /// in return) creates noticeable lagginess for users with
+                /// many groups.
+                groupUpdateMessageBehavior = .sendNothing
+            }
             guard let profileKeyCredential = profileKeyCredentialMap[localAci] else {
                 throw OWSAssertionError("Missing profile key credential: \(localAci)")
             }
@@ -788,8 +814,6 @@ public class GroupsV2OutgoingChangesImpl: GroupsV2OutgoingChanges {
             actionsBuilder.addModifyMemberProfileKeys(actionBuilder.buildInfallibly())
             didChange = true
         }
-
-        // MARK: - Change action insertion point
 
         guard didChange else {
             throw GroupsV2Error.redundantChange

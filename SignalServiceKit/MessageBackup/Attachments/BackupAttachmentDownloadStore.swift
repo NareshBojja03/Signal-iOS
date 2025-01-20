@@ -42,8 +42,10 @@ public class BackupAttachmentDownloadStoreImpl: BackupAttachmentDownloadStore {
 
     private let kvStore: KeyValueStore
 
-    public init() {
-        self.kvStore = KeyValueStore(collection: "BackupAttachmentDownloadStoreImpl")
+    public init(
+        keyValueStoreFactory: KeyValueStoreFactory
+    ) {
+        self.kvStore = keyValueStoreFactory.keyValueStore(collection: "BackupAttachmentDownloadStoreImpl")
     }
 
     private let shouldStoreAllMediaLocallyKey = "shouldStoreAllMediaLocallyKey"

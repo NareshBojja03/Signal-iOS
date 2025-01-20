@@ -53,12 +53,12 @@ struct UploadEndpointCDN2: UploadEndpoint {
         headers["Content-Type"] = MimeType.applicationOctetStream.rawValue
 
         do {
-            let response = try await urlSession.performRequest(
+            let response = try await urlSession.dataTaskPromise(
                 urlString,
                 method: .post,
                 headers: headers,
                 body: nil
-            )
+            ).awaitable()
 
             guard response.responseStatusCode == 201 else {
                 throw OWSAssertionError("Invalid statusCode: \(response.responseStatusCode).")
@@ -92,12 +92,12 @@ struct UploadEndpointCDN2: UploadEndpoint {
         headers["Content-Range"] = "bytes */\(attempt.encryptedDataLength)"
 
         let urlSession = signalService.urlSessionForCdn(cdnNumber: uploadForm.cdnNumber, maxResponseSize: nil)
-        let response = try await urlSession.performRequest(
+        let response = try await urlSession.dataTaskPromise(
             attempt.uploadLocation.absoluteString,
             method: .put,
             headers: headers,
             body: nil
-        )
+        ).awaitable()
 
         let statusCode = response.responseStatusCode
         switch statusCode {
@@ -148,7 +148,7 @@ struct UploadEndpointCDN2: UploadEndpoint {
     func performUpload<Metadata: UploadMetadata>(
         startPoint: Int,
         attempt: Upload.Attempt<Metadata>,
-        progress: OWSProgressSource?
+        progress progressBlock: @escaping UploadEndpointProgress
     ) async throws {
         let totalDataLength = attempt.encryptedDataLength
         var headers = [String: String]()
@@ -186,13 +186,13 @@ struct UploadEndpointCDN2: UploadEndpoint {
 
         do {
             let urlSession = signalService.urlSessionForCdn(cdnNumber: uploadForm.cdnNumber, maxResponseSize: nil)
-            let response = try await urlSession.performUpload(
+            let response = try await urlSession.uploadTaskPromise(
                 attempt.uploadLocation.absoluteString,
                 method: .put,
                 headers: headers,
                 fileUrl: fileUrl,
-                progress: progress
-            )
+                progress: progressBlock
+            ).awaitable()
             switch response.responseStatusCode {
             case 200, 201:
                 return

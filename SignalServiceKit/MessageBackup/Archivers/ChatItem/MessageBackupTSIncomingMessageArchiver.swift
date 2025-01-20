@@ -33,6 +33,7 @@ class MessageBackupTSIncomingMessageArchiver {
 
     func archiveIncomingMessage(
         _ incomingMessage: TSIncomingMessage,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> MessageBackup.ArchiveInteractionResult<Details> {
         var partialErrors = [ArchiveFrameError]()
@@ -40,6 +41,7 @@ class MessageBackupTSIncomingMessageArchiver {
         let incomingMessageDetails: Details
         switch editHistoryArchiver.archiveMessageAndEditHistory(
             incomingMessage,
+            thread: thread,
             context: context,
             builder: self
         ).bubbleUp(Details.self, partialErrors: &partialErrors) {
@@ -126,45 +128,16 @@ extension MessageBackupTSIncomingMessageArchiver: MessageBackupTSMessageEditHist
             return errorResult
         }
 
-        let directionalDetails: BackupProto_ChatItem.OneOf_DirectionalDetails
-        if author == context.recipientContext.localRecipientId {
-            // Incoming messages from self are not allowed in backups
-            // but have been observed in real-world databases.
-            // If we encounter these, fudge them a bit and pretend
-            // they were outgoing messages.
-            var outgoingDetails = BackupProto_ChatItem.OutgoingMessageDetails()
-            var sendStatus = BackupProto_SendStatus()
-            sendStatus.recipientID = context.recipientContext.localRecipientId.value
-            sendStatus.timestamp = incomingMessage.receivedAtTimestamp
-            var viewedStatus = BackupProto_SendStatus.Viewed()
-            viewedStatus.sealedSender = incomingMessage.wasReceivedByUD
-            sendStatus.deliveryStatus = .viewed(viewedStatus)
-            outgoingDetails.sendStatus = [sendStatus]
-            directionalDetails = .outgoing(outgoingDetails)
-            partialErrors.append(.archiveFrameError(
-                .incomingMessageFromSelf,
-                incomingMessage.uniqueInteractionId
-            ))
-        } else {
-            let incomingMessageDetails: BackupProto_ChatItem.IncomingMessageDetails = buildIncomingMessageDetails(
-                incomingMessage,
-                editRecord: editRecord
-            )
-            directionalDetails = .incoming(incomingMessageDetails)
-        }
-
-        let expireStartDate: UInt64?
-        if incomingMessage.expireStartedAt > 0 {
-            expireStartDate = incomingMessage.expireStartedAt
-        } else {
-            expireStartDate = nil
-        }
+        let incomingMessageDetails: BackupProto_ChatItem.IncomingMessageDetails = buildIncomingMessageDetails(
+            incomingMessage,
+            editRecord: editRecord
+        )
 
         let details = Details(
             author: author,
-            directionalDetails: directionalDetails,
+            directionalDetails: .incoming(incomingMessageDetails),
             dateCreated: incomingMessage.timestamp,
-            expireStartDate: expireStartDate,
+            expireStartDate: incomingMessage.expireStartedAt,
             expiresInMs: UInt64(incomingMessage.expiresInSeconds) * 1000,
             isSealedSender: incomingMessage.wasReceivedByUD.negated,
             chatItemType: chatItemType,
@@ -184,9 +157,7 @@ extension MessageBackupTSIncomingMessageArchiver: MessageBackupTSMessageEditHist
     ) -> BackupProto_ChatItem.IncomingMessageDetails {
         var incomingDetails = BackupProto_ChatItem.IncomingMessageDetails()
         incomingDetails.dateReceived = incomingMessage.receivedAtTimestamp
-        if let dateServerSent = incomingMessage.serverTimestamp?.uint64Value {
-            incomingDetails.dateServerSent = dateServerSent
-        }
+        incomingDetails.dateServerSent = incomingMessage.serverTimestamp?.uint64Value ?? 0
         // The message may not have been marked read if it's a past revision,
         // but its edit record will have been.
         incomingDetails.read = editRecord?.read ?? incomingMessage.wasRead
@@ -241,21 +212,14 @@ extension MessageBackupTSIncomingMessageArchiver: MessageBackupTSMessageEditHist
             )])
         }
 
-        let expiresInSeconds: UInt32
-        if chatItem.hasExpiresInMs {
-            guard let _expiresInSeconds: UInt32 = .msToSecs(chatItem.expiresInMs) else {
-                return .messageFailure([.restoreFrameError(
-                    .invalidProtoData(.expirationTimerOverflowedLocalType),
-                    chatItem.id
-                )])
-            }
-            expiresInSeconds = _expiresInSeconds
-        } else {
-            // 0 == no expiration
-            expiresInSeconds = 0
+        guard let expiresInSeconds: UInt32 = .msToSecs(chatItem.expiresInMs) else {
+            return .messageFailure([.restoreFrameError(
+                .invalidProtoData(.expirationTimerOverflowedLocalType),
+                chatItem.id
+            )])
         }
         let expireStartDate: UInt64
-        if chatItem.hasExpireStartDate {
+        if chatItem.expireStartDate > 0 {
             expireStartDate = chatItem.expireStartDate
         } else if
             expiresInSeconds > 0,
@@ -372,8 +336,6 @@ extension MessageBackupTSIncomingMessageArchiver: MessageBackupTSMessageEditHist
                 message,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                senderAci: authorAci,
-                directionalDetails: incomingDetails,
                 context: context
             )
         } catch let error {

@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import GRDB
 import LibSignalClient
 
 /// Archives ``SignalRecipient``s as ``BackupProto_Contact`` recipients.
@@ -18,13 +17,11 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
     typealias RestoreFrameResult = MessageBackup.RestoreFrameResult<RecipientId>
     private typealias RestoreFrameError = MessageBackup.RestoreFrameError<RecipientId>
 
-    private let avatarFetcher: MessageBackupAvatarFetcher
     private let blockingManager: MessageBackup.Shims.BlockingManager
-    private let dateProvider: DateProvider
     private let profileManager: MessageBackup.Shims.ProfileManager
+    private let recipientDatabaseTable: any RecipientDatabaseTable
     private let recipientHidingManager: RecipientHidingManager
     private let recipientManager: any SignalRecipientManager
-    private let recipientStore: MessageBackupRecipientStore
     private let signalServiceAddressCache: SignalServiceAddressCache
     private let storyStore: MessageBackupStoryStore
     private let threadStore: MessageBackupThreadStore
@@ -32,26 +29,22 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
     private let usernameLookupManager: UsernameLookupManager
 
     public init(
-        avatarFetcher: MessageBackupAvatarFetcher,
         blockingManager: MessageBackup.Shims.BlockingManager,
-        dateProvider: @escaping DateProvider,
         profileManager: MessageBackup.Shims.ProfileManager,
+        recipientDatabaseTable: any RecipientDatabaseTable,
         recipientHidingManager: RecipientHidingManager,
         recipientManager: any SignalRecipientManager,
-        recipientStore: MessageBackupRecipientStore,
         signalServiceAddressCache: SignalServiceAddressCache,
         storyStore: MessageBackupStoryStore,
         threadStore: MessageBackupThreadStore,
         tsAccountManager: TSAccountManager,
         usernameLookupManager: UsernameLookupManager
     ) {
-        self.avatarFetcher = avatarFetcher
         self.blockingManager = blockingManager
-        self.dateProvider = dateProvider
         self.profileManager = profileManager
+        self.recipientDatabaseTable = recipientDatabaseTable
         self.recipientHidingManager = recipientHidingManager
         self.recipientManager = recipientManager
-        self.recipientStore = recipientStore
         self.signalServiceAddressCache = signalServiceAddressCache
         self.storyStore = storyStore
         self.threadStore = threadStore
@@ -99,15 +92,12 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
         /// Track all the `ServiceId`s that we've archived, so we don't attempt
         /// to archive a `Contact` frame twice for the same service ID.
         var archivedServiceIds = Set<ServiceId>()
-        /// Track all the phone numbers we've archived too, so we don't attempt to archive a
-        /// `Contact` twice for the same e164.
-        var archivedPhoneNumbers = Set<String>()
 
         /// First, we enumerate all `SignalRecipient`s, which are our "primary
         /// key" for contacts. They directly contain many of the fields we store
         /// in a `Contact` recipient, with the other fields keyed off data in
         /// the recipient.
-        let recipientBlock: (SignalRecipient) -> Void = { recipient in
+        recipientDatabaseTable.enumerateAll(tx: context.tx) { recipient in
             guard
                 let contactAddress = MessageBackup.ContactAddress(
                     aci: recipient.aci,
@@ -138,14 +128,11 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
             if let pni = contactAddress.pni {
                 archivedServiceIds.insert(pni)
             }
-            if let e164 = contactAddress.e164 {
-                archivedPhoneNumbers.insert(e164.stringValue)
-            }
 
             var isStoryHidden = false
             if let aci = recipient.aci {
                 do {
-                    isStoryHidden = try self.storyStore.getOrCreateStoryContextAssociatedData(
+                    isStoryHidden = try storyStore.getOrCreateStoryContextAssociatedData(
                         for: aci,
                         context: context
                     ).isHidden
@@ -157,29 +144,12 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
                 }
             }
 
-            let identity: OWSRecipientIdentity?
-            do {
-                // Read directly from the OWSRecipientIdentity table, bypassing
-                // OWSIdentityManager, as we already are working directly
-                // with the SignalRecipient and don't need serviceId-based checks.
-                identity = try RecipientIdentityRecord
-                    .filter(Column(RecipientIdentityRecord.CodingKeys.uniqueId) == recipient.uniqueId)
-                    .fetchOne(context.tx.databaseConnection)
-                    .map { try OWSRecipientIdentity.fromRecord($0) }
-            } catch let error {
-                errors.append(.archiveFrameError(
-                    .unableToFetchRecipientIdentity(error),
-                    .contact(contactAddress)
-                ))
-                return
-            }
-
-            let contact = self.buildContactRecipient(
+            let contact = buildContactRecipient(
                 aci: contactAddress.aci,
                 pni: contactAddress.pni,
                 e164: contactAddress.e164,
                 username: recipient.aci.flatMap { aci in
-                    self.usernameLookupManager.fetchUsername(
+                    usernameLookupManager.fetchUsername(
                         forAci: aci,
                         transaction: context.tx
                     )
@@ -188,7 +158,7 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
                 isWhitelisted: whitelistedAddresses.contains(recipient.address),
                 isStoryHidden: isStoryHidden,
                 visibility: { () -> BackupProto_Contact.Visibility in
-                    guard let hiddenRecipient = self.recipientHidingManager.fetchHiddenRecipient(
+                    guard let hiddenRecipient = recipientHidingManager.fetchHiddenRecipient(
                         signalRecipient: recipient,
                         tx: context.tx
                     ) else {
@@ -196,9 +166,9 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
                     }
 
                     if
-                        self.recipientHidingManager.isHiddenRecipientThreadInMessageRequest(
+                        recipientHidingManager.isHiddenRecipientThreadInMessageRequest(
                             hiddenRecipient: hiddenRecipient,
-                            contactThread: self.threadStore.fetchContactThread(
+                            contactThread: threadStore.fetchContactThread(
                                 recipient: recipient,
                                 context: context
                             ),
@@ -223,19 +193,10 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
                 userProfile: self.profileManager.getUserProfile(
                     for: recipient.address,
                     tx: context.tx
-                ),
-                identity: identity
+                )
             )
 
             writeToStream(contact: contact, contactAddress: contactAddress)
-        }
-
-        do {
-            try recipientStore.enumerateAllSignalRecipients(context, block: { recipient in
-                autoreleasepool { recipientBlock(recipient) }
-            })
-        } catch {
-            return .completeFailure(.fatalArchiveError(.recipientIteratorError(error)))
         }
 
         /// After enumerating all `SignalRecipient`s, we enumerate
@@ -259,78 +220,64 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
         /// relationship between `SignalRecipient` and `OWSUserProfile`, we can
         /// remove this code.
         profileManager.enumerateUserProfiles(tx: context.tx) { userProfile in
-            autoreleasepool {
-                if let serviceId = userProfile.serviceId {
-                    let (inserted, _) = archivedServiceIds.insert(serviceId)
+            if let serviceId = userProfile.serviceId {
+                let (inserted, _) = archivedServiceIds.insert(serviceId)
 
-                    if !inserted {
-                        /// Bail early if we've already archived a `Contact` for this
-                        /// service ID.
-                        return
-                    }
-                }
-                if let phoneNumber = userProfile.phoneNumber {
-                    let (inserted, _) = archivedPhoneNumbers.insert(phoneNumber)
-
-                    if !inserted {
-                        /// Bail early if we've already archived a `Contact` for this
-                        /// phone number.
-                        return
-                    }
-                }
-
-                guard
-                    let contactAddress = MessageBackup.ContactAddress(
-                        aci: userProfile.serviceId as? Aci,
-                        pni: userProfile.serviceId as? Pni,
-                        e164: userProfile.phoneNumber.flatMap { E164($0) }
-                    )
-                else {
-                    /// Skip profiles with no identifiers, but don't add to the
-                    /// list of errors.
-                    Logger.warn("Skipping empty OWSUserProfile!")
+                if !inserted {
+                    /// Bail early if we've already archived a `Contact` for this
+                    /// service ID.
                     return
                 }
-
-                let signalServiceAddress: MessageBackup.InteropAddress
-                switch userProfile.internalAddress {
-                case .localUser:
-                    /// Skip the local user. We need to check `internalAddress`
-                    /// here, since the "local user profile" has historically been
-                    /// persisted with a special, magic phone number.
-                    return
-                case .otherUser(let _signalServiceAddress):
-                    signalServiceAddress = _signalServiceAddress
-                }
-
-                let contact = buildContactRecipient(
-                    aci: contactAddress.aci,
-                    pni: contactAddress.pni,
-                    e164: contactAddress.e164,
-                    username: nil, // If we have a user profile, we have no username.
-                    isBlocked: blockedAddresses.contains(signalServiceAddress),
-                    isWhitelisted: whitelistedAddresses.contains(signalServiceAddress),
-                    isStoryHidden: false, // Can't have a story if there's no recipient.
-                    visibility: .visible, // Can't have hidden if there's no recipient.
-                    registration: {
-                        // We don't know if they're registered; if we did, we'd have
-                        // a recipient.
-                        var notRegistered = BackupProto_Contact.NotRegistered()
-                        notRegistered.unregisteredTimestamp = 0
-
-                        return .notRegistered(notRegistered)
-                    }(),
-                    userProfile: userProfile,
-                    // We don't have (and can't fetch) identity info for
-                    // profile addresses without SignalRecipients.
-                    identity: nil
-                )
-
-                writeToStream(
-                    contact: contact,
-                    contactAddress: contactAddress
-                )
             }
+
+            guard
+                let contactAddress = MessageBackup.ContactAddress(
+                    aci: userProfile.serviceId as? Aci,
+                    pni: userProfile.serviceId as? Pni,
+                    e164: userProfile.phoneNumber.flatMap { E164($0) }
+                )
+            else {
+                /// Skip profiles with no identifiers, but don't add to the
+                /// list of errors.
+                Logger.warn("Skipping empty OWSUserProfile!")
+                return
+            }
+
+            let signalServiceAddress: MessageBackup.InteropAddress
+            switch userProfile.internalAddress {
+            case .localUser:
+                /// Skip the local user. We need to check `internalAddress`
+                /// here, since the "local user profile" has historically been
+                /// persisted with a special, magic phone number.
+                return
+            case .otherUser(let _signalServiceAddress):
+                signalServiceAddress = _signalServiceAddress
+            }
+
+            let contact = buildContactRecipient(
+                aci: contactAddress.aci,
+                pni: contactAddress.pni,
+                e164: contactAddress.e164,
+                username: nil, // If we have a user profile, we have no username.
+                isBlocked: blockedAddresses.contains(signalServiceAddress),
+                isWhitelisted: whitelistedAddresses.contains(signalServiceAddress),
+                isStoryHidden: false, // Can't have a story if there's no recipient.
+                visibility: .visible, // Can't have hidden if there's no recipient.
+                registration: {
+                    // We don't know if they're registered; if we did, we'd have
+                    // a recipient.
+                    var notRegistered = BackupProto_Contact.NotRegistered()
+                    notRegistered.unregisteredTimestamp = 0
+
+                    return .notRegistered(notRegistered)
+                }(),
+                userProfile: userProfile
+            )
+
+            writeToStream(
+                contact: contact,
+                contactAddress: contactAddress
+            )
         }
 
         if errors.isEmpty {
@@ -338,78 +285,6 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
         } else {
             return .partialSuccess(errors)
         }
-    }
-
-    /// It is possible to have a TSContactThread for which we have no SignalRecipient
-    /// or OWSUserProfile. One way to create this is to tap "Call with Signal" from the system
-    /// contacts app, for a number that is not registered on Signal.
-    /// If this happens, when we archive the TSContactThread we need to also archive
-    /// a Contact recipient that we create on-the-fly. This is only used if we were unable
-    /// to find a Recipient for the thread's address; in other words there was not a
-    /// corresponding recipient that we archived earlier.
-    func archiveContactRecipientForOrphanedContactThread(
-        _ contactThread: TSContactThread,
-        address: MessageBackup.ContactAddress,
-        stream: MessageBackupProtoOutputStream,
-        context: MessageBackup.ChatArchivingContext
-    ) -> MessageBackup.ArchiveSingleFrameResult<RecipientId, MessageBackup.ThreadUniqueId> {
-        let existingRecipient = recipientStore.fetchRecipient(
-            for: address,
-            context: context.recipientContext
-        )
-        // If we have an existing recipient, this is an error. It means we
-        // _should_ have found the recipient on the context, but did not.
-        guard existingRecipient == nil else {
-            return .failure(.archiveFrameError(
-                .referencedRecipientIdMissing(address.asArchivingAddress()),
-                .init(thread: contactThread)
-            ))
-        }
-
-        // We don't know if they're registered; if we did there
-        // would be a SignalRecipient.
-        var registration = BackupProto_Contact.NotRegistered()
-        registration.unregisteredTimestamp = 0
-
-        let contactProto = buildContactRecipient(
-            aci: address.aci,
-            pni: address.pni,
-            e164: address.e164,
-            username: nil,
-            isBlocked: blockingManager.blockedAddresses(tx: context.tx)
-                .contains(address.asInteropAddress()),
-            isWhitelisted: profileManager.allWhitelistedAddresses(tx: context.tx)
-                .contains(address.asInteropAddress()),
-            // If there's no recipient, neither can be hidden
-            isStoryHidden: false,
-            visibility: .visible,
-            registration: .notRegistered(registration),
-            userProfile: nil,
-            identity: nil
-        )
-
-        let recipientAddress = address.asArchivingAddress()
-        let recipientId = context.recipientContext.assignRecipientId(to: recipientAddress)
-
-        let maybeError: MessageBackup.ArchiveFrameError<MessageBackup.ThreadUniqueId>?
-        maybeError = Self.writeFrameToStream(
-            stream,
-            objectId: .init(thread: contactThread),
-            frameBuilder: {
-                var recipient = BackupProto_Recipient()
-                recipient.id = recipientId.value
-                recipient.destination = .contact(contactProto)
-
-                var frame = BackupProto_Frame()
-                frame.item = .recipient(recipient)
-                return frame
-            }
-        )
-
-        if let maybeError {
-            return .failure(maybeError)
-        }
-        return .success(recipientId)
     }
 
     private func buildContactRecipient(
@@ -422,8 +297,7 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
         isStoryHidden: Bool,
         visibility: BackupProto_Contact.Visibility,
         registration: BackupProto_Contact.OneOf_Registration,
-        userProfile: OWSUserProfile?,
-        identity: OWSRecipientIdentity?
+        userProfile: OWSUserProfile?
     ) -> BackupProto_Contact {
         var contact = BackupProto_Contact()
         contact.blocked = isBlocked
@@ -431,18 +305,6 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
         contact.hideStory = isStoryHidden
         contact.visibility = visibility
         contact.registration = registration
-        if let identity, let identityKey = try? identity.identityKeyObject {
-            // `serialize()`, which includes the keyType prefix.
-            contact.identityKey = Data(identityKey.publicKey.serialize())
-            switch identity.verificationState {
-            case .default, .defaultAcknowledged:
-                contact.identityState = .default
-            case .verified:
-                contact.identityState = .verified
-            case .noLongerVerified:
-                contact.identityState = .unverified
-            }
-        }
 
         if let aci {
             contact.aci = aci.rawUUID.data
@@ -575,11 +437,7 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
             isRegistered: isRegistered,
             unregisteredAtTimestamp: unregisteredTimestamp
         )
-        do {
-            try recipientStore.insertRecipient(recipient, context: context)
-        } catch {
-            return .failure([.restoreFrameError(.databaseInsertionFailed(error), recipientProto.recipientId)])
-        }
+        recipientDatabaseTable.insertRecipient(recipient, transaction: context.tx)
 
         /// No Backup code should be relying on the SSA cache, but once we've
         /// finished restoring and launched we want the cache to have accurate
@@ -591,51 +449,6 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
             contactProto.hasUsername
         {
             usernameLookupManager.saveUsername(contactProto.username, forAci: aci, transaction: context.tx)
-        }
-
-        if contactProto.hasIdentityKey {
-            let identityKey: Data
-            do {
-                identityKey = try IdentityKey(publicKey: PublicKey(contactProto.identityKey))
-                    // 'keyBytes', which drops the keyType prefix
-                    .publicKey.keyBytes.asData
-            } catch let error {
-                return .failure([.restoreFrameError(.invalidProtoData(.invalidContactIdentityKey), recipientProto.recipientId)])
-            }
-
-            let verificationState: OWSVerificationState
-            switch contactProto.identityState {
-            case .default:
-                verificationState = .default
-            case .verified:
-                verificationState = .verified
-            case .unverified:
-                verificationState = .noLongerVerified
-            case .UNRECOGNIZED:
-                return .failure([.restoreFrameError(
-                    .invalidProtoData(.unknownContactIdentityState),
-                    recipientProto.recipientId
-                )])
-            }
-
-            // Write directly to the OWSRecipientIdentity table, bypassing
-            // OWSIdentityManager, as we already are working directly
-            // with the SignalRecipient and don't need serviceId-based checks.
-            let identity = OWSRecipientIdentity(
-                recipientUniqueId: recipient.uniqueId,
-                identityKey: identityKey,
-                isFirstKnownKey: true,
-                createdAt: dateProvider(),
-                verificationState: verificationState
-            )
-            do {
-                try identity.asRecord().insert(context.tx.databaseConnection)
-            } catch {
-                return .failure([.restoreFrameError(
-                    .databaseInsertionFailed(error),
-                    recipientProto.recipientId
-                )])
-            }
         }
 
         if contactProto.profileSharing {
@@ -697,13 +510,7 @@ public class MessageBackupContactRecipientArchiver: MessageBackupProtoArchiver {
             tx: context.tx
         )
 
-        if let serviceId = aci ?? pni {
-            do {
-                try avatarFetcher.enqueueFetchOfUserProfile(serviceId: serviceId, tx: context.tx)
-            } catch let error {
-                partialErrors.append(.restoreFrameError(.databaseInsertionFailed(error), recipientProto.recipientId))
-            }
-        }
+        // TODO: [Backups] Enqueue a fetch of this contact's profile and download of their avatar (even if we have no profile key).
 
         if partialErrors.isEmpty {
             return .success

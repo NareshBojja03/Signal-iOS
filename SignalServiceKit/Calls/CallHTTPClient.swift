@@ -27,7 +27,7 @@ extension CallHTTPClient: HTTPDelegate {
         AssertIsOnMainThread()
 
         let session = OWSURLSession(
-            securityPolicy: OWSURLSession.signalServiceSecurityPolicy,
+            securityPolicy: OWSURLSession.defaultSecurityPolicy,
             configuration: OWSURLSession.defaultConfigurationWithoutCaching,
             canUseSignalProxy: true
         )
@@ -45,12 +45,12 @@ extension CallHTTPClient: HTTPDelegate {
 
         Task { @MainActor in
             do {
-                let response = try await session.performRequest(
+                let response = try await session.dataTaskPromise(
                     request.url,
                     method: request.method.httpMethod,
                     headers: request.headers,
                     body: request.body
-                )
+                ).awaitable()
                 self.ringRtcHttpClient.receivedResponse(
                     requestId: requestId,
                     response: response.asRingRTCResponse
@@ -59,7 +59,8 @@ extension CallHTTPClient: HTTPDelegate {
                 if error.isNetworkFailureOrTimeout {
                     Logger.warn("Peek client HTTP request had network error: \(error)")
                 } else {
-                    owsFailDebug("Peek client HTTP request failed \(error)")
+                    //owsFailDebug("Peek client HTTP request failed \(error)")
+                    Logger.warn("Peek client HTTP request failed \(error)")
                 }
                 self.ringRtcHttpClient.httpRequestFailed(requestId: requestId)
             }

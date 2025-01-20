@@ -7,7 +7,8 @@ import Foundation
 import SignalServiceKit
 
 public protocol CountryCodeViewControllerDelegate: AnyObject {
-    func countryCodeViewController(_ vc: CountryCodeViewController, didSelectCountry: PhoneNumberCountry)
+    func countryCodeViewController(_ vc: CountryCodeViewController,
+                                   didSelectCountry: RegistrationCountryState)
 }
 
 // MARK: -
@@ -63,28 +64,27 @@ public class CountryCodeViewController: OWSTableViewController2 {
     private func updateTableContents() {
         AssertIsOnMainThread()
 
-        let countries = PhoneNumberCountry.buildCountries(searchText: searchBar.text)
+        let countryStates = RegistrationCountryState.buildCountryStates(searchText: searchBar.text)
 
         let contents = OWSTableContents()
         let section = OWSTableSection()
-        for country in countries {
-            section.add(OWSTableItem.item(
-                name: country.countryName,
-                accessoryText: country.plusPrefixedCallingCode,
-                actionBlock: { [weak self] in
-                    self?.countryWasSelected(country)
-                }
-            ))
+        for countryState in countryStates {
+            let accessibilityIdentifier = "country.\(countryState.countryCode)"
+            section.add(OWSTableItem.item(name: countryState.countryName,
+                                          accessoryText: countryState.callingCode,
+                                          accessibilityIdentifier: accessibilityIdentifier) { [weak self] in
+                self?.countryWasSelected(countryState: countryState)
+            })
         }
         contents.add(section)
 
         self.contents = contents
     }
 
-    private func countryWasSelected(_ country: PhoneNumberCountry) {
+    private func countryWasSelected(countryState: RegistrationCountryState) {
         AssertIsOnMainThread()
 
-        countryCodeDelegate?.countryCodeViewController(self, didSelectCountry: country)
+        countryCodeDelegate?.countryCodeViewController(self, didSelectCountry: countryState)
         searchBar.resignFirstResponder()
         self.dismiss(animated: true)
     }

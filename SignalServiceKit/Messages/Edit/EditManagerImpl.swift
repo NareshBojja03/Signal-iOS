@@ -30,24 +30,24 @@ public class EditManagerImpl: EditManager {
     }
 
     public struct Context {
-        let attachmentStore: AttachmentStore
         let dataStore: EditManagerImpl.Shims.DataStore
-        let editManagerAttachments: EditManagerAttachments
+        let editManagerAttachments: EditManagerTSResources
         let editMessageStore: EditMessageStore
         let receiptManagerShim: EditManagerImpl.Shims.ReceiptManager
+        let tsResourceStore: TSResourceStore
 
         public init(
-            attachmentStore: AttachmentStore,
             dataStore: EditManagerImpl.Shims.DataStore,
-            editManagerAttachments: EditManagerAttachments,
+            editManagerAttachments: EditManagerTSResources,
             editMessageStore: EditMessageStore,
-            receiptManagerShim: EditManagerImpl.Shims.ReceiptManager
+            receiptManagerShim: EditManagerImpl.Shims.ReceiptManager,
+            tsResourceStore: TSResourceStore
         ) {
-            self.attachmentStore = attachmentStore
             self.dataStore = dataStore
             self.editManagerAttachments = editManagerAttachments
             self.editMessageStore = editMessageStore
             self.receiptManagerShim = receiptManagerShim
+            self.tsResourceStore = tsResourceStore
         }
     }
 
@@ -198,9 +198,9 @@ public class EditManagerImpl: EditManager {
         targetMessage: TSOutgoingMessage,
         thread: TSThread,
         edits: MessageEdits,
-        oversizeText: AttachmentDataSource?,
+        oversizeText: OversizeTextDataSource?,
         quotedReplyEdit: MessageEdits.Edit<Void>,
-        linkPreview: LinkPreviewDataSource?,
+        linkPreview: LinkPreviewTSResourceDataSource?,
         tx: DBWriteTransaction
     ) throws -> OutgoingEditMessage {
         guard let threadRowId = thread.sqliteRowId else {
@@ -306,11 +306,7 @@ public class EditManagerImpl: EditManager {
             pastRevisionId: priorRevisionRowId,
             read: editTargetWrapper.wasRead
         )
-        do {
-            try context.editMessageStore.insert(editRecord, tx: tx)
-        } catch {
-            owsFailDebug("Unexpected edit record insertion error \(error)")
-        }
+        context.editMessageStore.insert(editRecord, tx: tx)
 
         return latestRevisionMessage
     }
@@ -406,14 +402,14 @@ public class EditManagerImpl: EditManager {
             throw OWSAssertionError("Edit of message type not supported")
         }
 
-        let firstAttachmentRef = context.attachmentStore.fetchFirstReference(
-            owner: .messageBodyAttachment(messageRowId: targetMessage.sqliteRowId!),
+        let currentAttachmentRefs = context.tsResourceStore.bodyMediaAttachments(
+            for: targetMessage,
             tx: tx
         )
 
         // Voice memos only ever have one attachment; only need to check the first.
         if
-            let firstAttachmentRef,
+            let firstAttachmentRef = currentAttachmentRefs.first,
             firstAttachmentRef.renderingFlag == .voiceMessage
         {
             // This will bail if it finds a voice memo

@@ -160,18 +160,6 @@ public class RegistrationNavigationController: OWSNavigationController {
                 // but its overkill so we have not.
                 update: nil
             )
-        case .scanQuickRegistrationQrCode(let state):
-            return Controller(
-                type: RegistrationQuickRestoreQRCodeViewController.self,
-                make: { presenter in
-                    return RegistrationQuickRestoreQRCodeViewController(
-                        state: state,
-                        presenter: presenter
-                    )
-                },
-                // State never changes.
-                update: nil
-            )
         case .phoneNumberEntry(let state):
             switch state {
             case .registration(let registrationMode):
@@ -415,10 +403,6 @@ extension RegistrationNavigationController: RegistrationSplashPresenter {
         pushNextController(coordinator.continueFromSplash())
     }
 
-    public func restoreOrTransfer() {
-        // TODO [Quick Restore]: Enter "Restore or Transfer" flow.
-    }
-
     public func switchToDeviceLinkingMode() {
         Logger.info("Pushing device linking")
         let controller = RegistrationConfirmModeSwitchViewController(presenter: self)
@@ -600,12 +584,6 @@ extension RegistrationNavigationController: RegistrationRestoreFromBackupPresent
     func didSelectBackup(type: RegistrationMessageBackupRestoreType) {
         let guarantee = coordinator.restoreFromMessageBackup(type: type)
         pushNextController(guarantee, loadingMode: .restoringBackup)
-    }
-}
-
-extension RegistrationNavigationController: RegistrationQuickRestoreQRCodePresenter {
-    func cancel() {
-        // TODO [Quick Restore]: Pop back to the very first screen in the flow (splash).
     }
 }
 

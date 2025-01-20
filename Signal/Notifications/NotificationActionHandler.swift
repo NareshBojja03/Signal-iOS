@@ -21,7 +21,7 @@ public class NotificationActionHandler {
         }.done {
             completionHandler()
         }.catch { error in
-            owsFailDebug("error: \(error)")
+            Logger.warn("error: \(error)")
             completionHandler()
         }
     }
@@ -162,7 +162,7 @@ public class NotificationActionHandler {
                 }
             }.recover(on: DispatchQueue.global()) { error -> Promise<Void> in
                 Logger.warn("Failed to send reply message from notification with error: \(error)")
-                SSKEnvironment.shared.notificationPresenterRef.notifyUserOfFailedSend(inThread: thread)
+                SSKEnvironment.shared.notificationPresenterImplRef.notifyForFailedSend(inThread: thread)
                 throw error
             }.then(on: DispatchQueue.global()) { () -> Promise<Void> in
                 self.markMessageAsRead(notificationMessage: notificationMessage)
@@ -264,7 +264,7 @@ public class NotificationActionHandler {
                 }
             }.recover(on: DispatchQueue.global()) { error -> Promise<Void> in
                 Logger.warn("Failed to send reply message from notification with error: \(error)")
-                SSKEnvironment.shared.notificationPresenterRef.notifyUserOfFailedSend(inThread: thread)
+                SSKEnvironment.shared.notificationPresenterImplRef.notifyForFailedSend(inThread: thread)
                 throw error
             }.then(on: DispatchQueue.global()) { () -> Promise<Void> in
                 self.markMessageAsRead(notificationMessage: notificationMessage)

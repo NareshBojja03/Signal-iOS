@@ -853,7 +853,7 @@ class StoryItemMediaView: UIView {
             container.addSubview(backgroundImageView)
             backgroundImageView.autoPinEdgesToSuperviewEdges()
 
-            switch stream.attachment.attachmentStream.contentType {
+            switch stream.attachment.attachmentStream.computeContentType() {
             case .video:
                 let videoView = buildVideoView(attachment: stream.attachment)
                 container.addSubview(videoView)
@@ -903,7 +903,7 @@ class StoryItemMediaView: UIView {
 
     private var videoPlayerLoopCount = 0
     private var videoPlayer: VideoPlayer?
-    private func buildVideoView(attachment: ReferencedAttachmentStream) -> UIView {
+    private func buildVideoView(attachment: ReferencedTSResourceStream) -> UIView {
         guard let player = try? VideoPlayer(attachment: attachment, shouldMixAudioWithOthers: true) else {
             owsFailDebug("Could not load attachment.")
             return buildContentUnavailableView()
@@ -923,7 +923,7 @@ class StoryItemMediaView: UIView {
     }
 
     private var yyImageView: YYAnimatedImageView?
-    private func buildYYImageView(attachment: AttachmentStream) -> UIView {
+    private func buildYYImageView(attachment: TSResourceStream) -> UIView {
         guard
             let image = try? attachment.decryptedYYImage()
         else {
@@ -945,7 +945,7 @@ class StoryItemMediaView: UIView {
         return animatedImageView
     }
 
-    private func buildImageView(attachment: AttachmentStream) -> UIView {
+    private func buildImageView(attachment: TSResourceStream) -> UIView {
         guard let image = try? attachment.decryptedImage() else {
             owsFailDebug("Could not load attachment.")
             return buildContentUnavailableView()
@@ -965,9 +965,9 @@ class StoryItemMediaView: UIView {
         return imageView
     }
 
-    private func buildBlurHashImageViewIfAvailable(pointer: AttachmentTransitPointer) -> UIView? {
+    private func buildBlurHashImageViewIfAvailable(pointer: TSResourcePointer) -> UIView? {
         guard
-            let blurHash = pointer.attachment.blurHash,
+            let blurHash = pointer.resource.resourceBlurHash,
             let blurHashImage = BlurHash.image(for: blurHash)
         else {
             return nil
@@ -996,7 +996,7 @@ class StoryItemMediaView: UIView {
 
     private static let mediaCache = CVMediaCache()
     private func buildDownloadStateView(
-        for pointer: AttachmentTransitPointer,
+        for pointer: TSResourcePointer,
         transitTierDownloadState: AttachmentDownloadState
     ) -> UIView {
         let progressView = CVAttachmentProgressView(
@@ -1029,27 +1029,27 @@ class StoryItem: NSObject {
     let numberOfReplies: UInt64
     enum Attachment: Equatable {
         struct Pointer: Equatable {
-            let reference: AttachmentReference
-            let attachment: AttachmentTransitPointer
+            let reference: TSResourceReference
+            let attachment: TSResourcePointer
             let transitTierDownloadState: AttachmentDownloadState
             var caption: String? { reference.storyMediaCaption?.text }
             var captionStyles: [NSRangedValue<MessageBodyRanges.CollapsedStyle>] { reference.storyMediaCaption?.collapsedStyles ?? [] }
 
             static func == (lhs: StoryItem.Attachment.Pointer, rhs: StoryItem.Attachment.Pointer) -> Bool {
-                return lhs.attachment.id == rhs.attachment.id
+                return lhs.attachment.resourceId == rhs.attachment.resourceId
                     && lhs.reference.hasSameOwner(as: rhs.reference)
                     && lhs.transitTierDownloadState == rhs.transitTierDownloadState
             }
         }
 
         struct Stream: Equatable {
-            let attachment: ReferencedAttachmentStream
+            let attachment: ReferencedTSResourceStream
             var isLoopingVideo: Bool { attachment.reference.renderingFlag == .shouldLoop }
             var caption: String? { attachment.reference.storyMediaCaption?.text }
             var captionStyles: [NSRangedValue<MessageBodyRanges.CollapsedStyle>] { attachment.reference.storyMediaCaption?.collapsedStyles ?? [] }
 
             static func == (lhs: StoryItem.Attachment.Stream, rhs: StoryItem.Attachment.Stream) -> Bool {
-                return lhs.attachment.attachmentStream.id == rhs.attachment.attachmentStream.id
+                return lhs.attachment.attachmentStream.resourceId == rhs.attachment.attachmentStream.resourceId
                     && lhs.attachment.reference.hasSameOwner(as: rhs.attachment.reference)
             }
         }
@@ -1096,7 +1096,7 @@ extension StoryItem {
             else {
                 return false
             }
-            DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(
+            DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForStoryMessage(
                 message,
                 priority: priority,
                 tx: tx.asV2Write

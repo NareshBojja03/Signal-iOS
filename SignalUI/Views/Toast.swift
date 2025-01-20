@@ -65,13 +65,7 @@ public class ToastController: NSObject, ToastViewDelegate {
         } else {
             self.toastBottomConstraint = toastView.autoPinEdge(edge, to: edge, of: view, withOffset: offset)
         }
-
-        if UIDevice.current.isIPad {
-            toastView.autoSetDimension(.width, toSize: 512)
-            toastView.autoHCenterInSuperview()
-        } else {
-            toastView.autoPinWidthToSuperview(withMargin: 8)
-        }
+        toastView.autoPinWidthToSuperview(withMargin: 8)
 
         if let currentToastController = type(of: self).currentToastController {
             currentToastController.dismissToastView()

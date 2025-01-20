@@ -124,6 +124,23 @@ public class OWSFlatButton: UIView {
                                     selector: selector)
     }
 
+    public class func button(title: String,
+                             font: UIFont,
+                             titleColor: UIColor,
+                             backgroundColor: UIColor,
+                             target: Any,
+                             selector: Selector) -> OWSFlatButton {
+        return OWSFlatButton.button(
+            title: title,
+            font: font,
+            titleColor: titleColor,
+            backgroundColor: backgroundColor,
+            target: target,
+            selector: selector,
+            cornerRadius: .defaultCornerStyle
+        )
+    }
+
     public class func insetButton(
         title: String,
         font: UIFont,
@@ -139,25 +156,8 @@ public class OWSFlatButton: UIView {
             backgroundColor: backgroundColor,
             target: target,
             selector: selector,
-            cornerRadius: CornerStyle.inset
+            cornerRadius: .insetCornerStyle
         )
-    }
-
-    private class func button(
-        title: String,
-        font: UIFont,
-        titleColor: UIColor,
-        backgroundColor: UIColor,
-        cornerRadius: CGFloat
-    ) -> OWSFlatButton {
-        let button = OWSFlatButton()
-        button.setTitle(title: title,
-                        font: font,
-                        titleColor: titleColor )
-        button.setBackgroundColors(upColor: backgroundColor)
-        button.layer.cornerRadius = cornerRadius
-        button.clipsToBounds = true
-        return button
     }
 
     public class func button(
@@ -167,23 +167,16 @@ public class OWSFlatButton: UIView {
         backgroundColor: UIColor,
         target: Any,
         selector: Selector,
-        cornerRadius: CGFloat = CornerStyle.default
+        cornerRadius: CGFloat
     ) -> OWSFlatButton {
-        let button = button(title: title, font: font, titleColor: titleColor, backgroundColor: backgroundColor, cornerRadius: cornerRadius)
+        let button = OWSFlatButton()
+        button.setTitle(title: title,
+                        font: font,
+                        titleColor: titleColor )
+        button.setBackgroundColors(upColor: backgroundColor)
         button.addTarget(target: target, selector: selector)
-        return button
-    }
-
-    public class func button(
-        title: String,
-        font: UIFont,
-        titleColor: UIColor,
-        backgroundColor: UIColor,
-        action: UIAction,
-        cornerRadius: CGFloat = CornerStyle.default
-    ) -> OWSFlatButton {
-        let button = button(title: title, font: font, titleColor: titleColor, backgroundColor: backgroundColor, cornerRadius: cornerRadius)
-        button.addAction(action)
+        button.layer.cornerRadius = cornerRadius
+        button.clipsToBounds = true
         return button
     }
 
@@ -255,10 +248,6 @@ public class OWSFlatButton: UIView {
         button.addTarget(target, action: selector, for: .touchUpInside)
     }
 
-    public func addAction(_ action: UIAction) {
-        button.addAction(action, for: .touchUpInside)
-    }
-
     public func setPressedBlock(_ pressedBlock: @escaping () -> Void) {
         guard self.pressedBlock == nil else { return }
         self.pressedBlock = pressedBlock
@@ -309,9 +298,9 @@ public class OWSFlatButton: UIView {
     override public var intrinsicContentSize: CGSize {
         button.intrinsicContentSize
     }
+}
 
-    public enum CornerStyle {
-        public static let `default`: CGFloat = 5.0
-        public static let inset: CGFloat = 14.0
-    }
+fileprivate extension CGFloat {
+    static var defaultCornerStyle = 5.0
+    static var insetCornerStyle = 14.0
 }

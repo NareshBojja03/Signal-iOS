@@ -38,35 +38,15 @@ public enum SVR {
         case registrationRecoveryPassword
         case storageService
 
-        /// The key required to decrypt the Storage Service manifest with the
-        /// given version.
-        ///
-        /// - Note
-        /// The manifest contains identifiers and additional key data that are
-        /// used to locate and decrypt Storage Service records.
         case storageServiceManifest(version: UInt64)
-
-        /// Today, Storage Service records are encrypted using a key stored in
-        /// the manifest. However, in the past they were encrypted using an
-        /// SVR-derived key. This case represents the key formerly used to
-        /// encrypt Storage Service records, which is preserved for the time
-        /// being so that records that have not yet been re-encrypted with the
-        /// new scheme can still be decrypted.
-        ///
-        /// Once all Storage Service records should be encrypted using the new
-        /// scheme, we can remove this case.
-        ///
-        /// - Important
-        /// This case should only be used for decryption, and never for
-        /// encryption!
-        case legacy_storageServiceRecord(identifier: StorageService.StorageIdentifier)
+        case storageServiceRecord(identifier: StorageService.StorageIdentifier)
 
         /// The root key used for reads and writes to encrypted backups. NOT the same
         /// as the Backup ID Material, that is derived from the backup key.
         /// Referred to often as Kb (subscript b).
         case backupKey
 
-        private var infoString: String {
+        var rawValue: String {
             switch self {
             case .registrationLock:
                 return "Registration Lock"
@@ -76,7 +56,7 @@ public enum SVR {
                 return "Storage Service Encryption"
             case .storageServiceManifest(let version):
                 return "Manifest_\(version)"
-            case .legacy_storageServiceRecord(let identifier):
+            case .storageServiceRecord(let identifier):
                 return "Item_\(identifier.data.base64EncodedString())"
             case .backupKey:
                 return "20231003_Signal_Backups_GenerateBackupKey"
@@ -84,7 +64,7 @@ public enum SVR {
         }
 
         public func derivedData(from dataToDeriveFrom: Data) -> Data? {
-            guard let infoData = infoString.data(using: .utf8) else {
+            guard let infoData = rawValue.data(using: .utf8) else {
                 owsFailDebug("Failed to encode data")
                 return nil
             }
@@ -94,7 +74,7 @@ public enum SVR {
                     .registrationRecoveryPassword,
                     .storageService,
                     .storageServiceManifest,
-                    .legacy_storageServiceRecord:
+                    .storageServiceRecord:
                 return Data(HMAC<SHA256>.authenticationCode(for: infoData, using: .init(data: dataToDeriveFrom)))
             case .backupKey:
                 guard
@@ -155,7 +135,7 @@ public enum SVR {
 
         public var canonicalStringRepresentation: String {
             switch type {
-            case .storageService, .storageServiceManifest, .legacy_storageServiceRecord, .registrationRecoveryPassword:
+            case .storageService, .storageServiceManifest, .storageServiceRecord, .registrationRecoveryPassword:
                 return rawData.base64EncodedString()
             case .registrationLock:
                 return rawData.hexadecimalString

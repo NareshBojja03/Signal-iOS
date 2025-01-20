@@ -3,20 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import MultipeerConnectivity
+public import MultipeerConnectivity
 import SignalServiceKit
 import SignalUI
 
-class ProvisioningTransferProgressViewController: ProvisioningBaseViewController {
+public class ProvisioningTransferProgressViewController: ProvisioningBaseViewController {
 
     let progressView: TransferProgressView
 
-    init(provisioningController: ProvisioningController, progress: Progress) {
+    public init(provisioningController: ProvisioningController, progress: Progress) {
         self.progressView = TransferProgressView(progress: progress)
         super.init(provisioningController: provisioningController)
     }
 
-    override func loadView() {
+    override public func loadView() {
         view = UIView()
         view.addSubview(primaryView)
         primaryView.autoPinEdgesToSuperviewEdges()
@@ -60,7 +60,7 @@ class ProvisioningTransferProgressViewController: ProvisioningBaseViewController
         topSpacer.autoMatch(.height, to: .height, of: bottomSpacer)
     }
 
-    override func viewWillAppear(_ animated: Bool) {
+    override public func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
         progressView.startUpdatingProgress()
@@ -68,7 +68,7 @@ class ProvisioningTransferProgressViewController: ProvisioningBaseViewController
         AppEnvironment.shared.deviceTransferServiceRef.addObserver(self)
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
+    public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
         progressView.stopUpdatingProgress()

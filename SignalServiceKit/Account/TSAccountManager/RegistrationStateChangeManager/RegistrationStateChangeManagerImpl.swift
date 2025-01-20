@@ -224,7 +224,7 @@ public class RegistrationStateChangeManagerImpl: RegistrationStateChangeManager 
                 .awaitable()
 
             // No need to set any state, as we wipe the whole app anyway.
-            await appContext.resetAppDataAndExit()
+            appContext.resetAppDataAndExit()
         } catch {
             owsFailDebugUnlessNetworkFailure(error)
             throw error
@@ -245,7 +245,7 @@ public class RegistrationStateChangeManagerImpl: RegistrationStateChangeManager 
         authCredentialStore.removeAllGroupAuthCredentials(tx: tx)
         authCredentialStore.removeAllCallLinkAuthCredentials(tx: tx)
 
-        storageServiceManager.setLocalIdentifiers(LocalIdentifiers(aci: aci, pni: pni, e164: e164))
+        storageServiceManager.setLocalIdentifiers(.init(.init(aci: aci, pni: pni, e164: e164)))
 
         let recipient = recipientMerger.applyMergeForLocalAccount(
             aci: aci,

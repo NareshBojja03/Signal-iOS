@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Arrivano i link chiamata su Signal: il collegamento perfetto per ogni tipo di chiamata, da quelle già in calendario alle last minute.
+• Da ora puoi creare velocemente un link che chiunque su Signal può usare per unirsi a una chiamata (senza dover far parte di una chat di gruppo).
+• I link chiamata possono essere utilizzati più volte: dallo stesso link puoi avviare la chiamata in occasioni diverse, senza doverne creare uno nuovo ogni volta.
+• Puoi gestire i tuoi link chiamata, modificare le impostazioni per l'approvazione degli ingressi e copiare i link dalla schermata delle chiamate per condividerli più facilmente.

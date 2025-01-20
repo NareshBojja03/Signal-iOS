@@ -17,7 +17,9 @@ class BackupAttachmentDownloadStoreTests: XCTestCase {
 
     override func setUp() async throws {
         db = InMemoryDB()
-        store = BackupAttachmentDownloadStoreImpl()
+        store = BackupAttachmentDownloadStoreImpl(
+            keyValueStoreFactory: SDSKeyValueStoreFactory()
+        )
     }
 
     func testEnqueue() throws {
@@ -187,8 +189,7 @@ class BackupAttachmentDownloadStoreTests: XCTestCase {
                 messageRowId: messageRowId,
                 receivedAtTimestamp: timestamp,
                 threadRowId: threadRowId,
-                contentType: nil,
-                isPastEditRevision: false
+                contentType: nil
             ))
         )
         try record.insert(tx.db)

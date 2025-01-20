@@ -778,7 +778,9 @@ class MediaTileViewController: UICollectionViewController, MediaGalleryDelegate,
                 break
             }
 
-            cell.configure(item: cellItem(for: galleryItem), spoilerState: spoilerState)
+            TSAttachmentVideoDurationHelper.shared.with(context: videoDurationContext) {
+                cell.configure(item: cellItem(for: galleryItem), spoilerState: spoilerState)
+            }
         }
         return cell
     }
@@ -802,6 +804,7 @@ class MediaTileViewController: UICollectionViewController, MediaGalleryDelegate,
             ))
         }
     }
+    private lazy var videoDurationContext = { TSAttachmentVideoDurationHelper.Context() }()
 
     override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         guard let cell = cell as? Cell else {
@@ -1515,7 +1518,7 @@ extension MediaTileViewController: MediaGalleryPrimaryViewController {
         }
 
         let totalSize = items.reduce(Int64(0), { result, item in
-            result + Int64(item.attachmentStream.attachmentStream.unencryptedByteCount)
+            result + Int64(item.attachmentStream.attachmentStream.unencryptedResourceByteCount ?? 0)
         })
         return (items.count, totalSize)
     }
@@ -1711,8 +1714,8 @@ extension MediaTileViewController: MediaGalleryPrimaryViewController {
             return
         }
 
-        let items: [ShareableAttachment] = indexPaths.compactMap {
-            return try? self.galleryItem(at: $0)?.attachmentStream.asShareableAttachment()
+        let items: [ShareableTSResource] = indexPaths.compactMap {
+            return try? self.galleryItem(at: $0)?.attachmentStream.asShareableResource()
         }
         guard items.count == indexPaths.count else {
             owsFailDebug("trying to delete an item that never loaded")

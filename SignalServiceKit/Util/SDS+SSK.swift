@@ -27,6 +27,12 @@ extension OWSVerificationState: DatabaseValueConvertible { }
 extension TSGroupMetaMessage: Codable { }
 extension TSGroupMetaMessage: DatabaseValueConvertible { }
 
+extension TSAttachmentType: Codable { }
+extension TSAttachmentType: DatabaseValueConvertible { }
+
+extension TSAttachmentPointerState: Codable { }
+extension TSAttachmentPointerState: DatabaseValueConvertible { }
+
 extension SDSRecordType: Codable { }
 extension SDSRecordType: DatabaseValueConvertible { }
 

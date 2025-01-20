@@ -39,7 +39,6 @@ public class OrphanedBackupAttachmentManagerImpl: OrphanedBackupAttachmentManage
     public init(
         appReadiness: AppReadiness,
         attachmentStore: AttachmentStore,
-        dateProvider: @escaping DateProvider,
         db: any DB,
         messageBackupKeyMaterial: MessageBackupKeyMaterial,
         messageBackupRequestManager: MessageBackupRequestManager,
@@ -61,7 +60,6 @@ public class OrphanedBackupAttachmentManagerImpl: OrphanedBackupAttachmentManage
         )
         self.taskQueue = TaskQueueLoader(
             maxConcurrentTasks: 1, /* one at a time, speed isn't critical */
-            dateProvider: dateProvider,
             db: db,
             runner: taskRunner
         )
@@ -92,26 +90,19 @@ public class OrphanedBackupAttachmentManagerImpl: OrphanedBackupAttachmentManage
             .filter(Column(OrphanedBackupAttachment.CodingKeys.mediaName) == mediaName)
             .deleteAll(tx.databaseConnection)
         for type in MediaTierEncryptionType.allCases {
-            do {
-                let mediaId = try messageBackupKeyMaterial.mediaEncryptionMetadata(
+            guard
+                let mediaId = try? messageBackupKeyMaterial.mediaEncryptionMetadata(
                     mediaName: mediaName,
                     type: type,
                     tx: tx
                 ).mediaId
-                try! OrphanedBackupAttachment
-                    .filter(Column(OrphanedBackupAttachment.CodingKeys.mediaId) == mediaId)
-                    .deleteAll(tx.databaseConnection)
-            } catch let messageBackupKeyMaterialError {
-                switch messageBackupKeyMaterialError {
-                case .missingMediaRootBackupKey:
-                    // If we don't have root keys, we definitely don't have any
-                    // orphaned backup media. quit.
-                    continue
-                case .missingMasterKey, .derivationError:
-                    owsFailDebug("Unexpected encryption material error")
-                }
+            else {
+                owsFailDebug("Missing media id encryption material")
+                continue
             }
-
+            try! OrphanedBackupAttachment
+                .filter(Column(OrphanedBackupAttachment.CodingKeys.mediaId) == mediaId)
+                .deleteAll(tx.databaseConnection)
         }
     }
 
@@ -354,7 +345,6 @@ public class OrphanedBackupAttachmentManagerImpl: OrphanedBackupAttachmentManage
             let messageBackupAuth: MessageBackupServiceAuth
             do {
                 messageBackupAuth = try await messageBackupRequestManager.fetchBackupServiceAuth(
-                    for: .media,
                     localAci: localAci,
                     auth: .implicit()
                 )

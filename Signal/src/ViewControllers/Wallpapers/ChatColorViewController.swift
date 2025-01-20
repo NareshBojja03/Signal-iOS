@@ -577,14 +577,14 @@ private class ChatColorPicker: UIView {
 
     // MARK: - Tooltip
 
-    private static let keyValueStore = KeyValueStore(collection: "ChatColorPicker")
+    private static let keyValueStore = SDSKeyValueStore(collection: "ChatColorPicker")
     private static let tooltipWasDismissedKey = "tooltipWasDismissed"
 
     private var chatColorTooltip: ChatColorTooltip?
 
     fileprivate func dismissTooltip() {
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
-            Self.keyValueStore.setBool(true, key: Self.tooltipWasDismissedKey, transaction: transaction.asV2Write)
+            Self.keyValueStore.setBool(true, key: Self.tooltipWasDismissedKey, transaction: transaction)
         }
         hideTooltip()
     }
@@ -596,7 +596,7 @@ private class ChatColorPicker: UIView {
 
     private func ensureTooltip() {
         let shouldShowTooltip = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-            !Self.keyValueStore.getBool(Self.tooltipWasDismissedKey, defaultValue: false, transaction: transaction.asV2Read)
+            !Self.keyValueStore.getBool(Self.tooltipWasDismissedKey, defaultValue: false, transaction: transaction)
         }
         let isShowingTooltip = chatColorTooltip != nil
         if shouldShowTooltip == isShowingTooltip {

@@ -490,7 +490,6 @@ class AttachmentStoreTests: XCTestCase {
                             receivedAtTimestamp: .random(in: 0..<9999999),
                             threadRowId: threadRowId,
                             contentType: .image,
-                            isPastEditRevision: false,
                             caption: nil,
                             renderingFlag: .default,
                             orderInOwner: 0,
@@ -520,7 +519,6 @@ class AttachmentStoreTests: XCTestCase {
                                 receivedAtTimestamp: .random(in: 0..<9999999),
                                 threadRowId: threadRowId,
                                 contentType: .image,
-                                isPastEditRevision: false,
                                 stickerPackId: packId,
                                 stickerId: stickerId
                             )))),
@@ -711,7 +709,8 @@ class AttachmentStoreTests: XCTestCase {
         try db.write { tx in
             // Remove the first reference.
             try attachmentStore.removeOwner(
-                reference: reference1,
+                reference1.owner.id,
+                for: reference1.attachmentRowId,
                 tx: tx
             )
 
@@ -723,7 +722,8 @@ class AttachmentStoreTests: XCTestCase {
 
             // Remove the second reference.
             try attachmentStore.removeOwner(
-                reference: reference2,
+                reference2.owner.id,
+                for: reference2.attachmentRowId,
                 tx: tx
             )
 
@@ -732,89 +732,6 @@ class AttachmentStoreTests: XCTestCase {
                 ids: [reference1.attachmentRowId],
                 tx: tx
             ).first)
-        }
-    }
-
-    func testRemoveOwner_sameOwnerMultipleReferences() throws {
-        let (threadId1, messageId1) = insertThreadAndInteraction()
-
-        let referenceUUID1 = UUID()
-        let referenceUUID2 = UUID()
-
-        // Create two references to the same attachment on the same message.
-        let attachmentParams = Attachment.ConstructionParams.mockStream()
-
-        try db.write { tx in
-            try attachmentStore.insert(
-                attachmentParams,
-                reference: AttachmentReference.ConstructionParams.mockMessageBodyAttachmentReference(
-                    messageRowId: messageId1,
-                    threadRowId: threadId1,
-                    orderInOwner: 0,
-                    idInOwner: referenceUUID1
-                ),
-                tx: tx
-            )
-            let attachmentId = tx.db.lastInsertedRowID
-            try attachmentStore.addOwner(
-                AttachmentReference.ConstructionParams.mockMessageBodyAttachmentReference(
-                    messageRowId: messageId1,
-                    threadRowId: threadId1,
-                    orderInOwner: 1,
-                    idInOwner: referenceUUID2
-                ),
-                for: attachmentId,
-                tx: tx
-            )
-        }
-
-        let (reference1, reference2) = db.read { tx in
-            let references = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId1)],
-                tx: tx
-            ).sorted(by: {
-                $0.orderInOwningMessage! < $1.orderInOwningMessage!
-            })
-            return (references[0], references[1])
-        }
-
-        func checkIdInOwner(of reference: AttachmentReference, matches uuid: UUID) {
-            switch reference.owner {
-            case .message(let messageSource):
-                switch messageSource {
-                case .bodyAttachment(let metadata):
-                    XCTAssertEqual(metadata.idInOwner, uuid)
-                default:
-                    XCTFail("Unexpected reference type")
-                }
-            default:
-                XCTFail("Unexpected reference type")
-            }
-        }
-
-        checkIdInOwner(of: reference1, matches: referenceUUID1)
-        checkIdInOwner(of: reference2, matches: referenceUUID2)
-
-        try db.write { tx in
-            // Remove the first reference.
-            try attachmentStore.removeOwner(
-                reference: reference1,
-                tx: tx
-            )
-
-            // The attachment should still exist.
-            XCTAssertNotNil(attachmentStore.fetch(
-                ids: [reference1.attachmentRowId],
-                tx: tx
-            ).first)
-
-            // Refetch references
-            let references = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId1)],
-                tx: tx
-            )
-            XCTAssertEqual(references.count, 1)
-            checkIdInOwner(of: references[0], matches: referenceUUID2)
         }
     }
 
@@ -920,7 +837,6 @@ class AttachmentStoreTests: XCTestCase {
                     with: reference1,
                     newOwnerMessageRowId: messageId2,
                     newOwnerThreadRowId: threadId,
-                    newOwnerIsPastEditRevision: false,
                     tx: tx
                 )
             default:
@@ -978,7 +894,6 @@ class AttachmentStoreTests: XCTestCase {
                         with: reference1,
                         newOwnerMessageRowId: messageId2,
                         newOwnerThreadRowId: threadId2,
-                        newOwnerIsPastEditRevision: false,
                         tx: tx
                     )
                 default:
@@ -990,119 +905,6 @@ class AttachmentStoreTests: XCTestCase {
         } catch {
             // Good, we threw an error
         }
-    }
-
-    // MARK: - Thread merging
-
-    func testThreadMerging() throws {
-        var threadId1: Int64!
-        var threadId2: Int64!
-        var threadId3: Int64!
-        var messageId1: Int64!
-        var messageId2: Int64!
-        var messageId3: Int64!
-        db.write { tx in
-            let thread1 = insertThread(tx: tx)
-            threadId1 = thread1.sqliteRowId!
-            messageId1 = insertInteraction(thread: thread1, tx: tx)
-            messageId2 = insertInteraction(thread: thread1, tx: tx)
-            let thread2 = insertThread(tx: tx)
-            threadId2 = thread2.sqliteRowId!
-            messageId3 = insertInteraction(thread: thread2, tx: tx)
-            let thread3 = insertThread(tx: tx)
-            threadId3 = thread3.sqliteRowId!
-        }
-
-        try db.write { tx in
-            for (threadRowId, messageRowId) in [
-                (threadId1, messageId1),
-                (threadId1, messageId2),
-                (threadId2, messageId3)
-            ] {
-                // Create an attachment and reference for each message.
-                let attachmentParams = Attachment.ConstructionParams.mockStream()
-                try attachmentStore.insert(
-                    attachmentParams,
-                    reference: AttachmentReference.ConstructionParams.mockMessageBodyAttachmentReference(
-                        messageRowId: messageRowId!,
-                        threadRowId: threadRowId!
-                    ),
-                    tx: tx
-                )
-            }
-        }
-
-        var (reference1, reference2, reference3) = db.read { tx in
-            let reference1 = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId1)],
-                tx: tx
-            ).first!
-            let reference2 = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId2)],
-                tx: tx
-            ).first!
-            let reference3 = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId3)],
-                tx: tx
-            ).first!
-            return (reference1, reference2, reference3)
-        }
-
-        func checkThreadRowId(of reference: AttachmentReference, matches threadId: Int64) {
-            switch reference.owner {
-            case .message(let messageSource):
-                switch messageSource {
-                case .bodyAttachment(let metadata):
-                    XCTAssertEqual(metadata.threadRowId, threadId)
-                case .oversizeText(let metadata):
-                    XCTAssertEqual(metadata.threadRowId, threadId)
-                case .linkPreview(let metadata):
-                    XCTAssertEqual(metadata.threadRowId, threadId)
-                case .quotedReply(let metadata):
-                    XCTAssertEqual(metadata.threadRowId, threadId)
-                case .sticker(let metadata):
-                    XCTAssertEqual(metadata.threadRowId, threadId)
-                case .contactAvatar(let metadata):
-                    XCTAssertEqual(metadata.threadRowId, threadId)
-                }
-            default:
-                XCTFail("Unexpected reference type")
-            }
-        }
-
-        checkThreadRowId(of: reference1, matches: threadId1)
-        checkThreadRowId(of: reference2, matches: threadId1)
-        checkThreadRowId(of: reference3, matches: threadId2)
-
-        try db.write { tx in
-            // Merge threads
-            try attachmentStore.updateMessageAttachmentThreadRowIdsForThreadMerge(
-                fromThreadRowId: threadId1,
-                intoThreadRowId: threadId3,
-                tx: tx
-            )
-        }
-
-        (reference1, reference2, reference3) = db.read { tx in
-            let reference1 = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId1)],
-                tx: tx
-            ).first!
-            let reference2 = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId2)],
-                tx: tx
-            ).first!
-            let reference3 = attachmentStore.fetchReferences(
-                owners: [.messageBodyAttachment(messageRowId: messageId3)],
-                tx: tx
-            ).first!
-            return (reference1, reference2, reference3)
-        }
-
-        // The ones that were thread 1 are now thread 3.
-        checkThreadRowId(of: reference1, matches: threadId3)
-        checkThreadRowId(of: reference2, matches: threadId3)
-        checkThreadRowId(of: reference3, matches: threadId2)
     }
 
     // MARK: - UInt64 Field verification
@@ -1138,8 +940,7 @@ class AttachmentStoreTests: XCTestCase {
                 sourceMediaWidthPixels: 1,
                 stickerPackId: nil,
                 stickerId: 1,
-                isViewOnce: false,
-                ownerIsPastEditRevision: false
+                isViewOnce: false
             ),
             keyPathNames: [
                 \.receivedAtTimestamp: "receivedAtTimestamp"

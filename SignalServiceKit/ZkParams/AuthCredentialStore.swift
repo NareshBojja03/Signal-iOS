@@ -7,16 +7,14 @@ import Foundation
 import LibSignalClient
 
 class AuthCredentialStore {
-    private let callLinkAuthCredentialStore: KeyValueStore
-    private let groupAuthCredentialStore: KeyValueStore
-    private let backupAuthCredentialStore: KeyValueStore
-    private let mediaAuthCredentialStore: KeyValueStore
+    private let callLinkAuthCredentialStore: any KeyValueStore
+    private let groupAuthCredentialStore: any KeyValueStore
+    private let backupAuthCredentialStore: any KeyValueStore
 
-    init() {
-        self.callLinkAuthCredentialStore = KeyValueStore(collection: "CallLinkAuthCredential")
-        self.groupAuthCredentialStore = KeyValueStore(collection: "GroupsV2Impl.authCredentialStoreStore")
-        self.backupAuthCredentialStore = KeyValueStore(collection: "BackupAuthCredential")
-        self.mediaAuthCredentialStore = KeyValueStore(collection: "MediaAuthCredential")
+    init(keyValueStoreFactory: any KeyValueStoreFactory) {
+        self.callLinkAuthCredentialStore = keyValueStoreFactory.keyValueStore(collection: "CallLinkAuthCredential")
+        self.groupAuthCredentialStore = keyValueStoreFactory.keyValueStore(collection: "GroupsV2Impl.authCredentialStoreStore")
+        self.backupAuthCredentialStore = keyValueStoreFactory.keyValueStore(collection: "BackupAuthCredential")
     }
 
     private static func callLinkAuthCredentialKey(for redemptionTime: UInt64) -> String {
@@ -88,13 +86,11 @@ class AuthCredentialStore {
     }
 
     func backupAuthCredential(
-        for credentialType: MessageBackupAuthCredentialType,
-        redemptionTime: UInt64,
+        for redemptionTime: UInt64,
         tx: DBReadTransaction
     ) -> BackupAuthCredential? {
-        let store = credentialType == .messages ? backupAuthCredentialStore : mediaAuthCredentialStore
         do {
-            return try store.getData(
+            return try backupAuthCredentialStore.getData(
                 Self.backupAuthCredentialKey(for: redemptionTime),
                 transaction: tx
             ).map {
@@ -108,20 +104,17 @@ class AuthCredentialStore {
 
     func setBackupAuthCredential(
         _ credential: BackupAuthCredential,
-        for credentialType: MessageBackupAuthCredentialType,
-        redemptionTime: UInt64,
+        for redemptionTime: UInt64,
         tx: DBWriteTransaction
     ) {
-        let store = credentialType == .messages ? backupAuthCredentialStore : mediaAuthCredentialStore
-        store.setData(
+        backupAuthCredentialStore.setData(
             credential.serialize().asData,
             key: Self.backupAuthCredentialKey(for: redemptionTime),
             transaction: tx
         )
     }
 
-    func removeAllBackupAuthCredentials(for credentialType: MessageBackupAuthCredentialType, tx: DBWriteTransaction) {
-        let store = credentialType == .messages ? backupAuthCredentialStore : mediaAuthCredentialStore
-        store.removeAll(transaction: tx)
+    func removeAllBackupAuthCredentials(tx: DBWriteTransaction) {
+        backupAuthCredentialStore.removeAll(transaction: tx)
     }
 }

@@ -264,6 +264,7 @@ public extension DatabaseRecovery {
             SignalAccount.databaseTableName,
             SignalRecipient.databaseTableName,
             StoryMessage.databaseTableName,
+            TSAttachment.table.tableName,
             TSInteraction.table.tableName,
             TSGroupMember.databaseTableName,
             TSMention.databaseTableName,
@@ -291,13 +292,15 @@ public extension DatabaseRecovery {
             OrphanedAttachmentRecord.databaseTableName,
             QueuedAttachmentDownloadRecord.databaseTableName,
             ArchivedPayment.databaseTableName,
+            // TODO: remove this once the attachment migration is blocking; by the time
+            // this runs migrations are done and the migration table will be deleted.
+            TSAttachmentMigration.V1AttachmentReservedFileIds.databaseTableName,
             QueuedBackupAttachmentDownload.databaseTableName,
             AttachmentUploadRecord.databaseTableName,
             "AttachmentValidationBackfillQueue",
             QueuedBackupAttachmentUpload.databaseTableName,
             QueuedBackupStickerPackDownload.databaseTableName,
             OrphanedBackupAttachment.databaseTableName,
-            "MessageBackupAvatarFetchQueue",
         ]
 
         private static func prepareToCopyTablesWithBestEffort(
@@ -348,7 +351,7 @@ public extension DatabaseRecovery {
 
         static let tablesThatMustBeCopiedFlawlessly: [String] = [
             // The app will be too unpredictable with strange key-value stores.
-            KeyValueStore.tableName,
+            SDSKeyValueStore.table.tableName,
             // If we get a disappearing timer wrong, users might send messages incorrectly.
             DisappearingMessagesConfigurationRecord.databaseTableName,
             // We don't want to get our linked devices wrong.
@@ -456,6 +459,8 @@ public extension DatabaseRecovery {
             PendingReadReceiptRecord.databaseTableName,
             PendingViewedReceiptRecord.databaseTableName,
             OWSMessageContentJob.table.tableName, // also, this one is deprecated
+            // Recovered manually in other steps.
+            MediaGalleryRecord.databaseTableName,
             // Can be recovered in other ways, after recovery is done.
             IncomingGroupsV2MessageJob.table.tableName,
             ProfileBadge.databaseTableName,
@@ -468,6 +473,7 @@ public extension DatabaseRecovery {
             CancelledGroupRing.databaseTableName,
             CdsPreviousE164.databaseTableName,
             SpamReportingTokenRecord.databaseTableName,
+            "VersionedDMTimerCapabilities",
         ]
 
         /// Log the tables we're explicitly skipping.
@@ -592,7 +598,7 @@ public extension DatabaseRecovery {
                 owsPrecondition(SqliteUtil.isSafe(sqlName: columnName))
             }
 
-            let columnNamesSql = columnNames.map({"'\($0)'"}).joined(separator: ", ")
+            let columnNamesSql = columnNames.joined(separator: ", ")
             let valuesSql = columnNames.map({ ":\($0)" }).joined(separator: ", ")
             return "INSERT INTO \(tableName) (\(columnNamesSql)) VALUES (\(valuesSql))"
         }
@@ -654,11 +660,7 @@ public extension DatabaseRecovery {
                     guard let message = interaction as? TSMessage else {
                         return
                     }
-                    do {
-                        try FullTextSearchIndexer.insert(message, tx: tx)
-                    } catch {
-                        owsFail("Error: \(error)")
-                    }
+                    FullTextSearchIndexer.insert(message, tx: tx)
                 }
             }
 

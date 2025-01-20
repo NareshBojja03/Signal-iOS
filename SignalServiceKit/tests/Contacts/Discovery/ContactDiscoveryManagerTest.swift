@@ -10,10 +10,10 @@ import XCTest
 
 final class ContactDiscoveryManagerTest: XCTestCase {
     private class MockContactDiscoveryTaskQueue: ContactDiscoveryTaskQueue {
-        var onPerform: ((Set<String>, ContactDiscoveryMode) async throws -> Set<SignalRecipient>)?
+        var onPerform: ((Set<String>, ContactDiscoveryMode) -> Promise<Set<SignalRecipient>>)?
 
-        func perform(for phoneNumbers: Set<String>, mode: ContactDiscoveryMode) async throws -> Set<SignalRecipient> {
-            return try await onPerform!(phoneNumbers, mode)
+        func perform(for phoneNumbers: Set<String>, mode: ContactDiscoveryMode) -> Promise<Set<SignalRecipient>> {
+            onPerform!(phoneNumbers, mode)
         }
 
         static func foundResponse(for phoneNumbers: Set<String>) -> Set<SignalRecipient> {
@@ -26,55 +26,70 @@ final class ContactDiscoveryManagerTest: XCTestCase {
     private lazy var taskQueue = MockContactDiscoveryTaskQueue()
     private lazy var manager = ContactDiscoveryManagerImpl(contactDiscoveryTaskQueue: taskQueue)
 
-    func testQueueing() async throws {
+    func testQueueing() throws {
         // Start the first stateful request, but don't resolve it yet.
-        let initialRequest = CancellableContinuation<CheckedContinuation<Set<SignalRecipient>, any Error>>()
+        let (initialRequestPromise, initialRequestFuture) = Promise<Set<SignalRecipient>>.pending()
+        let initialRequestStarted = expectation(description: "Waiting for initial request to start.")
         taskQueue.onPerform = { phoneNumbers, mode in
-            return try await withCheckedThrowingContinuation { continuation in
-                initialRequest.resume(with: .success(continuation))
-            }
+            initialRequestStarted.fulfill()
+            return initialRequestPromise
         }
-        async let _ = manager.lookUp(phoneNumbers: ["+16505550100"], mode: .contactIntersection)
-        let initialContinuation = try await initialRequest.wait()
+        _ = manager.lookUp(phoneNumbers: ["+16505550100"], mode: .contactIntersection)
+        waitForExpectations(timeout: 10)
 
         // Schedule the next stateful request, which will be queued.
+        var queuedRequestResult: Set<SignalRecipient>?
+        let queuedRequestExpectation = expectation(description: "Waiting for queued request.")
         taskQueue.onPerform = { phoneNumbers, mode in
-            return MockContactDiscoveryTaskQueue.foundResponse(for: phoneNumbers)
+            return .value(MockContactDiscoveryTaskQueue.foundResponse(for: phoneNumbers))
         }
-        async let queuedResult = manager.lookUp(phoneNumbers: ["+16505550101"], mode: .contactIntersection)
-
+        manager.lookUp(phoneNumbers: ["+16505550101"], mode: .contactIntersection).done { signalRecipients in
+            queuedRequestResult = signalRecipients
+        }.ensure {
+            queuedRequestExpectation.fulfill()
+        }.cauterize()
         // Finish the initial request, which should unblock the queued request.
-        initialContinuation.resume(returning: [])
+        initialRequestFuture.resolve([])
+        waitForExpectations(timeout: 10)
 
-        let queuedResults = try await queuedResult.map { $0.phoneNumber!.stringValue }
-        XCTAssertEqual(queuedResults, ["+16505550101"])
+        XCTAssertEqual(queuedRequestResult?.map { $0.phoneNumber!.stringValue }, ["+16505550101"])
     }
 
-    func testRateLimit() async throws {
+    func testRateLimit() throws {
         let retryDate1 = Date(timeIntervalSinceNow: 30)
         let retryDate2 = Date(timeIntervalSinceNow: 60)
 
         // Step 1: Contact intersection fails with a rate limit error.
         taskQueue.onPerform = { phoneNumbers, mode in
-            throw ContactDiscoveryError.rateLimit(retryAfter: retryDate1)
+            return Promise(error: ContactDiscoveryError(
+                kind: .rateLimit, debugDescription: "", retryable: true, retryAfterDate: retryDate1
+            ))
         }
-        let result1 = try await lookUpAndReturnRateLimitDate(phoneNumbers: ["+16505550100"], mode: .contactIntersection)
-        XCTAssertEqual(result1, retryDate1)
+        XCTAssertEqual(
+            lookUpAndReturnRateLimitDate(phoneNumbers: ["+16505550100"], mode: .contactIntersection),
+            retryDate1
+        )
 
         // Step 2: One-off requests should still be possible, despite the earlier error.
         taskQueue.onPerform = { phoneNumbers, mode in
-            throw ContactDiscoveryError.rateLimit(retryAfter: retryDate2)
+            return Promise(error: ContactDiscoveryError(
+                kind: .rateLimit, debugDescription: "", retryable: true, retryAfterDate: retryDate2
+            ))
         }
-        let result2 = try await lookUpAndReturnRateLimitDate(phoneNumbers: ["+16505550100"], mode: .oneOffUserRequest)
-        XCTAssertEqual(result2, retryDate2)
+        XCTAssertEqual(
+            lookUpAndReturnRateLimitDate(phoneNumbers: ["+16505550100"], mode: .oneOffUserRequest),
+            retryDate2
+        )
 
         // Step 3: Contact intersection should now be stuck behind the one-off retry date.
         taskQueue.onPerform = nil
-        let result3 = try await lookUpAndReturnRateLimitDate(phoneNumbers: ["+16505550100"], mode: .contactIntersection)
-        XCTAssertEqual(result3, retryDate2)
+        XCTAssertEqual(
+            lookUpAndReturnRateLimitDate(phoneNumbers: ["+16505550100"], mode: .contactIntersection),
+            retryDate2
+        )
     }
 
-    func testUndiscoverableCache() async throws {
+    func testUndiscoverableCache() throws {
         let phoneNumber1 = "+16505550101"
         let phoneNumber2 = "+16505550102"
         let phoneNumber3 = "+16505550103"
@@ -82,49 +97,63 @@ final class ContactDiscoveryManagerTest: XCTestCase {
 
         // Populate the cache with empty phone numbers.
         taskQueue.onPerform = { phoneNumbers, mode in
-            if phoneNumbers == [phoneNumber1, phoneNumber2, phoneNumber3] {
-                return []
-            }
-            throw OWSGenericError("Invalid request.")
+            XCTAssertEqual(phoneNumbers, [phoneNumber1, phoneNumber2, phoneNumber3])
+            return .value([])
         }
-        let result1 = try await lookUpAndReturnResult(phoneNumbers: [phoneNumber1, phoneNumber2, phoneNumber3], mode: .outgoingMessage)
-        XCTAssertEqual(result1, [])
+        XCTAssertEqual(
+            lookUpAndReturnResult(phoneNumbers: [phoneNumber1, phoneNumber2, phoneNumber3], mode: .outgoingMessage),
+            []
+        )
 
         // Send a request for some of the same numbers -- these should be de-duped.
         taskQueue.onPerform = { phoneNumbers, mode in
-            if phoneNumbers == [] {
-                return []
-            }
-            throw OWSGenericError("Invalid request.")
+            XCTAssertEqual(phoneNumbers, [])
+            return .value([])
         }
-        let result2 = try await lookUpAndReturnResult(phoneNumbers: [phoneNumber1, phoneNumber2], mode: .outgoingMessage)
-        XCTAssertEqual(result2, [])
+        XCTAssertEqual(
+            lookUpAndReturnResult(phoneNumbers: [phoneNumber1, phoneNumber2], mode: .outgoingMessage),
+            []
+        )
 
         // Send another request, but include an unknown number to force a request.
         taskQueue.onPerform = { phoneNumbers, mode in
-            if phoneNumbers == [phoneNumber1, phoneNumber4] {
-                return MockContactDiscoveryTaskQueue.foundResponse(for: [phoneNumber4])
-            }
-            throw OWSGenericError("Invalid request.")
+            XCTAssertEqual(phoneNumbers, [phoneNumber1, phoneNumber4])
+            return .value(MockContactDiscoveryTaskQueue.foundResponse(for: [phoneNumber4]))
         }
-        let result3 = try await lookUpAndReturnResult(phoneNumbers: [phoneNumber1, phoneNumber4], mode: .outgoingMessage)
-        XCTAssertEqual(result3, [phoneNumber4])
+        XCTAssertEqual(
+            lookUpAndReturnResult(phoneNumbers: [phoneNumber1, phoneNumber4], mode: .outgoingMessage),
+            [phoneNumber4]
+        )
     }
 
-    private func lookUpAndReturnResult(phoneNumbers: Set<String>, mode: ContactDiscoveryMode) async throws -> Set<String> {
-        let phoneNumbers = try await manager.lookUp(phoneNumbers: phoneNumbers, mode: mode).map {
-            $0.phoneNumber!.stringValue
+    private func lookUpAndReturnResult(phoneNumbers: Set<String>, mode: ContactDiscoveryMode) -> Set<String>? {
+        var result: Set<SignalRecipient>?
+        let requestExpectation = expectation(description: "Waiting for request.")
+        manager.lookUp(phoneNumbers: phoneNumbers, mode: mode).done { signalRecipients in
+            result = signalRecipients
+        }.ensure {
+            requestExpectation.fulfill()
+        }.cauterize()
+        wait(for: [requestExpectation], timeout: 10)
+        if let result {
+            return Set(result.map { $0.phoneNumber!.stringValue })
         }
-        return Set(phoneNumbers)
+        return nil
     }
 
-    private func lookUpAndReturnRateLimitDate(phoneNumbers: Set<String>, mode: ContactDiscoveryMode) async throws -> Date? {
-        do {
-            _ = try await manager.lookUp(phoneNumbers: phoneNumbers, mode: mode)
-            return nil
-        } catch ContactDiscoveryError.rateLimit(let retryAfter) {
-            return retryAfter
+    private func lookUpAndReturnRateLimitDate(phoneNumbers: Set<String>, mode: ContactDiscoveryMode) -> Date? {
+        var resultError: Error?
+        let requestExpectation = expectation(description: "Waiting for request.")
+        manager.lookUp(phoneNumbers: phoneNumbers, mode: mode).catch { error in
+            resultError = error
+        }.ensure {
+            requestExpectation.fulfill()
+        }.cauterize()
+        wait(for: [requestExpectation], timeout: 10)
+        if let error = resultError as? ContactDiscoveryError, error.kind == .rateLimit {
+            return error.retryAfterDate
         }
+        return nil
     }
 
     /// Ensures that all modes are included in `allCasesOrderedByRateLimitPriority.`

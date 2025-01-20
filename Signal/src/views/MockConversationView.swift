@@ -339,7 +339,7 @@ extension MockConversationView: CVComponentDelegate {
 
     func didTapBodyMedia(
         itemViewModel: CVItemViewModelImpl,
-        attachmentStream: ReferencedAttachmentStream,
+        attachmentStream: ReferencedTSResourceStream,
         imageView: UIView
     ) {}
 

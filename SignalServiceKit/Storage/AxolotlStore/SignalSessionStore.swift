@@ -60,6 +60,8 @@ public protocol SignalSessionStore: LibSignalClient.SessionStore {
 
     // MARK: - Debug
 
+    func printAll(tx: DBReadTransaction)
+
 #if TESTABLE_BUILD
     func removeAll(tx: DBWriteTransaction)
 #endif

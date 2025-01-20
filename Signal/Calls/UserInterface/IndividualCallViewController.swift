@@ -745,9 +745,7 @@ class IndividualCallViewController: OWSViewController, IndividualCallObserver {
         assert(Thread.isMainThread)
 
         let text = localizedTextForCallState()
-        if text != self.callStatusLabel.text {
-            self.callStatusLabel.text = text
-        }
+        self.callStatusLabel.text = text
 
         // Handle reconnecting blinking
         if case .reconnecting = individualCall.state {

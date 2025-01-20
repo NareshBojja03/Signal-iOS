@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import LibSignalClient
-
 public final class MessageBackupInteractionStore {
 
     private let interactionStore: InteractionStore
@@ -32,141 +30,13 @@ public final class MessageBackupInteractionStore {
         {}
     }
 
-    // MARK: Per type inserts
-
-    func insert(
-        _ interaction: TSIncomingMessage,
-        in thread: MessageBackup.ChatThread,
-        chatId: MessageBackup.ChatId,
-        senderAci: Aci?,
-        directionalDetails: BackupProto_ChatItem.IncomingMessageDetails,
-        context: MessageBackup.ChatItemRestoringContext
-    ) throws {
-        let wasRead = BackupProto_ChatItem.OneOf_DirectionalDetails
-            .incoming(directionalDetails).wasRead
-        interaction.wasRead = wasRead
-        try insert(
-            interaction: interaction,
-            in: thread,
-            chatId: chatId,
-            senderAci: senderAci,
-            wasRead: wasRead,
-            context: context
-        )
-    }
-
-    func insert(
-        _ interaction: TSOutgoingMessage,
-        in thread: MessageBackup.ChatThread,
-        chatId: MessageBackup.ChatId,
-        directionalDetails: BackupProto_ChatItem.OutgoingMessageDetails,
-        context: MessageBackup.ChatItemRestoringContext
-    ) throws {
-        let wasRead = BackupProto_ChatItem.OneOf_DirectionalDetails
-            .outgoing(directionalDetails).wasRead
-        try insert(
-            interaction: interaction,
-            in: thread,
-            chatId: chatId,
-            // Outgoing messages are sent by local aci
-            senderAci: context.recipientContext.localIdentifiers.aci,
-            wasRead: wasRead,
-            context: context
-        )
-    }
-
-    func insert(
-        _ interaction: TSInfoMessage,
-        in thread: MessageBackup.ChatThread,
-        chatId: MessageBackup.ChatId,
-        directionalDetails: BackupProto_ChatItem.OneOf_DirectionalDetails,
-        context: MessageBackup.ChatItemRestoringContext
-    ) throws {
-        let wasRead = directionalDetails.wasRead
-        interaction.wasRead = wasRead
-        try insert(
-            interaction: interaction,
-            in: thread,
-            chatId: chatId,
-            // No sender for info messages
-            senderAci: nil,
-            wasRead: wasRead,
-            context: context
-        )
-    }
-
-    func insert(
-        _ interaction: TSErrorMessage,
-        in thread: MessageBackup.ChatThread,
-        chatId: MessageBackup.ChatId,
-        directionalDetails: BackupProto_ChatItem.OneOf_DirectionalDetails,
-        context: MessageBackup.ChatItemRestoringContext
-    ) throws {
-        let wasRead = directionalDetails.wasRead
-        interaction.wasRead = wasRead
-        try insert(
-            interaction: interaction,
-            in: thread,
-            chatId: chatId,
-            // No sender for error messages
-            senderAci: nil,
-            wasRead: wasRead,
-            context: context
-        )
-    }
-
-    /// Caller aci can be nil for legacy calls made by e164 accounts before
-    /// the introduction of acis.
-    func insert(
-        _ interaction: TSCall,
-        in thread: MessageBackup.ChatThread,
-        chatId: MessageBackup.ChatId,
-        callerAci: Aci?,
-        wasRead: Bool,
-        context: MessageBackup.ChatItemRestoringContext
-    ) throws {
-        interaction.wasRead = wasRead
-        try insert(
-            interaction: interaction,
-            in: thread,
-            chatId: chatId,
-            senderAci: callerAci,
-            wasRead: wasRead,
-            context: context
-        )
-    }
-
-    /// StartedCallAci can be nil if who started the call is unknown.
-    func insert(
-        _ interaction: OWSGroupCallMessage,
-        in thread: MessageBackup.ChatThread,
-        chatId: MessageBackup.ChatId,
-        startedCallAci: Aci?,
-        wasRead: Bool,
-        context: MessageBackup.ChatItemRestoringContext
-    ) throws {
-        interaction.wasRead = wasRead
-        try insert(
-            interaction: interaction,
-            in: thread,
-            chatId: chatId,
-            senderAci: startedCallAci,
-            wasRead: wasRead,
-            context: context
-        )
-    }
-
-    // MARK: Insert
-
     // Even generating the sql string itself is expensive when multiplied by 200k messages.
     // So we generate the string once and cache it (on top of caching the Statement)
     private var cachedSQL: String?
-    private func insert(
-        interaction: TSInteraction,
+    func insert(
+        _ interaction: TSInteraction,
         in thread: MessageBackup.ChatThread,
         chatId: MessageBackup.ChatId,
-        senderAci: Aci?,
-        wasRead: Bool,
         context: MessageBackup.ChatItemRestoringContext
     ) throws {
         guard interaction.shouldBeSaved else {
@@ -225,45 +95,8 @@ public final class MessageBackupInteractionStore {
         if shouldAppearInInbox {
             context.chatContext.updateLastVisibleInteractionRowId(
                 interactionRowId: interactionRowId,
-                wasRead: wasRead,
                 chatId: chatId
             )
-        }
-
-        // If we are in a group and the sender has an aci,
-        // track the sent timestamp. Note we may not have
-        // a sender for e.g. group update messages, along with
-        // other cases of lost/missing/legacy information.
-        // This is best-effort rather than guaranteed.
-        if let senderAci {
-            switch thread.threadType {
-            case .contact:
-                break
-            case .groupV2(let groupThread):
-                context.chatContext.updateGroupMemberLastInteractionTimestamp(
-                    groupThread: groupThread,
-                    chatId: chatId,
-                    senderAci: senderAci,
-                    timestamp: interaction.timestamp
-                )
-            }
-        }
-    }
-}
-
-extension BackupProto_ChatItem.OneOf_DirectionalDetails {
-
-    var wasRead: Bool {
-        switch self {
-        case .incoming(let incomingMessageDetails):
-            return incomingMessageDetails.read
-        case .outgoing:
-            // Outgoing messages are always implicitly read
-            return true
-        case .directionless:
-            // Since we don't track read state for directionless
-            // messages, just treat them as read.
-            return true
         }
     }
 }

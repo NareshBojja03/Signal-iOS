@@ -125,6 +125,7 @@ final class InteractionDeleteManagerImpl: InteractionDeleteManager {
     private let deleteForMeOutgoingSyncMessageManager: DeleteForMeOutgoingSyncMessageManager
     private let interactionReadCache: InteractionReadCache
     private let interactionStore: InteractionStore
+    private let mediaGalleryResourceManager: MediaGalleryResourceManager
     private let messageSendLog: MessageSendLog
     private let tsAccountManager: TSAccountManager
 
@@ -135,6 +136,7 @@ final class InteractionDeleteManagerImpl: InteractionDeleteManager {
         deleteForMeOutgoingSyncMessageManager: DeleteForMeOutgoingSyncMessageManager,
         interactionReadCache: InteractionReadCache,
         interactionStore: InteractionStore,
+        mediaGalleryResourceManager: MediaGalleryResourceManager,
         messageSendLog: MessageSendLog,
         tsAccountManager: TSAccountManager
     ) {
@@ -144,6 +146,7 @@ final class InteractionDeleteManagerImpl: InteractionDeleteManager {
         self.deleteForMeOutgoingSyncMessageManager = deleteForMeOutgoingSyncMessageManager
         self.interactionReadCache = interactionReadCache
         self.interactionStore = interactionStore
+        self.mediaGalleryResourceManager = mediaGalleryResourceManager
         self.messageSendLog = messageSendLog
         self.tsAccountManager = tsAccountManager
     }
@@ -306,10 +309,10 @@ final class InteractionDeleteManagerImpl: InteractionDeleteManager {
         interactionReadCache.didRemove(interaction: interaction, transaction: tx)
 
         if let message = interaction as? TSMessage {
-            do {
-                try FullTextSearchIndexer.delete(message, tx: tx)
-            } catch {
-                owsFailBeta("Error: \(error)")
+            FullTextSearchIndexer.delete(message, tx: tx)
+
+            if !(message.attachmentIds ?? []).isEmpty {
+                mediaGalleryResourceManager.didRemove(message: message, tx: tx.asV2Write)
             }
 
             message.removeAllAttachments(tx: tx)

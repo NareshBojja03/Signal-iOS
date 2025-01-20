@@ -12,10 +12,11 @@ public class MediaBandwidthPreferenceStoreImpl: MediaBandwidthPreferenceStore {
     private let schedulers: Schedulers
 
     public init(
+        keyValueStoreFactory: KeyValueStoreFactory,
         reachabilityManager: SSKReachabilityManager,
         schedulers: Schedulers
     ) {
-        self.kvStore = KeyValueStore(collection: "MediaBandwidthPreferences")
+        self.kvStore = keyValueStoreFactory.keyValueStore(collection: "MediaBandwidthPreferences")
         self.reachabilityManager = reachabilityManager
         self.schedulers = schedulers
     }

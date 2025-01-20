@@ -15,6 +15,8 @@ import SignalUI
  * their corresponding consequences are implemented in the CXProviderDelegate methods, e.g. using the CallService
  */
 final class CallKitCallUIAdaptee: NSObject, CallUIAdaptee, @preconcurrency CXProviderDelegate {
+    var notificationPresenterImpl: NotificationPresenterImpl { SSKEnvironment.shared.notificationPresenterImplRef }
+
     private let callManager: CallKitCallManager
     var callService: CallService { AppEnvironment.shared.callService }
     private let showNamesOnCallScreen: Bool

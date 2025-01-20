@@ -33,9 +33,9 @@ extension OWSOutgoingSentMessageTranscript {
                         return false
                     }
                     do {
-                        let groupContextV2 = try GroupsV2Protos.buildGroupContextProto(
+                        let groupContextV2 = try SSKEnvironment.shared.groupsV2Ref.buildGroupContextV2Proto(
                             groupModel: groupModel,
-                            groupChangeProtoData: nil
+                            changeActionsProtoData: nil
                         )
                         dataBuilder.setGroupV2(groupContextV2)
                     } catch {

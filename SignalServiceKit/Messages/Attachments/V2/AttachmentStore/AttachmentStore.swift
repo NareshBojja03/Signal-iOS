@@ -84,7 +84,7 @@ public protocol AttachmentStore {
 
     /// Create a new ownership reference, copying properties of an existing reference.
     ///
-    /// Copies the database row directly, only modifying the owner and isPastEditRevision columns.
+    /// Copies the database row directly, only modifying the owner column.
     /// IMPORTANT: also copies the receivedAtTimestamp!
     ///
     /// Fails if the provided new owner isn't of the same type as the original
@@ -96,7 +96,6 @@ public protocol AttachmentStore {
         with reference: AttachmentReference,
         newOwnerMessageRowId: Int64,
         newOwnerThreadRowId: Int64,
-        newOwnerIsPastEditRevision: Bool,
         tx: DBWriteTransaction
     ) throws
 
@@ -160,23 +159,9 @@ public protocol AttachmentStore {
         tx: DBWriteTransaction
     ) throws
 
-    /// Removes all owner edges to the provided attachment that
-    /// have the provided owner type and id.
-    /// Will delete multiple instances if the same owner has multiple
-    /// edges of the given type to the given attachment (e.g. an image
-    /// appears twice as a body attachment on a given message).
-    func removeAllOwners(
-        withId owner: AttachmentReference.OwnerId,
-        for attachmentId: Attachment.IDType,
-        tx: DBWriteTransaction
-    ) throws
-
-    /// Removes a single owner edge to the provided attachment that
-    /// have the provided owner metadata.
-    /// Will delete only delete the one given edge even if the same owner
-    /// has multiple edges to the same attachment.
     func removeOwner(
-        reference: AttachmentReference,
+        _ owner: AttachmentReference.OwnerId,
+        for attachmentId: Attachment.IDType,
         tx: DBWriteTransaction
     ) throws
 
@@ -192,14 +177,6 @@ public protocol AttachmentStore {
     /// Remove all owners of thread types (wallpaper and global wallpaper owners).
     /// Will also delete any attachments that become unowned, like any other deletion.
     func removeAllThreadOwners(tx: DBWriteTransaction) throws
-
-    // MARK: - Thread Merging
-
-    func updateMessageAttachmentThreadRowIdsForThreadMerge(
-        fromThreadRowId: Int64,
-        intoThreadRowId: Int64,
-        tx: DBWriteTransaction
-    ) throws
 }
 
 // MARK: - Convenience
@@ -380,17 +357,5 @@ extension AttachmentStore {
             }
             return ReferencedAttachment(reference: reference, attachment: attachment)
         }
-    }
-
-    public func allAttachments(
-        forMessageWithRowId messageRowId: Int64,
-        tx: DBReadTransaction
-    ) -> [AttachmentReference] {
-        return fetchReferences(
-            owners: AttachmentReference.MessageOwnerTypeRaw.allCases.map {
-                $0.with(messageRowId: messageRowId)
-            },
-            tx: tx
-        )
     }
 }

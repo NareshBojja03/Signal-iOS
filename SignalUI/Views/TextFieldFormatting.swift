@@ -18,7 +18,7 @@ public class TextFieldFormatting {
         _ textField: UITextField,
         shouldChangeCharactersIn range: NSRange,
         replacementString insertionText: String,
-        plusPrefixedCallingCode: String
+        callingCode: String
     ) -> Bool {
 
         let isDeletion = insertionText.isEmpty
@@ -28,12 +28,12 @@ public class TextFieldFormatting {
         // parens and spaces when finding a character to delete.
 
         // Let's tell UIKit to not apply the edit and just apply it ourselves.
-        phoneNumberTextField(textField, changeCharactersIn: range, replacementString: insertionText, plusPrefixedCallingCode: plusPrefixedCallingCode)
+        phoneNumberTextField(textField, changeCharactersIn: range, replacementString: insertionText, callingCode: callingCode)
         return false
     }
 
     // Reformats the text in a UITextField to apply phone number formatting
-    public static func reformatPhoneNumberTextField(_ textField: UITextField, plusPrefixedCallingCode: String) {
+    public static func reformatPhoneNumberTextField(_ textField: UITextField, callingCode: String) {
 
         let originalCursorOffset: Int
         if let selectedTextRange = textField.selectedTextRange {
@@ -44,7 +44,7 @@ public class TextFieldFormatting {
 
         let originalText = textField.text ?? ""
         let trimmedText = originalText.digitsOnly().phoneNumberTrimmedToMaxLength
-        let updatedText = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(trimmedText, plusPrefixedCallingCode: plusPrefixedCallingCode)
+        let updatedText = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(trimmedText, countryCodeString: callingCode)
 
         let updatedCursorOffset = PhoneNumberUtil.translateCursorPosition(
             UInt(originalCursorOffset),
@@ -68,7 +68,7 @@ public class TextFieldFormatting {
         _ textField: UITextField,
         changeCharactersIn range: NSRange,
         replacementString insertionText: String,
-        plusPrefixedCallingCode: String
+        callingCode: String
     ) {
         // Phone numbers takes many forms.
         //
@@ -117,7 +117,7 @@ public class TextFieldFormatting {
         // reformat the phone number, trying to keep the cursor beside the inserted or deleted digit
         let cursorPositionAfterChange = min(left.utf16.count + center.utf16.count, textAfterChange.utf16.count)
 
-        let formattedText = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(textAfterChange, plusPrefixedCallingCode: plusPrefixedCallingCode)
+        let formattedText = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(textAfterChange, countryCodeString: callingCode)
         let cursorPositionAfterReformat = PhoneNumberUtil.translateCursorPosition(
             UInt(cursorPositionAfterChange),
             from: textAfterChange,
@@ -171,27 +171,40 @@ public class TextFieldFormatting {
         }
     }
 
-    // The purpose of the example phone number is to indicate to the user that they should enter
-    // their phone number _without_ a country calling code (e.g. +1 or +44) but _with_ area code, etc.
-    public static func exampleNationalNumber(forCountryCode countryCode: String, includeExampleLabel: Bool) -> String? {
-        owsAssertDebug(!countryCode.isEmpty)
+    public static func examplePhoneNumber(
+        forCountryCode countryCode: String,
+        callingCode: String,
+        includeExampleLabel: Bool
+    ) -> String? {
 
-        let phoneNumberUtil = SSKEnvironment.shared.phoneNumberUtilRef
-        let countryCodeForParsing = phoneNumberUtil.countryCodeForParsing(fromCountryCode: countryCode)
-        guard let nationalNumber = phoneNumberUtil.exampleNationalNumber(forCountryCode: countryCodeForParsing) else {
+        owsAssertDebug(!countryCode.isEmpty)
+        owsAssertDebug(!callingCode.isEmpty)
+
+        guard var examplePhoneNumber = SSKEnvironment.shared.phoneNumberUtilRef.examplePhoneNumber(forCountryCode: countryCode) else {
             owsFailDebug("examplePhoneNumber == nil")
             return nil
         }
+        guard examplePhoneNumber.hasPrefix(callingCode) else {
+            owsFailDebug("Incorrect calling code in \(examplePhoneNumber) for country code \(countryCode)")
+            return nil
+        }
+
+        let formattedPhoneNumber = PhoneNumber.bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(examplePhoneNumber, countryCodeString: countryCode)
+        if !formattedPhoneNumber.isEmpty {
+            examplePhoneNumber = formattedPhoneNumber
+        }
+
+        examplePhoneNumber = String(examplePhoneNumber.dropFirst(callingCode.count))
 
         guard includeExampleLabel else {
-            return nationalNumber
+            return examplePhoneNumber
         }
 
         let formatString = OWSLocalizedString(
             "PHONE_NUMBER_EXAMPLE_FORMAT",
             comment: "A format for a label showing an example phone number. Embeds {{the example phone number}}."
         )
-        return String(format: formatString, nationalNumber)
+        return String(format: formatString, examplePhoneNumber)
     }
 }
 

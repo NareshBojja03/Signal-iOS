@@ -22,10 +22,11 @@ public struct OWSAssertionError: Error {
         if Self.test_skipAssertions {
             logger.warn("assertionError: \(description)")
         } else {
-            owsFailDebug("assertionError: \(description)", logger: logger, file: file, function: function, line: line)
+            logger.warn("assertionError: \(description)")
+           // logger.warn("assertionError: \(description)", logger: logger, file: file, function: function, line: line)
         }
         #else
-        owsFailDebug("assertionError: \(description)", logger: logger, file: file, function: function, line: line)
+        logger.warn("assertionError: \(description)", logger: logger, file: file, function: function, line: line)
         #endif
         self.description = description
     }

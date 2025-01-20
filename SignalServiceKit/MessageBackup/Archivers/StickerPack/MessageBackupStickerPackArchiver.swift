@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-import GRDB
-
 public extension MessageBackup {
     /// An identifier for a ``BackupProto_StickerPack`` backup frame.
     struct StickerPackId: MessageBackupLoggableId {
@@ -63,11 +61,14 @@ public protocol MessageBackupStickerPackArchiver: MessageBackupProtoArchiver {
 public class MessageBackupStickerPackArchiverImpl: MessageBackupStickerPackArchiver {
 
     private let backupStickerPackDownloadStore: BackupStickerPackDownloadStore
+    private let stickerManager: MessageBackup.Shims.StickerManager
 
     init(
-        backupStickerPackDownloadStore: BackupStickerPackDownloadStore
+        backupStickerPackDownloadStore: BackupStickerPackDownloadStore,
+        stickerManager: MessageBackup.Shims.StickerManager
     ) {
         self.backupStickerPackDownloadStore = backupStickerPackDownloadStore
+        self.stickerManager = stickerManager
     }
 
     public func archiveStickerPacks(
@@ -78,65 +79,50 @@ public class MessageBackupStickerPackArchiverImpl: MessageBackupStickerPackArchi
 
         var handledPacks = Set<Data>()
 
-        func archiveInstalledStickerPack(_ installedStickerPack: StickerPack) {
-            autoreleasepool {
-                guard !handledPacks.contains(installedStickerPack.packId) else { return }
+        // Iterate over the installed sticker packs
+        let installedStickerPacks = stickerManager.installedStickerPacks(tx: context.tx)
+        for installedStickerPack in installedStickerPacks {
+            guard !handledPacks.contains(installedStickerPack.packId) else { continue }
+            let maybeError: ArchiveFrameError? = Self.writeFrameToStream(
+                stream,
+                objectId: StickerPackId(installedStickerPack.packId)) {
+                    var stickerPack = BackupProto_StickerPack()
+                    stickerPack.packID = installedStickerPack.packId
+                    stickerPack.packKey = installedStickerPack.packKey
+
+                    var frame = BackupProto_Frame()
+                    frame.item = .stickerPack(stickerPack)
+
+                    return frame
+                }
+
+            if let maybeError {
+                errors.append(maybeError)
+            } else {
+                handledPacks.insert(installedStickerPack.packId)
+            }
+        }
+
+        // Iterate over any restored sticker packs that have yet to be downloaded via StickerManager.
+        do {
+            try backupStickerPackDownloadStore.iterateAllEnqueued(tx: context.tx) { record in
+                guard !handledPacks.contains(record.packId) else { return }
                 let maybeError: ArchiveFrameError? = Self.writeFrameToStream(
                     stream,
-                    objectId: StickerPackId(installedStickerPack.packId)) {
+                    objectId: StickerPackId(record.packId)) {
                         var stickerPack = BackupProto_StickerPack()
-                        stickerPack.packID = installedStickerPack.packId
-                        stickerPack.packKey = installedStickerPack.packKey
+                        stickerPack.packID = record.packId
+                        stickerPack.packKey = record.packKey
 
                         var frame = BackupProto_Frame()
                         frame.item = .stickerPack(stickerPack)
 
                         return frame
                     }
-
                 if let maybeError {
                     errors.append(maybeError)
                 } else {
-                    handledPacks.insert(installedStickerPack.packId)
-                }
-            }
-        }
-
-        // Iterate over the installed sticker packs
-        do {
-            let cursor = try StickerPackRecord
-                .filter(Column(StickerPackRecord.CodingKeys.isInstalled) == true)
-                .fetchCursor(context.tx.databaseConnection)
-            while let next = try cursor.next() {
-                let stickerPack = try StickerPack.fromRecord(next)
-                archiveInstalledStickerPack(stickerPack)
-            }
-        } catch {
-            return .completeFailure(.fatalArchiveError(.stickerPackIteratorError(error)))
-        }
-
-        // Iterate over any restored sticker packs that have yet to be downloaded via StickerManager.
-        do {
-            try backupStickerPackDownloadStore.iterateAllEnqueued(tx: context.tx) { record in
-                autoreleasepool {
-                    guard !handledPacks.contains(record.packId) else { return }
-                    let maybeError: ArchiveFrameError? = Self.writeFrameToStream(
-                        stream,
-                        objectId: StickerPackId(record.packId)) {
-                            var stickerPack = BackupProto_StickerPack()
-                            stickerPack.packID = record.packId
-                            stickerPack.packKey = record.packKey
-
-                            var frame = BackupProto_Frame()
-                            frame.item = .stickerPack(stickerPack)
-
-                            return frame
-                        }
-                    if let maybeError {
-                        errors.append(maybeError)
-                    } else {
-                        handledPacks.insert(record.packId)
-                    }
+                    handledPacks.insert(record.packId)
                 }
             }
         } catch {

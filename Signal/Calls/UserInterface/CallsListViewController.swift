@@ -133,9 +133,9 @@ class CallsListViewController: OWSViewController, HomeTabViewController, CallSer
         noSearchResultsView.autoPinEdge(toSuperviewMargin: .top, withInset: 80)
 
         applyTheme()
-
-        initializeLoadedViewModels()
         attachSelfAsObservers()
+
+        loadCallRecordsAnew(animated: false)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -455,7 +455,7 @@ class CallsListViewController: OWSViewController, HomeTabViewController, CallSer
 
     @objc
     private func filterChanged() {
-        Task { await reinitializeLoadedViewModels(animated: true) }
+        loadCallRecordsAnew(animated: true)
         updateMultiselectToolbarButtons()
     }
 
@@ -716,32 +716,18 @@ class CallsListViewController: OWSViewController, HomeTabViewController, CallSer
         }
     }
 
-    private func initializeLoadedViewModels() {
-        /// On initialization, we are not filtering to only missed calls.
-        let onlyLoadMissedCalls = false
+    /// Used to avoid concurrent calls to ``loadCallRecordsAnew(animated:)``
+    /// from clobbering each other.
+    private var loadCallRecordsAnewCounter = 0
 
-        /// On initialization, we are not filtering for any search term.
-        let onlyMatchThreadRowIds: [Int64]? = nil
-
-        setAndPrimeViewModelLoader(
-            onlyLoadMissedCalls: onlyLoadMissedCalls,
-            onlyMatchThreadRowIds: onlyMatchThreadRowIds,
-            animated: false
-        )
-    }
-
-    /// Used to avoid concurrent calls to `reinitializeLoadedViewModels` from
-    /// clobbering each other.
-    private var reinitializeLoadedViewModelsDebounceToken = 0
-
-    /// Asynchronously resets our `viewModelLoader` for the current UI state,
-    /// then kicks off an initial page load.
+    /// Asynchronously resets our current ``LoadedCalls`` for the current UI
+    /// state, then kicks off an initial page load.
     ///
     /// - Note
     /// This method will perform an FTS search for our current search term, if
     /// we have one. That operation can be painfully slow for users with a large
     /// FTS index, so we need to do it asynchronously.
-    private func reinitializeLoadedViewModels(animated: Bool) async {
+    private func loadCallRecordsAnew(animated: Bool) {
         let searchTerm = self.searchTerm
         let onlyLoadMissedCalls: Bool = {
             switch self.currentFilterMode {
@@ -750,130 +736,121 @@ class CallsListViewController: OWSViewController, HomeTabViewController, CallSer
             }
         }()
 
-        self.reinitializeLoadedViewModelsDebounceToken += 1
-        let debounceTokenSnapshot = self.reinitializeLoadedViewModelsDebounceToken
+        self.loadCallRecordsAnewCounter += 1
+        let loadCallRecordsAnewCounterSnapshot = self.loadCallRecordsAnewCounter
 
-        let threadRowIdsMatchingSearchTerm: [Int64]?
-        if let searchTerm {
-            threadRowIdsMatchingSearchTerm = await findThreadRowIdsMatchingSearchTerm(searchTerm)
-        } else {
-            threadRowIdsMatchingSearchTerm = nil
-        }
+        let isInitialLoad = self.viewModelLoader == nil
 
-        guard self.reinitializeLoadedViewModelsDebounceToken == debounceTokenSnapshot else {
-            /// While we were performing a search above, another caller entered
-            /// this method. Bail out in preference of the later caller!
-            return
-        }
-
-        setAndPrimeViewModelLoader(
-            onlyLoadMissedCalls: onlyLoadMissedCalls,
-            onlyMatchThreadRowIds: threadRowIdsMatchingSearchTerm,
-            animated: animated
-        )
-    }
-
-    /// Finds the row IDs of threads matching the given search term.
-    ///
-    /// - Note
-    /// This operation can be slow, as it involves a potentially-heavy FTS
-    /// query. Importantly, this method is `nonisolated` such that it doesn't
-    /// inherit the `@MainActor` isolation of `UIViewController`.
-    private nonisolated func findThreadRowIdsMatchingSearchTerm(
-        _ searchTerm: String
-    ) async -> [Int64] {
-        return self.deps.databaseStorage.read { tx -> [Int64] in
-            guard let localIdentifiers = self.deps.tsAccountManager.localIdentifiers(tx: tx.asV2Read) else {
-                owsFail("Can't search if you've never been registered.")
-            }
-
-            var threadRowIdsMatchingSearchTerm = Set<Int64>()
-            let addresses = self.deps.searchableNameFinder.searchNames(
-                for: searchTerm,
-                maxResults: Constants.maxSearchResults,
-                localIdentifiers: localIdentifiers,
-                tx: tx.asV2Read,
-                checkCancellation: {},
-                addGroupThread: { groupThread in
-                    guard let sqliteRowId = groupThread.sqliteRowId else {
-                        owsFail("How did we match a thread in the FTS index that hasn't been inserted?")
+        deps.databaseStorage.asyncRead(
+            block: { tx -> CallRecordLoaderImpl.Configuration in
+                if let searchTerm {
+                    guard let localIdentifiers = self.deps.tsAccountManager.localIdentifiers(tx: tx.asV2Read) else {
+                        owsFail("Can't search if you've never been registered.")
                     }
-                    threadRowIdsMatchingSearchTerm.insert(sqliteRowId)
-                },
-                addStoryThread: { _ in }
-            )
+                    var threadRowIdsMatchingSearchTerm = Set<Int64>()
+                    let addresses = self.deps.searchableNameFinder.searchNames(
+                        for: searchTerm,
+                        maxResults: Constants.maxSearchResults,
+                        localIdentifiers: localIdentifiers,
+                        tx: tx.asV2Read,
+                        checkCancellation: {},
+                        addGroupThread: { groupThread in
+                            guard let sqliteRowId = groupThread.sqliteRowId else {
+                                owsFail("How did we match a thread in the FTS index that hasn't been inserted?")
+                            }
+                            threadRowIdsMatchingSearchTerm.insert(sqliteRowId)
+                        },
+                        addStoryThread: { _ in }
+                    )
 
-            for address in addresses {
-                guard
-                    let contactThread = TSContactThread.getWithContactAddress(address, transaction: tx),
-                    contactThread.shouldThreadBeVisible
-                else {
-                    continue
+                    for address in addresses {
+                        guard
+                            let contactThread = TSContactThread.getWithContactAddress(address, transaction: tx),
+                            contactThread.shouldThreadBeVisible
+                        else {
+                            continue
+                        }
+                        guard let sqliteRowId = contactThread.sqliteRowId else {
+                            owsFail("How did we match a thread in the FTS index that hasn't been inserted?")
+                        }
+                        threadRowIdsMatchingSearchTerm.insert(sqliteRowId)
+                    }
+
+                    return CallRecordLoaderImpl.Configuration(
+                        onlyLoadMissedCalls: onlyLoadMissedCalls,
+                        onlyMatchThreadRowIds: Array(threadRowIdsMatchingSearchTerm)
+                    )
+                } else {
+                    return CallRecordLoaderImpl.Configuration(
+                        onlyLoadMissedCalls: onlyLoadMissedCalls,
+                        onlyMatchThreadRowIds: nil
+                    )
                 }
-                guard let sqliteRowId = contactThread.sqliteRowId else {
-                    owsFail("How did we match a thread in the FTS index that hasn't been inserted?")
+            },
+            completionQueue: .main,
+            completion: { configuration in
+                guard self.loadCallRecordsAnewCounter == loadCallRecordsAnewCounterSnapshot else {
+                    /// While we were building the configuration, another caller
+                    /// entered this method. Bail out in preference of the later
+                    /// caller!
+                    return
                 }
-                threadRowIdsMatchingSearchTerm.insert(sqliteRowId)
+
+                // Build a loader for this view's current state.
+                let callRecordLoader = CallRecordLoaderImpl(
+                    callRecordQuerier: self.deps.callRecordQuerier,
+                    configuration: configuration
+                )
+
+                /// We don't want to capture self in the blocks we pass to the
+                /// view model loader (and thereby create a retain cycle), so
+                /// instead we'll early-capture just the dependencies those
+                /// blocks actually need and give them a copy.
+                let capturedDeps = self.deps
+
+                // Reset our loaded calls.
+                self.viewModelLoader = ViewModelLoader(
+                    callLinkStore: self.deps.callLinkStore,
+                    callRecordLoader: callRecordLoader,
+                    callViewModelForCallRecords: { callRecords, tx in
+                        return Self.callViewModel(
+                            forCallRecords: callRecords,
+                            upcomingCallLinkRowId: nil,
+                            deps: capturedDeps,
+                            tx: SDSDB.shimOnlyBridge(tx)
+                        )
+                    },
+                    callViewModelForUpcomingCallLink: { callLinkRowId, tx in
+                        return Self.callViewModel(
+                            forCallRecords: [],
+                            upcomingCallLinkRowId: callLinkRowId,
+                            deps: capturedDeps,
+                            tx: SDSDB.shimOnlyBridge(tx)
+                        )
+                    },
+                    fetchCallRecordBlock: { callRecordId, tx -> CallRecord? in
+                        return capturedDeps.callRecordStore.fetch(
+                            callRecordId: callRecordId,
+                            tx: SDSDB.shimOnlyBridge(tx)
+                        ).unwrapped
+                    },
+                    shouldFetchUpcomingCallLinks: !onlyLoadMissedCalls
+                )
+
+                self.reloadUpcomingCallLinks()
+
+                // Load the initial page of records. We've thrown away all our
+                // existing calls, so we want to always update the snapshot.
+                self.loadMoreCalls(
+                    direction: .older,
+                    animated: animated,
+                    forceUpdateSnapshot: true
+                )
+
+                if isInitialLoad, self.isPeekingEnabled {
+                    self.peekOnAppear()
+                }
             }
-
-            return Array(threadRowIdsMatchingSearchTerm)
-        }
-    }
-
-    private func setAndPrimeViewModelLoader(
-        onlyLoadMissedCalls: Bool,
-        onlyMatchThreadRowIds: [Int64]?,
-        animated: Bool
-    ) {
-        let callRecordLoader = CallRecordLoaderImpl(
-            callRecordQuerier: self.deps.callRecordQuerier,
-            configuration: CallRecordLoaderImpl.Configuration(
-                onlyLoadMissedCalls: onlyLoadMissedCalls,
-                onlyMatchThreadRowIds: onlyMatchThreadRowIds
-            )
-        )
-
-        /// We don't want to capture self in the blocks we pass when creating
-        /// the view model loader (and thereby create a retain cycle), so we'll
-        /// early-capture the dependencies those blocks need.
-        let capturedDeps = self.deps
-
-        self.viewModelLoader = ViewModelLoader(
-            callLinkStore: self.deps.callLinkStore,
-            callRecordLoader: callRecordLoader,
-            callViewModelForCallRecords: { callRecords, tx in
-                return Self.callViewModel(
-                    forCallRecords: callRecords,
-                    upcomingCallLinkRowId: nil,
-                    deps: capturedDeps,
-                    tx: SDSDB.shimOnlyBridge(tx)
-                )
-            },
-            callViewModelForUpcomingCallLink: { callLinkRowId, tx in
-                return Self.callViewModel(
-                    forCallRecords: [],
-                    upcomingCallLinkRowId: callLinkRowId,
-                    deps: capturedDeps,
-                    tx: SDSDB.shimOnlyBridge(tx)
-                )
-            },
-            fetchCallRecordBlock: { callRecordId, tx -> CallRecord? in
-                return capturedDeps.callRecordStore.fetch(
-                    callRecordId: callRecordId,
-                    tx: SDSDB.shimOnlyBridge(tx)
-                ).unwrapped
-            },
-            shouldFetchUpcomingCallLinks: !onlyLoadMissedCalls
-        )
-
-        self.reloadUpcomingCallLinks()
-
-        // Load the initial page of records. We've thrown away all our
-        // existing calls, so we want to always update the snapshot.
-        self.loadMoreCalls(
-            direction: .older,
-            animated: animated,
-            forceUpdateSnapshot: true
         )
     }
 
@@ -1289,23 +1266,21 @@ class CallsListViewController: OWSViewController, HomeTabViewController, CallSer
         set { _searchTerm = newValue?.nilIfEmpty }
     }
 
-    private var searchTermDebounceToken = 0
+    private var searchTermCounter = 0
 
     private func searchTermDidChange() {
-        self.searchTermDebounceToken += 1
-        let debounceTokenSnapshot = self.searchTermDebounceToken
+        self.searchTermCounter += 1
+        let searchTermCounterSnapshot = self.searchTermCounter
 
-        Task {
-            try await Task.sleep(nanoseconds: UInt64(Double(NSEC_PER_SEC) * Constants.searchDebounceInterval))
-
-            guard self.searchTermDebounceToken == debounceTokenSnapshot else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Constants.searchDebounceInterval) {
+            guard self.searchTermCounter == searchTermCounterSnapshot else {
                 /// The search term changed in the debounce period, so we'll
                 /// bail out here in preference for the later-changed search
                 /// term.
                 return
             }
 
-            await self.reinitializeLoadedViewModels(animated: true)
+            self.loadCallRecordsAnew(animated: true)
         }
     }
 
@@ -1462,7 +1437,9 @@ class CallsListViewController: OWSViewController, HomeTabViewController, CallSer
     private func getSnapshot() -> Snapshot {
         var snapshot = Snapshot()
         snapshot.appendSections([.createCallLink])
-        snapshot.appendItems([.createCallLink])
+        if FeatureFlags.callLinkCreate {
+            snapshot.appendItems([.createCallLink])
+        }
         snapshot.appendSections([.existingCalls])
         snapshot.appendItems(viewModelLoader.viewModelReferences().map { .callViewModelReference($0) })
         return snapshot
@@ -2165,7 +2142,7 @@ extension CallsListViewController: DatabaseChangeDelegate {
     func databaseChangesDidUpdateExternally() {
         logger.info("Database changed externally, loading calls anew and reloading all rows.")
 
-        Task { await reinitializeLoadedViewModels(animated: false) }
+        loadCallRecordsAnew(animated: false)
         reloadAllRows()
     }
 

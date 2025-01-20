@@ -9,22 +9,6 @@ private enum OWSOperationState {
     case new
     case executing
     case finished
-
-    /// About to fail the operation because retries are exhausted, but still executing.
-    case pendingFailure
-
-    var isFinished: Bool {
-        self == .finished
-    }
-
-    var isExecuting: Bool {
-        switch self {
-        case .new, .finished:
-            false
-        case .executing, .pendingFailure:
-            true
-        }
-    }
 }
 
 /// A base class for implementing retryable operations.
@@ -37,27 +21,20 @@ private enum OWSOperationState {
 ///
 /// If a group message send fails, the send will be retried if any of the errors were retryable UNLESS
 /// any of the errors were fatal. Fatal errors trump retryable errors.
-open class OWSOperation: Operation, @unchecked Sendable {
-    private struct State {
-        var operationState: OWSOperationState
-        var remainingRetries: UInt
-        var failingError: Error?
-        var errorCount: UInt = 0
-    }
+open class OWSOperation: Operation {
+    public private(set) var failingError: Error?
+    public private(set) var errorCount: UInt = 0
+    /// Defaults to 0, set to greater than 0 in init if you'd like the operation to be retryable.
+    @Atomic public var remainingRetries: UInt = 0
+    private var operationState: AtomicValue<OWSOperationState>
+    private var backgroundTask: OWSBackgroundTask
+    /// This property should only be accessed on the main queue.
+    private var retryTimer: Timer?
 
-    private let backgroundTask: OWSBackgroundTask
-    private let state: TSMutex<State>
-
-    @MainActor private var retryTimer: Timer?
-
-    public init(retryCount: UInt = 0) {
-        self.state = TSMutex(initialState: State(operationState: .new, remainingRetries: retryCount))
+    public override init() {
+        self.operationState = AtomicValue(.new, lock: UnfairLock())
         self.backgroundTask = OWSBackgroundTask(label: "[\(Self.self)]")
         super.init()
-    }
-
-    public var failingError: Error? {
-        state.withLock(\.failingError)
     }
 
     // MARK: - Mandatory Subclass Overrides
@@ -111,13 +88,15 @@ open class OWSOperation: Operation, @unchecked Sendable {
 
     /// Runs now if a retry timer has been set by a previous failure,
     /// otherwise assumes we're currently running and does nothing.
-    @MainActor internal func runAnyQueuedRetry() {
-        let retryTimer = self.retryTimer
-        self.retryTimer = nil
-        if let retryTimer {
-            retryTimer.invalidate()
-            DispatchQueue.global().async {
-                self.run()
+    internal func runAnyQueuedRetry() {
+        DispatchQueue.main.async {
+            let retryTimer = self.retryTimer
+            self.retryTimer = nil
+            if let retryTimer {
+                retryTimer.invalidate()
+                DispatchQueue.global().async {
+                    self.run()
+                }
             }
         }
     }
@@ -154,57 +133,34 @@ open class OWSOperation: Operation, @unchecked Sendable {
     /// If the error is terminal, and you want to avoid retry, report an error with `error.isFatal = YES` otherwise the
     /// operation will retry if possible.
     private func __reportError(_ error: Error) {
-        enum ReportErrorResult {
-            case retry
-            case failOperation
-        }
-
-        let result = state.withLock { (state) -> ReportErrorResult in
-            state.errorCount += 1
-            if error.isFatalError || !error.isRetryable || state.remainingRetries == 0 {
-                state.failingError = error
-                state.operationState = .pendingFailure
-                return .failOperation
-            } else {
-                state.remainingRetries -= 1
-                return .retry
-            }
-        }
-
+        errorCount += 1
         didReportError(error)
-
-        switch result {
-        case .failOperation:
+        if error.isFatalError || !error.isRetryable || remainingRetries == 0 {
             failOperation(error: error)
             return
-        case .retry:
-            break
         }
+        remainingRetries -= 1
 
         DispatchQueue.main.async {
-            self.scheduleRetryTimer()
-        }
-    }
+            owsAssertDebug(self.retryTimer == nil)
+            // this seems pointless if this is expected to be nil but this was in the objc code
+            self.retryTimer?.invalidate()
 
-    @MainActor private func scheduleRetryTimer() {
-        owsAssertDebug(retryTimer == nil)
-        // this seems pointless if this is expected to be nil but this was in the objc code
-        retryTimer?.invalidate()
-
-        // The `scheduledTimerWith*` methods add the timer to the current thread's RunLoop.
-        // Since Operations typically run on a background thread, that would mean the background
-        // thread's RunLoop. However, the OS can spin down background threads if there's no work
-        // being done, so we run the risk of the timer's RunLoop being deallocated before it's
-        // fired.
-        //
-        // To ensure the timer's thread sticks around, we schedule it while on the main RunLoop.
-        //
-        // This comment seems incorrect but it's retained from the objc code.
-        retryTimer = Timer.scheduledTimer(withTimeInterval: self.retryInterval, repeats: false) { [weak self] _ in
-            guard let self else { return }
-            MainActor.assumeIsolated {
+            // The `scheduledTimerWith*` methods add the timer to the current thread's RunLoop.
+            // Since Operations typically run on a background thread, that would mean the background
+            // thread's RunLoop. However, the OS can spin down background threads if there's no work
+            // being done, so we run the risk of the timer's RunLoop being deallocated before it's
+            // fired.
+            //
+            // To ensure the timer's thread sticks around, we schedule it while on the main RunLoop.
+            //
+            // This comment seems incorrect but it's retained from the objc code.
+            self.retryTimer = Timer.scheduledTimer(withTimeInterval: self.retryInterval, repeats: false, block: { [weak self] _ in
+                guard let self else {
+                    return
+                }
                 self.runAnyQueuedRetry()
-            }
+            })
         }
     }
 
@@ -235,21 +191,23 @@ open class OWSOperation: Operation, @unchecked Sendable {
     // MARK: - Life Cycle
 
     private func failOperation(error: Error) {
+        failingError = error
+
         didFail(error: error)
         markAsComplete()
     }
 
     public final override var isExecuting: Bool {
-        state.withLock(\.operationState.isExecuting)
+        operationState.get() == .executing
     }
 
     public final override var isFinished: Bool {
-        state.withLock(\.operationState.isFinished)
+        operationState.get() == .finished
     }
 
     public final override func start() {
         willChangeValue(forKey: #keyPath(isExecuting))
-        state.withLock { $0.operationState = .executing }
+        operationState.set(.executing)
         didChangeValue(forKey: #keyPath(isExecuting))
 
         main()
@@ -259,11 +217,8 @@ open class OWSOperation: Operation, @unchecked Sendable {
         willChangeValue(forKey: #keyPath(isExecuting))
         willChangeValue(forKey: #keyPath(isFinished))
 
-        let oldOperationState = state.withLock { state in
-            defer { state.operationState = .finished }
-            return state.operationState
-        }
         // Ensure we call the success or failure handler exactly once.
+        let oldOperationState = self.operationState.swap(.finished)
         owsAssertDebug(oldOperationState != .finished)
 
         didChangeValue(forKey: #keyPath(isExecuting))

@@ -90,21 +90,13 @@ public final class TSGroupMember: NSObject, SDSCodableModel, Decodable {
 
     // MARK: -
 
-    public func anyUpdateWith(
+    public func updateWith(
         lastInteractionTimestamp: UInt64,
         transaction: SDSAnyWriteTransaction
     ) {
         anyUpdate(transaction: transaction) { groupMember in
             groupMember.lastInteractionTimestamp = lastInteractionTimestamp
         }
-    }
-
-    public func updateWith(
-        lastInteractionTimestamp: UInt64,
-        tx: DBWriteTransaction
-    ) throws {
-        self.lastInteractionTimestamp = lastInteractionTimestamp
-        try self.update(tx.databaseConnection)
     }
 
     public class func groupMember(
@@ -135,17 +127,6 @@ public final class TSGroupMember: NSObject, SDSCodableModel, Decodable {
             owsFailDebug("Failed to fetch group member \(error)")
             return nil
         }
-    }
-
-    public class func groupMember(
-        for aci: Aci,
-        in groupThread: TSGroupThread,
-        tx: DBReadTransaction
-    ) throws -> TSGroupMember? {
-        return try TSGroupMember
-            .filter(Column(CodingKeys.serviceId) == aci.serviceIdUppercaseString)
-            .filter(Column(CodingKeys.groupThreadId) == groupThread.uniqueId)
-            .fetchOne(tx.databaseConnection)
     }
 
     public class func enumerateGroupMembers(

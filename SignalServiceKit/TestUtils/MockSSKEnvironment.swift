@@ -30,12 +30,14 @@ public class MockSSKEnvironment: NSObject {
             callMessageHandler: NoopCallMessageHandler(),
             currentCallProvider: CurrentCallNoOpProvider(),
             notificationPresenter: NoopNotificationPresenterImpl(),
+            incrementalTSAttachmentMigrator: IncrementalMessageTSAttachmentMigratorMock(),
             messageBackupErrorPresenterFactory: NoOpMessageBackupErrorPresenterFactory(),
             testDependencies: AppSetup.TestDependencies(
                 accountServiceClient: FakeAccountServiceClient(),
                 contactManager: FakeContactsManager(),
                 groupV2Updates: MockGroupV2Updates(),
                 groupsV2: MockGroupsV2(),
+                keyValueStoreFactory: InMemoryKeyValueStoreFactory(),
                 messageSender: FakeMessageSender(),
                 modelReadCaches: ModelReadCaches(
                     factory: TestableModelReadCacheFactory(appReadiness: appReadiness)

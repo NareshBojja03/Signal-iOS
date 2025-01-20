@@ -13,14 +13,6 @@ public protocol TaskRecord {
     associatedtype IDType: Hashable
 
     var id: IDType { get }
-
-    /// If non-nil, tasks will wait until this timestamp before running.
-    /// Default to nil.
-    var nextRetryTimestamp: UInt64? { get }
-}
-
-extension TaskRecord {
-    var nextRetryTimestamp: UInt64? { return nil }
 }
 
 /// Intermediary between the ``TaskQueueLoader`` and the queue table in the database.
@@ -147,43 +139,20 @@ public actor TaskQueueLoader<Runner: TaskRecordRunner> {
 
     public let maxConcurrentTasks: UInt
 
-    private nonisolated let dateProvider: DateProvider
     private let db: any DB
     private let runner: Runner
     private var store: Store { runner.store }
 
     /// WARNING: the runner (and therefore any of its strong references) is strongly
     /// captured by this class and will be retained for its lifetime.
-    internal init(
-        maxConcurrentTasks: UInt,
-        dateProvider: @escaping DateProvider,
-        db: any DB,
-        runner: Runner,
-        sleep: (_ nanoseconds: UInt64) async throws -> Void
-    ) {
-        self.maxConcurrentTasks = maxConcurrentTasks
-        self.dateProvider = dateProvider
-        self.db = db
-        self.runner = runner
-    }
-
-    /// WARNING: the runner (and therefore any of its strong references) is strongly
-    /// captured by this class and will be retained for its lifetime.
     public init(
         maxConcurrentTasks: UInt,
-        dateProvider: @escaping DateProvider,
         db: any DB,
         runner: Runner
     ) {
-        self.init(
-            maxConcurrentTasks: maxConcurrentTasks,
-            dateProvider: dateProvider,
-            db: db,
-            runner: runner,
-            sleep: {
-                try await Task.sleep(nanoseconds: $0)
-            }
-        )
+        self.maxConcurrentTasks = maxConcurrentTasks
+        self.db = db
+        self.runner = runner
     }
 
     private var runningTask: Task<Void, Error>?
@@ -267,13 +236,6 @@ public actor TaskQueueLoader<Runner: TaskRecordRunner> {
         try await withThrowingTaskGroup(of: Void.self) { taskGroup in
             records.forEach { record in
                 taskGroup.addTask {
-                    let nowMs = self.dateProvider().ows_millisecondsSince1970
-                    if
-                        let nextRetryTimestamp = record.nextRetryTimestamp,
-                        nowMs < nextRetryTimestamp
-                    {
-                        try await Task.sleep(nanoseconds: NSEC_PER_MSEC * (nextRetryTimestamp - nowMs))
-                    }
                     let taskResult = await runner.runTask(record: record, loader: self)
                     switch taskResult {
                     case .success:

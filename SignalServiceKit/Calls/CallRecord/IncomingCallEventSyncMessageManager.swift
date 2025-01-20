@@ -466,24 +466,20 @@ private extension IncomingCallEventSyncMessageManagerImpl {
             owsFail("Missing SQLite row ID for just-inserted interaction!")
         }
 
-        do {
-            _ = try individualCallRecordManager.createRecordForInteraction(
-                individualCallInteraction: newIndividualCallInteraction,
-                individualCallInteractionRowId: interactionRowId,
-                contactThread: contactThread,
-                contactThreadRowId: contactThreadRowId,
-                callId: callId,
-                callType: callType,
-                callDirection: callDirection,
-                individualCallStatus: individualCallStatus,
-                // The interaction's timestamp is the call event's timestamp.
-                callEventTimestamp: newIndividualCallInteraction.timestamp,
-                shouldSendSyncMessage: false,
-                tx: tx
-            )
-        } catch let error {
-            owsFailBeta("Failed to insert call record: \(error)")
-        }
+        _ = individualCallRecordManager.createRecordForInteraction(
+            individualCallInteraction: newIndividualCallInteraction,
+            individualCallInteractionRowId: interactionRowId,
+            contactThread: contactThread,
+            contactThreadRowId: contactThreadRowId,
+            callId: callId,
+            callType: callType,
+            callDirection: callDirection,
+            individualCallStatus: individualCallStatus,
+            // The interaction's timestamp is the call event's timestamp.
+            callEventTimestamp: newIndividualCallInteraction.timestamp,
+            shouldSendSyncMessage: false,
+            tx: tx
+        )
 
         markThingsAsReadForIncomingSyncMessage(
             callInteraction: newIndividualCallInteraction,
@@ -541,22 +537,18 @@ private extension IncomingCallEventSyncMessageManagerImpl {
             tx: tx
         )
 
-        do {
-            _ = try groupCallRecordManager.createGroupCallRecord(
-                callId: callId,
-                groupCallInteraction: newGroupCallInteraction,
-                groupCallInteractionRowId: interactionRowId,
-                groupThreadRowId: groupThreadRowId,
-                callDirection: callDirection,
-                groupCallStatus: groupCallStatus,
-                groupCallRingerAci: nil,
-                callEventTimestamp: callEventTimestamp,
-                shouldSendSyncMessage: false,
-                tx: tx
-            )
-        } catch let error {
-            owsFailBeta("Failed to insert call record: \(error)")
-        }
+        _ = groupCallRecordManager.createGroupCallRecord(
+            callId: callId,
+            groupCallInteraction: newGroupCallInteraction,
+            groupCallInteractionRowId: interactionRowId,
+            groupThreadRowId: groupThreadRowId,
+            callDirection: callDirection,
+            groupCallStatus: groupCallStatus,
+            groupCallRingerAci: nil,
+            callEventTimestamp: callEventTimestamp,
+            shouldSendSyncMessage: false,
+            tx: tx
+        )
 
         markThingsAsReadForIncomingSyncMessage(
             callInteraction: newGroupCallInteraction,

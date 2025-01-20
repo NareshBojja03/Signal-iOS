@@ -173,12 +173,6 @@ open class BodyRangesTextView: OWSTextView, EditableMessageBodyDelegate {
 
     open func setMessageBody(_ messageBody: MessageBody?, txProvider: EditableMessageBodyTextStorage.ReadTxProvider) {
         editableBody.beginEditing()
-        if messageBody == nil {
-            // "unmark" text so that pending marked ranges
-            // are cleared on iOS 18.1 and don't result in a
-            // crash when we later set selected range to empty.
-            self.unmarkText()
-        }
         editableBody.setMessageBody(messageBody, txProvider: txProvider)
         editableBody.endEditing()
     }
@@ -840,7 +834,7 @@ extension BodyRangesTextView {
             editableBody.endEditing()
         } else if let string = UIPasteboard.general.strings?.first {
             editableBody.beginEditing()
-            editableBody.replaceCharacters(in: selectedRange, with: StringSanitizer.sanitize(string), selectedRange: selectedRange)
+            editableBody.replaceCharacters(in: selectedRange, with: string, selectedRange: selectedRange)
             editableBody.endEditing()
             // Put the selection at the end of the new range.
             self.selectedRange = NSRange(location: selectedRange.location + (string as NSString).length, length: 0)

@@ -4,14 +4,14 @@
 //
 
 import SignalServiceKit
-import SignalUI
+public import SignalUI
 
-class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildController {
+public class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildController {
 
     // Unlike a delegate, we can and should retain a strong reference to the ProvisioningController.
     let provisioningController: ProvisioningController
 
-    init(provisioningController: ProvisioningController) {
+    public init(provisioningController: ProvisioningController) {
         self.provisioningController = provisioningController
 
         super.init()
@@ -23,7 +23,7 @@ class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildContr
 
     // MARK: - View Lifecycle
 
-    override func viewDidLoad() {
+    public override func viewDidLoad() {
         super.viewDidLoad()
 
         primaryView.layoutMargins = primaryLayoutMargins
@@ -64,7 +64,7 @@ class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildContr
         return explanationLabel
     }
 
-    var primaryLayoutMargins: UIEdgeInsets {
+    public var primaryLayoutMargins: UIEdgeInsets {
         switch traitCollection.horizontalSizeClass {
         case .unspecified, .compact:
             return UIEdgeInsets(top: 32, leading: 32, bottom: 32, trailing: 32)
@@ -92,18 +92,6 @@ class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildContr
         return button
     }
 
-    func primaryButton(title: String, action: UIAction) -> OWSFlatButton {
-        let button = OWSFlatButton.button(
-            title: title,
-            font: UIFont.dynamicTypeBodyClamped.semibold(),
-            titleColor: .white,
-            backgroundColor: .ows_accentBlue,
-            action: action)
-        button.button.layer.cornerRadius = 14
-        button.contentEdgeInsets = UIEdgeInsets(hMargin: 4, vMargin: 14)
-        return button
-    }
-
     func linkButton(title: String, selector: Selector) -> OWSFlatButton {
         linkButton(title: title, target: self, selector: selector)
     }
@@ -122,7 +110,7 @@ class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildContr
         return button
     }
 
-    class func horizontallyWrap(primaryButton: UIView) -> UIView {
+    public class func horizontallyWrap(primaryButton: UIView) -> UIView {
         primaryButton.autoSetDimension(.width, toSize: 280)
 
         let buttonWrapper = UIView()
@@ -146,11 +134,11 @@ class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildContr
         navigationController?.popViewController(animated: true)
     }
 
-    var prefersNavigationBarHidden: Bool {
+    public var prefersNavigationBarHidden: Bool {
         true
     }
 
-    var shouldCancelNavigationBack: Bool {
+    public var shouldCancelNavigationBack: Bool {
         true
     }
 
@@ -164,16 +152,16 @@ class ProvisioningBaseViewController: OWSViewController, OWSNavigationChildContr
     // If not for iOS10, we could get rid of primaryView, and manipulate the layoutMargins on
     // self.view directly, however on iOS10, UIKit VC presentation machinery resets the
     // layoutMargins *after* this method is called.
-    let primaryView = UIView()
+    public let primaryView = UIView()
 
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    override public func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         primaryView.layoutMargins = primaryLayoutMargins
     }
 
     // MARK: - Orientation
 
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+    public override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         return UIDevice.current.isIPad ? .all : .portrait
     }
 }

@@ -24,12 +24,17 @@ public class PinnedThreadStoreImpl: PinnedThreadStoreWrite {
 
     private let keyValueStore: KeyValueStore
 
-    public init() {
-        self.keyValueStore = KeyValueStore(collection: "PinnedConversationManager")
+    public init(
+        keyValueStoreFactory: KeyValueStoreFactory
+    ) {
+        self.keyValueStore = keyValueStoreFactory.keyValueStore(collection: "PinnedConversationManager")
     }
 
     public func pinnedThreadIds(tx: DBReadTransaction) -> [String] {
-        return keyValueStore.getStringArray(Self.pinnedThreadIdsKey, transaction: tx) ?? []
+        return keyValueStore.getObject(
+            forKey: Self.pinnedThreadIdsKey,
+            transaction: tx
+        ) as? [String] ?? []
     }
 
     public func isThreadPinned(_ thread: TSThread, tx: DBReadTransaction) -> Bool {

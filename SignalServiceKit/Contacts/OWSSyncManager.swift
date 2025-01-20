@@ -14,8 +14,8 @@ extension Notification.Name {
 
 @objc
 public class OWSSyncManager: NSObject {
-    private static var keyValueStore: KeyValueStore {
-        KeyValueStore(collection: "kTSStorageManagerOWSSyncManagerCollection")
+    private static var keyValueStore: SDSKeyValueStore {
+        SDSKeyValueStore(collection: "kTSStorageManagerOWSSyncManagerCollection")
     }
 
     private let contactSyncQueue = SerialTaskQueue()
@@ -75,6 +75,8 @@ extension OWSSyncManager: SyncManagerProtocolObjc {
     // MARK: - Configuration Sync
 
     private func _sendConfigurationSyncMessage(tx: SDSAnyWriteTransaction) {
+        Logger.info("")
+
         let tsAccountManager = DependenciesBridge.shared.tsAccountManager
         guard tsAccountManager.registrationState(tx: tx.asV2Read).isRegistered else {
             return
@@ -142,7 +144,7 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
             let syncRequestedAppVersion = {
                 Self.keyValueStore.getString(
                     Constants.syncRequestedAppVersionKey,
-                    transaction: transaction.asV2Read
+                    transaction: transaction
                 )
             }
 
@@ -160,7 +162,7 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
             Self.keyValueStore.setString(
                 currentAppVersion,
                 key: Constants.syncRequestedAppVersionKey,
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
 
             return Promise.when(fulfilled: [
@@ -422,7 +424,7 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
             // main app can send that request the next time in runs.
             if mode == .allSignalAccounts {
                 await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
-                    Self.keyValueStore.setString(UUID().uuidString, key: Constants.fullSyncRequestIdKey, transaction: tx.asV2Write)
+                    Self.keyValueStore.setString(UUID().uuidString, key: Constants.fullSyncRequestIdKey, transaction: tx)
                 }
             }
             // If a full sync sync is requested in NSE, ignore it. Opportunistic syncs
@@ -476,7 +478,7 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
 
         try await SSKEnvironment.shared.messageSenderRef.sendTransientContactSyncAttachment(dataSource: dataSource, thread: thread)
         await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
-            Self.keyValueStore.setData(messageHash, key: Constants.lastContactSyncKey, transaction: tx.asV2Write)
+            Self.keyValueStore.setData(messageHash, key: Constants.lastContactSyncKey, transaction: tx)
             self.clearFullSyncRequestId(ifMatches: result.fullSyncRequestId, tx: tx)
         }
     }
@@ -495,7 +497,7 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
         // Check if there's a pending request from the NSE. Any full sync in the
         // main app can clear this flag, even if it's not started in response to
         // calling syncAllContactsIfFullSyncRequested.
-        let fullSyncRequestId = Self.keyValueStore.getString(Constants.fullSyncRequestIdKey, transaction: tx.asV2Read)
+        let fullSyncRequestId = Self.keyValueStore.getString(Constants.fullSyncRequestIdKey, transaction: tx)
 
         // However, only syncAllContactsIfFullSyncRequested-initiated requests
         // should be skipped if there's no request.
@@ -513,7 +515,7 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
         return BuildContactSyncMessageResult(
             syncFileUrl: syncFileUrl,
             fullSyncRequestId: fullSyncRequestId,
-            previousMessageHash: Self.keyValueStore.getData(Constants.lastContactSyncKey, transaction: tx.asV2Read)
+            previousMessageHash: Self.keyValueStore.getData(Constants.lastContactSyncKey, transaction: tx)
         )
     }
 
@@ -521,13 +523,13 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
         guard let requestId else {
             return
         }
-        let storedRequestId = Self.keyValueStore.getString(Constants.fullSyncRequestIdKey, transaction: tx.asV2Read)
+        let storedRequestId = Self.keyValueStore.getString(Constants.fullSyncRequestIdKey, transaction: tx)
         // If the requestId we just finished matches the one in the database, we've
         // fulfilled the contract with the NSE. If the NSE triggers *another* sync
         // while this is outstanding, the match will fail, and we'll kick off
         // another sync at the next opportunity.
         if storedRequestId == requestId {
-            Self.keyValueStore.removeValue(forKey: Constants.fullSyncRequestIdKey, transaction: tx.asV2Write)
+            Self.keyValueStore.removeValue(forKey: Constants.fullSyncRequestIdKey, transaction: tx)
         }
     }
 
@@ -607,8 +609,13 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
             tx: transaction
         )
     }
+}
 
-    public func sendInitialSyncRequestsAwaitingCreatedThreadOrdering(timeoutSeconds: TimeInterval) -> Promise<[String]> {
+// MARK: -
+
+public extension OWSSyncManager {
+
+    func sendInitialSyncRequestsAwaitingCreatedThreadOrdering(timeoutSeconds: TimeInterval) -> Promise<[String]> {
         Logger.info("")
         guard DependenciesBridge.shared.tsAccountManager.registrationStateWithMaybeSneakyTransaction.isRegistered else {
             return Promise(error: OWSAssertionError("Unexpectedly tried to send sync request before registration."))
@@ -631,10 +638,8 @@ extension OWSSyncManager: SyncManagerProtocol, SyncManagerProtocolSwift {
         }
     }
 
-    private func sendSyncRequestMessage(
-        _ requestType: SSKProtoSyncMessageRequestType,
-        transaction: SDSAnyWriteTransaction
-    ) {
+    fileprivate func sendSyncRequestMessage(_ requestType: SSKProtoSyncMessageRequestType,
+                                            transaction: SDSAnyWriteTransaction) {
         switch requestType {
         case .unknown:
             owsFailDebug("should not request unknown")

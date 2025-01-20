@@ -8,31 +8,35 @@ import SignalServiceKit
 import SignalUI
 
 protocol LinkDeviceViewControllerDelegate: AnyObject {
-    typealias LinkNSyncData = (ephemeralBackupKey: BackupKey, tokenId: DeviceProvisioningTokenId)
-    func didFinishLinking(_ linkNSyncData: LinkNSyncData?, from linkDeviceViewController: LinkDeviceViewController)
+    func expectMoreDevices()
 }
 
 class LinkDeviceViewController: OWSViewController {
 
     weak var delegate: LinkDeviceViewControllerDelegate?
 
-    private let preknownProvisioningUrl: DeviceProvisioningURL?
-
-    private var hasShownEducationSheet = false
-    private weak var educationSheet: HeroSheetViewController?
-
-    private lazy var qrCodeScanViewController = QRCodeScanViewController(appearance: .framed)
-
-    init(preknownProvisioningUrl: DeviceProvisioningURL?) {
-        self.preknownProvisioningUrl = preknownProvisioningUrl
-        super.init()
-    }
-
-    // MARK: QRCodeScanOrPickDelegate
+    private lazy var scanningInstructionsLabel: UILabel = {
+        let label = UILabel()
+        label.text = NSLocalizedString(
+            "LINK_DEVICE_SCANNING_INSTRUCTIONS",
+            comment: "QR Scanning screen instructions, placed alongside a camera view for scanning QR Codes"
+        )
+        label.textColor = Theme.secondaryTextAndIconColor
+        label.font = .dynamicTypeBody2
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.textAlignment = .center
+        return label
+    }()
 
     var selectedAttachment: ImagePickerAttachment?
 
-    // MARK: -
+    private var hasShownEducationSheet = false
+
+    private lazy var qrCodeScanViewController = QRCodeScanViewController(
+        appearance: .framed,
+        showUploadPhotoButton: FeatureFlags.biometricLinkedDeviceFlow
+    )
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -47,17 +51,39 @@ class LinkDeviceViewController: OWSViewController {
             action: #selector(manuallyEnterLinkURL)
         )
 #endif
-        if preknownProvisioningUrl != nil {
-            // No need to set up the QR code scanner.
-            view.backgroundColor = .black
-        } else {
-            qrCodeScanViewController.delegate = self
+        qrCodeScanViewController.delegate = self
 
-            addChild(qrCodeScanViewController)
-            view.addSubview(qrCodeScanViewController.view)
+        addChild(qrCodeScanViewController)
+        view.addSubview(qrCodeScanViewController.view)
 
+        if FeatureFlags.biometricLinkedDeviceFlow {
             qrCodeScanViewController.view.autoPinEdgesToSuperviewEdges()
             qrCodeScanViewController.didMove(toParent: self)
+        } else {
+            view.backgroundColor = Theme.backgroundColor
+
+            qrCodeScanViewController.view.autoPinWidthToSuperview()
+            qrCodeScanViewController.view.autoPin(toTopLayoutGuideOf: self, withInset: 0)
+            qrCodeScanViewController.view.autoPinToSquareAspectRatio()
+
+            let bottomView = UIView()
+            bottomView.preservesSuperviewLayoutMargins = true
+            view.addSubview(bottomView)
+            bottomView.autoPinEdge(.top, to: .bottom, of: qrCodeScanViewController.view)
+            bottomView.autoPinEdgesToSuperviewEdges(with: .zero, excludingEdge: .top)
+
+            let heroImage = UIImage(imageLiteralResourceName: "ic_devices_ios")
+            let imageView = UIImageView(image: heroImage)
+            imageView.autoSetDimensions(to: heroImage.size)
+
+            let bottomStack = UIStackView(arrangedSubviews: [ imageView, scanningInstructionsLabel ])
+            bottomStack.axis = .vertical
+            bottomStack.alignment = .center
+            bottomStack.spacing = 8
+            bottomView.addSubview(bottomStack)
+            bottomStack.autoPinWidthToSuperviewMargins()
+            bottomStack.autoPinHeightToSuperviewMargins(relation: .lessThanOrEqual)
+            bottomStack.autoVCenterInSuperview()
         }
     }
 
@@ -68,9 +94,7 @@ class LinkDeviceViewController: OWSViewController {
             UIDevice.current.ows_setOrientation(.portrait)
         }
 
-        if let preknownProvisioningUrl {
-            confirmProvisioningWithUrl(preknownProvisioningUrl)
-        } else if !hasShownEducationSheet {
+        if !hasShownEducationSheet, FeatureFlags.biometricLinkedDeviceFlow {
             let animationName = if traitCollection.userInterfaceStyle == .dark {
                 "linking-device-dark"
             } else {
@@ -91,11 +115,8 @@ class LinkDeviceViewController: OWSViewController {
                 buttonTitle: CommonStrings.okayButton
             )
 
-            DispatchQueue.main.async {
-                self.present(sheet, animated: true)
-                self.hasShownEducationSheet = true
-                self.educationSheet = sheet
-            }
+            present(sheet, animated: true)
+            hasShownEducationSheet = true
         }
     }
 
@@ -103,68 +124,48 @@ class LinkDeviceViewController: OWSViewController {
         UIDevice.current.isIPad ? .all : .portrait
     }
 
-    private func dismissEducationSheetIfNecessary(completion: @escaping () -> Void) {
-        if let educationSheet {
-            educationSheet.dismiss(animated: true, completion: completion)
-        } else {
-            completion()
-        }
-    }
+    override func themeDidChange() {
+        super.themeDidChange()
 
-    private func safePresent(_ viewController: UIViewController) {
-        dismissEducationSheetIfNecessary { [weak self] in
-            self?.present(viewController, animated: true)
+        if !FeatureFlags.biometricLinkedDeviceFlow {
+            view.backgroundColor = Theme.backgroundColor
+            scanningInstructionsLabel.textColor = Theme.secondaryTextAndIconColor
         }
     }
 
     // MARK: -
 
-    private func confirmProvisioningWithUrl(_ deviceProvisioningUrl: DeviceProvisioningURL) {
-        if FeatureFlags.linkAndSync, deviceProvisioningUrl.capabilities.contains(.linknsync) {
-            let linkOrSyncSheet = LinkOrSyncPickerSheet {
-                self.popToLinkedDeviceList()
-            } linkAndSync: {
-                self.provisionWithUrl(deviceProvisioningUrl, shouldLinkNSync: true)
-            } linkOnly: {
-                self.provisionWithUrl(deviceProvisioningUrl, shouldLinkNSync: false)
+    func confirmProvisioningWithUrl(_ deviceProvisioningUrl: DeviceProvisioningURL) {
+        let title = NSLocalizedString(
+            "LINK_DEVICE_PERMISSION_ALERT_TITLE",
+            comment: "confirm the users intent to link a new device"
+        )
+        let linkingDescription = NSLocalizedString(
+            "LINK_DEVICE_PERMISSION_ALERT_BODY",
+            comment: "confirm the users intent to link a new device"
+        )
+
+        let actionSheet = ActionSheetController(title: title, message: linkingDescription)
+        actionSheet.addAction(ActionSheetAction(
+            title: CommonStrings.cancelButton,
+            style: .cancel,
+            handler: { _ in
+                DispatchQueue.main.async {
+                    self.popToLinkedDeviceList()
+                }
             }
-
-            self.safePresent(linkOrSyncSheet)
-        } else {
-            let title = NSLocalizedString(
-                "LINK_DEVICE_PERMISSION_ALERT_TITLE",
-                comment: "confirm the users intent to link a new device"
-            )
-            let linkingDescription = NSLocalizedString(
-                "LINK_DEVICE_PERMISSION_ALERT_BODY",
-                comment: "confirm the users intent to link a new device"
-            )
-
-            let actionSheet = ActionSheetController(title: title, message: linkingDescription)
-            actionSheet.addAction(ActionSheetAction(
-                title: CommonStrings.cancelButton,
-                style: .cancel,
-                handler: { _ in
-                    DispatchQueue.main.async {
-                        self.popToLinkedDeviceList()
-                    }
-                }
-            ))
-            actionSheet.addAction(ActionSheetAction(
-                title: NSLocalizedString("CONFIRM_LINK_NEW_DEVICE_ACTION", comment: "Button text"),
-                style: .default,
-                handler: { _ in
-                    self.provisionWithUrl(deviceProvisioningUrl, shouldLinkNSync: false)
-                }
-            ))
-            safePresent(actionSheet)
-        }
+        ))
+        actionSheet.addAction(ActionSheetAction(
+            title: NSLocalizedString("CONFIRM_LINK_NEW_DEVICE_ACTION", comment: "Button text"),
+            style: .default,
+            handler: { _ in
+                self.provisionWithUrl(deviceProvisioningUrl)
+            }
+        ))
+        presentActionSheet(actionSheet)
     }
 
-    private func provisionWithUrl(
-        _ deviceProvisioningUrl: DeviceProvisioningURL,
-        shouldLinkNSync: Bool
-    ) {
+    private func provisionWithUrl(_ deviceProvisioningUrl: DeviceProvisioningURL) {
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
             // Optimistically set this flag.
             DependenciesBridge.shared.deviceManager.setMightHaveUnknownLinkedDevice(
@@ -178,6 +179,15 @@ class LinkDeviceViewController: OWSViewController {
         var pniIdentityKeyPair: ECKeyPair?
         var areReadReceiptsEnabled: Bool = true
         var masterKey: Data?
+        let ephemeralBackupKey: EphemeralBackupKey?
+        if
+            FeatureFlags.linkAndSync,
+            deviceProvisioningUrl.capabilities.contains(where: { $0 == .linknsync })
+        {
+            ephemeralBackupKey = DependenciesBridge.shared.linkAndSyncManager.generateEphemeralBackupKey()
+        } else {
+            ephemeralBackupKey = nil
+        }
         let mediaRootBackupKey = SSKEnvironment.shared.databaseStorageRef.write { tx in
             localIdentifiers = DependenciesBridge.shared.tsAccountManager.localIdentifiers(tx: tx.asV2Read)
             let identityManager = DependenciesBridge.shared.identityManager
@@ -188,18 +198,6 @@ class LinkDeviceViewController: OWSViewController {
             let mrbk = DependenciesBridge.shared.mrbkStore.getOrGenerateMediaRootBackupKey(tx: tx.asV2Write)
             return mrbk
         }
-
-        let ephemeralBackupKey: BackupKey?
-        if
-            FeatureFlags.linkAndSync,
-            shouldLinkNSync,
-            deviceProvisioningUrl.capabilities.contains(where: { $0 == .linknsync })
-        {
-            ephemeralBackupKey = DependenciesBridge.shared.linkAndSyncManager.generateEphemeralBackupKey()
-        } else {
-            ephemeralBackupKey = nil
-        }
-
         let myProfileKeyData = SSKEnvironment.shared.profileManagerRef.localProfileKey.keyData
 
         guard let myAci = localIdentifiers?.aci, let myPhoneNumber = localIdentifiers?.phoneNumber else {
@@ -240,18 +238,26 @@ class LinkDeviceViewController: OWSViewController {
             schedulers: DependenciesBridge.shared.schedulers
         )
 
-        deviceProvisioner.provision().map(on: DispatchQueue.main) { tokenId in
+        deviceProvisioner.provision().then(on: SyncScheduler()) { tokenId in
             Logger.info("Successfully provisioned device.")
-            self.delegate?.didFinishLinking(
-                ephemeralBackupKey.map { ($0, tokenId) },
-                from: self
-            )
+            if FeatureFlags.linkAndSync, let ephemeralBackupKey {
+                return Promise.wrapAsync {
+                    try await DependenciesBridge.shared.linkAndSyncManager.waitForLinkingAndUploadBackup(
+                        ephemeralBackupKey: ephemeralBackupKey,
+                        tokenId: tokenId
+                    )
+                }
+            } else {
+                return .value(())
+            }
+        }.map(on: DispatchQueue.main) {
+            self.delegate?.expectMoreDevices()
+            self.popToLinkedDeviceList()
         }.catch(on: DispatchQueue.main) { error in
             Logger.error("Failed to provision device with error: \(error)")
-            let actionSheet = self.retryActionSheetController(error: error, retryBlock: { [weak self] in
-                self?.provisionWithUrl(deviceProvisioningUrl, shouldLinkNSync: shouldLinkNSync)
-            })
-            self.safePresent(actionSheet)
+            self.presentActionSheet(self.retryActionSheetController(error: error, retryBlock: { [weak self] in
+                self?.provisionWithUrl(deviceProvisioningUrl)
+            }))
         }
     }
 
@@ -291,16 +297,10 @@ class LinkDeviceViewController: OWSViewController {
         }
     }
 
-    func popToLinkedDeviceList(_ completion: (() -> Void)? = nil) {
-        dismissEducationSheetIfNecessary { [weak navigationController] in
-            navigationController?.popViewController(animated: true)
-            // The method for adding a completion handler to popViewController in
-            // UIViewController+SignalUI doesn't play well with UIHostingController
-            navigationController?.transitionCoordinator?.animate(alongsideTransition: nil) { _ in
-                UIViewController.attemptRotationToDeviceOrientation()
-                completion?()
-            }
-        }
+    private func popToLinkedDeviceList() {
+        navigationController?.popViewController(animated: true, completion: {
+            UIViewController.attemptRotationToDeviceOrientation()
+        })
     }
 
     #if TESTABLE_BUILD
@@ -327,7 +327,7 @@ class LinkDeviceViewController: OWSViewController {
             title: CommonStrings.cancelButton,
             style: .cancel
         ))
-        safePresent(alertController)
+        present(alertController, animated: true)
     }
     #endif
 }
@@ -339,8 +339,6 @@ extension LinkDeviceViewController: QRCodeScanOrPickDelegate {
         qrCodeData: Data?,
         qrCodeString: String?
     ) -> QRCodeScanOutcome {
-        owsPrecondition(preknownProvisioningUrl == nil)
-
         AssertIsOnMainThread()
 
         guard let qrCodeString else {
@@ -371,7 +369,7 @@ extension LinkDeviceViewController: QRCodeScanOrPickDelegate {
                     self.qrCodeScanViewController.tryToStartScanning()
                 }
             ))
-            safePresent(actionSheet)
+            presentActionSheet(actionSheet)
 
             return .stopScanning
         }

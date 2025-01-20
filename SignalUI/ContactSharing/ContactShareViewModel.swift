@@ -10,7 +10,7 @@ public class ContactShareViewModel: NSObject {
 
     public let dbRecord: OWSContact
 
-    private let existingAvatarAttachment: ReferencedAttachment?
+    private let existingAvatarAttachment: ReferencedTSResource?
 
     public var avatarImageData: Data? {
         didSet {
@@ -35,7 +35,7 @@ public class ContactShareViewModel: NSObject {
 
     private init(
         contactShareRecord: OWSContact,
-        existingAvatarAttachment: ReferencedAttachment?,
+        existingAvatarAttachment: ReferencedTSResource?,
         avatarImageData: Data?
     ) {
         self.dbRecord = contactShareRecord
@@ -49,22 +49,22 @@ public class ContactShareViewModel: NSObject {
         transaction: SDSAnyReadTransaction
     ) {
         if
-            let parentMessageRowId = parentMessage.sqliteRowId,
-            let avatarAttachment = DependenciesBridge.shared.attachmentStore.fetchFirstReferencedAttachment(
-                for: .messageContactAvatar(messageRowId: parentMessageRowId),
+            let avatarAttachmentRef = DependenciesBridge.shared.tsResourceStore.contactShareAvatarAttachment(
+                for: parentMessage,
                 tx: transaction.asV2Read
-            )?.asReferencedStream
+            ),
+            let avatarAttachment = avatarAttachmentRef.fetch(tx: transaction)?.asResourceStream()
         {
             let avatarImageData: Data?
-            switch avatarAttachment.attachmentStream.contentType {
+            switch avatarAttachment.computeContentType() {
             case .file, .invalid, .video, .animatedImage, .audio:
                 avatarImageData = nil
             case .image:
-                avatarImageData = try? avatarAttachment.attachmentStream.decryptedRawData()
+                avatarImageData = try? avatarAttachment.decryptedRawData()
             }
             self.init(
                 contactShareRecord: contactShareRecord,
-                existingAvatarAttachment: avatarAttachment,
+                existingAvatarAttachment: .init(reference: avatarAttachmentRef, attachment: avatarAttachment),
                 avatarImageData: avatarImageData
             )
         } else {

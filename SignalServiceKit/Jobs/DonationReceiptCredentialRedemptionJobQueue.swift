@@ -63,26 +63,23 @@ public class DonationReceiptCredentialRedemptionJobQueue {
         jobQueueRunner.start(shouldRestartExistingJobs: true)
     }
 
-    /// Persists and returns a `JobRecord` for redeeming a boost donation.
-    ///
-    /// - Important
-    /// The returned job must be passed to ``runRedemptionJob(jobRecord:)``.
-    func saveBoostRedemptionJob(
+    public func addBoostJob(
         amount: FiatMoney,
         paymentProcessor: DonationPaymentProcessor,
         paymentMethod: DonationPaymentMethod,
-        receiptCredentialRequestContext: ReceiptCredentialRequestContext,
-        receiptCredentialRequest: ReceiptCredentialRequest,
+        receiptCredentialRequestContext: Data,
+        receiptCredentialRequest: Data,
         boostPaymentIntentID: String,
-        tx: DBWriteTransaction
-    ) -> DonationReceiptCredentialRedemptionJobRecord {
-        logger.info("Adding a boost redemption job.")
+        future: Future<Void>,
+        transaction: SDSAnyWriteTransaction
+    ) {
+        logger.info("Adding a boost job")
 
         let jobRecord = DonationReceiptCredentialRedemptionJobRecord(
             paymentProcessor: paymentProcessor.rawValue,
             paymentMethod: paymentMethod.rawValue,
-            receiptCredentialRequestContext: receiptCredentialRequestContext.serialize().asData,
-            receiptCredentialRequest: receiptCredentialRequest.serialize().asData,
+            receiptCredentialRequestContext: receiptCredentialRequestContext,
+            receiptCredentialRequest: receiptCredentialRequest,
             subscriberID: Data(), // Unused
             targetSubscriptionLevel: 0, // Unused
             priorSubscriptionLevel: 0, // Unused
@@ -93,16 +90,10 @@ public class DonationReceiptCredentialRedemptionJobQueue {
             currencyCode: amount.currencyCode,
             boostPaymentIntentID: boostPaymentIntentID
         )
-
-        jobRecord.anyInsert(transaction: SDSDB.shimOnlyBridge(tx))
-
-        return jobRecord
+        add(jobRecord: jobRecord, future: future, tx: transaction)
     }
 
-    /// Persists and returns a `JobRecord` for redeeming a boost donation.
-    ///
-    /// - Important
-    /// The returned job must be passed to ``runRedemptionJob(jobRecord:)``.
+    /// Add a new redemption job for a recurring payment.
     ///
     /// - Parameter paymentMethod
     /// The payment method for this subscription. In practice, should not be
@@ -116,25 +107,26 @@ public class DonationReceiptCredentialRedemptionJobQueue {
     ///
     /// - Parameter shouldSuppressPaymentAlreadyRedeemed
     /// Whether this job should suppress "payment already redeemed" errors.
-    func saveSubscriptionRedemptionJob(
+    public func addSubscriptionJob(
         paymentProcessor: DonationPaymentProcessor,
         paymentMethod: DonationPaymentMethod?,
-        receiptCredentialRequestContext: ReceiptCredentialRequestContext,
-        receiptCredentialRequest: ReceiptCredentialRequest,
+        receiptCredentialRequestContext: Data,
+        receiptCredentialRequest: Data,
         subscriberID: Data,
         targetSubscriptionLevel: UInt,
         priorSubscriptionLevel: UInt?,
         isNewSubscription: Bool,
         shouldSuppressPaymentAlreadyRedeemed: Bool,
-        tx: DBWriteTransaction
-    ) -> DonationReceiptCredentialRedemptionJobRecord {
-        logger.info("Adding a subscription redemption job.")
+        future: Future<Void>,
+        transaction: SDSAnyWriteTransaction
+    ) {
+        logger.info("Adding a subscription job")
 
         let jobRecord = DonationReceiptCredentialRedemptionJobRecord(
             paymentProcessor: paymentProcessor.rawValue,
             paymentMethod: paymentMethod?.rawValue,
-            receiptCredentialRequestContext: receiptCredentialRequestContext.serialize().asData,
-            receiptCredentialRequest: receiptCredentialRequest.serialize().asData,
+            receiptCredentialRequestContext: receiptCredentialRequestContext,
+            receiptCredentialRequest: receiptCredentialRequest,
             subscriberID: subscriberID,
             targetSubscriptionLevel: targetSubscriptionLevel,
             priorSubscriptionLevel: priorSubscriptionLevel ?? 0,
@@ -145,41 +137,32 @@ public class DonationReceiptCredentialRedemptionJobQueue {
             currencyCode: nil,
             boostPaymentIntentID: String() // Unused
         )
-
-        jobRecord.anyInsert(transaction: SDSDB.shimOnlyBridge(tx))
-
-        return jobRecord
+        add(jobRecord: jobRecord, future: future, tx: transaction)
     }
 
-    public func runRedemptionJob(
-        jobRecord: DonationReceiptCredentialRedemptionJobRecord
-    ) async throws {
-        logger.info("Running redemption job.")
-
-        try await withCheckedThrowingContinuation { continuation in
-            self.jobQueueRunner.addPersistedJob(
-                jobRecord,
-                runner: self.jobRunnerFactory.buildRunner(continuation: continuation)
-            )
+    private func add(jobRecord: DonationReceiptCredentialRedemptionJobRecord, future: Future<Void>, tx: SDSAnyWriteTransaction) {
+        jobRecord.anyInsert(transaction: tx)
+        tx.addSyncCompletion {
+            self.jobQueueRunner.addPersistedJob(jobRecord, runner: self.jobRunnerFactory.buildRunner(future: future))
         }
     }
 }
 
 private class DonationReceiptCredentialRedemptionJobRunnerFactory: JobRunnerFactory {
-    func buildRunner() -> DonationReceiptCredentialRedemptionJobRunner { buildRunner(continuation: nil) }
+    func buildRunner() -> DonationReceiptCredentialRedemptionJobRunner { buildRunner(future: nil) }
 
-    func buildRunner(continuation: CheckedContinuation<Void, Error>?) -> DonationReceiptCredentialRedemptionJobRunner {
-        return DonationReceiptCredentialRedemptionJobRunner(continuation: continuation)
+    func buildRunner(future: Future<Void>?) -> DonationReceiptCredentialRedemptionJobRunner {
+        return DonationReceiptCredentialRedemptionJobRunner(future: future)
     }
 }
 
 private class DonationReceiptCredentialRedemptionJobRunner: JobRunner {
     private let logger: PrefixedLogger = .donations
 
-    private let continuation: CheckedContinuation<Void, Error>?
+    private let future: Future<Void>?
 
-    init(continuation: CheckedContinuation<Void, Error>?) {
-        self.continuation = continuation
+    init(future: Future<Void>?) {
+        self.future = future
     }
 
     /// Represents the type of payment that resulted in this receipt credential
@@ -398,10 +381,10 @@ private class DonationReceiptCredentialRedemptionJobRunner: JobRunner {
         case .success:
             logger.info("Redemption job succeeded")
             DonationReceiptCredentialRedemptionJob.postNotification(name: DonationReceiptCredentialRedemptionJob.didSucceedNotification)
-            continuation?.resume()
+            future?.resolve(())
         case .failure(let error):
             DonationReceiptCredentialRedemptionJob.postNotification(name: DonationReceiptCredentialRedemptionJob.didFailNotification)
-            continuation?.resume(throwing: error)
+            future?.reject(error)
         }
     }
 

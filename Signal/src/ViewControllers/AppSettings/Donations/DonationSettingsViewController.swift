@@ -202,9 +202,9 @@ class DonationSettingsViewController: OWSTableViewController2 {
                     if let pendingIDEALSubscription {
                         // Serialized badges lose their assets, so ensure they've
                         // been populated before returning.
-                        return Promise.wrapAsync {
-                            try await SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(pendingIDEALSubscription.newSubscriptionLevel.badge)
-                        }.then { _ -> Guarantee<State> in
+                        return SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(
+                            pendingIDEALSubscription.newSubscriptionLevel.badge
+                        ).then { _ -> Guarantee<State> in
                             Guarantee.value(result)
                         }.recover { _ in
                             Guarantee.value(result)
@@ -252,10 +252,9 @@ class DonationSettingsViewController: OWSTableViewController2 {
                 subscriptionLevels: []
             ))
         }.then { profileBadgeLookup in
-            return Guarantee.wrapAsync {
-                await profileBadgeLookup.attemptToPopulateBadgeAssets(populateAssetsOnBadge: SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge)
-                return profileBadgeLookup
-            }
+            profileBadgeLookup.attemptToPopulateBadgeAssets(
+                populateAssetsOnBadge: SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge
+            ).map { profileBadgeLookup }
         }
     }
 

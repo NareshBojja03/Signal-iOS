@@ -270,7 +270,6 @@ class MediaGalleryAttachmentFinderTest: XCTestCase {
         caption: String? = nil,
         renderingFlag: AttachmentReference.RenderingFlag = .default,
         isViewOnce: Bool = false,
-        isPastEditRevision: Bool = false,
         orderInOwner: UInt32,
         idInOwner: UUID? = nil
     ) throws -> Attachment.IDType {
@@ -281,7 +280,6 @@ class MediaGalleryAttachmentFinderTest: XCTestCase {
                 receivedAtTimestamp: receivedAtTimestamp,
                 threadRowId: threadRowId,
                 contentType: contentType,
-                isPastEditRevision: isPastEditRevision,
                 caption: caption,
                 renderingFlag: renderingFlag,
                 orderInOwner: orderInOwner,

@@ -14,10 +14,10 @@ public class CVComponentSticker: CVComponentBase, CVComponent {
     private var stickerMetadata: (any StickerMetadata)? {
         sticker.stickerMetadata
     }
-    private var attachmentStream: ReferencedAttachmentStream? {
+    private var attachmentStream: ReferencedTSResourceStream? {
         sticker.attachmentStream
     }
-    private var attachmentPointer: ReferencedAttachmentTransitPointer? {
+    private var attachmentPointer: ReferencedTSResourcePointer? {
         sticker.attachmentPointer
     }
     private var stickerInfo: StickerInfo? {
@@ -49,8 +49,8 @@ public class CVComponentSticker: CVComponentBase, CVComponent {
 
         switch sticker {
         case .available(_, let attachmentStream):
-            let cacheKey = CVMediaCache.CacheKey.attachment(attachmentStream.attachment.id)
-            let isAnimated = attachmentStream.attachmentStream.contentType.isAnimatedImage
+            let cacheKey = CVMediaCache.CacheKey.attachment(attachmentStream.attachment.resourceId)
+            let isAnimated = attachmentStream.attachmentStream.computeContentType().isAnimatedImage
             let reusableMediaView: ReusableMediaView
             if let cachedView = mediaCache.getMediaView(cacheKey, isAnimated: isAnimated) {
                 reusableMediaView = cachedView
@@ -109,7 +109,7 @@ public class CVComponentSticker: CVComponentBase, CVComponent {
     }
 
     private func configureForRendering(
-        attachmentPointer: ReferencedAttachmentTransitPointer,
+        attachmentPointer: ReferencedTSResourcePointer,
         transitTierDownloadState: AttachmentDownloadState,
         stackView: ManualStackView,
         cellMeasurement: CVCellMeasurement

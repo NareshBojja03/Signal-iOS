@@ -61,16 +61,13 @@ public class MessageBackupChatStyleArchiver: MessageBackupProtoArchiver {
                     key
                 ))
                 fallthrough
-            case .gradient(let gradientColor1, let gradientColor2, var angleRadians):
+            case .gradient(let gradientColor1, let gradientColor2, let angleRadians):
                 var gradient = BackupProto_ChatStyle.Gradient()
 
                 /// Convert radians to degrees. We manually round since the
                 /// float math is slightly lossy and sometimes gives back
                 /// `N.99999999999`; we want to return `N+1`, but the `UInt32`
                 /// conversion always rounds down.
-                while angleRadians < 0 {
-                    angleRadians += .pi * 2
-                }
                 gradient.angle = UInt32(round(angleRadians * 180 / .pi))
 
                 /// iOS only supports 2 "positions"; hardcode them.
@@ -91,7 +88,7 @@ public class MessageBackupChatStyleArchiver: MessageBackupProtoArchiver {
             // Just log these errors, but count as success and proceed.
             MessageBackup
                 .collapse(partialErrors
-                    .map { MessageBackup.LoggableErrorAndProto(error: $0, wasFatal: false) }
+                    .map { MessageBackup.LoggableErrorAndProto(error: $0) }
                 )
                 .forEach { $0.log() }
         }
@@ -198,6 +195,7 @@ public class MessageBackupChatStyleArchiver: MessageBackupProtoArchiver {
 
     func archiveChatStyle(
         thread: MessageBackup.ChatThread,
+        chatId: MessageBackup.ChatId,
         context: MessageBackup.CustomChatColorArchivingContext
     ) -> MessageBackup.ArchiveSingleFrameResult<BackupProto_ChatStyle?, MessageBackup.ThreadUniqueId> {
         return _archiveChatStyle(
@@ -475,13 +473,10 @@ public class MessageBackupChatStyleArchiver: MessageBackupProtoArchiver {
             } catch {
                 // Just log these errors, but count as success and proceed.
                 // The wallpaper just won't upload.
-                MessageBackup.collapse([.init(
-                    error: MessageBackup.ArchiveFrameError<IDType>.archiveFrameError(
-                        .failedToEnqueueAttachmentForUpload,
-                        errorId
-                    ),
-                    wasFatal: false
-                )]).forEach { $0.log() }
+                MessageBackup.collapse([.init(error: MessageBackup.ArchiveFrameError<IDType>.archiveFrameError(
+                    .failedToEnqueueAttachmentForUpload,
+                    errorId
+                ))]).forEach { $0.log() }
             }
         }
 

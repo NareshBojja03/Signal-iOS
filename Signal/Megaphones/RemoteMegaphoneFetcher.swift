@@ -30,13 +30,7 @@ public class RemoteMegaphoneFetcher {
 
         Logger.info("Beginning remote megaphone fetch.")
 
-        let megaphones: [RemoteMegaphoneModel]
-        do {
-            megaphones = try await fetchRemoteMegaphones()
-        } catch {
-            Logger.warn("\(error)")
-            throw error
-        }
+        let megaphones = try await fetchRemoteMegaphones()
 
         Logger.info("Syncing \(megaphones.count) fetched remote megaphones with local state.")
 
@@ -60,14 +54,14 @@ private extension String {
 }
 
 private extension RemoteMegaphoneFetcher {
-    private static let fetcherStore = KeyValueStore(collection: .fetcherStoreCollection)
+    private static let fetcherStore = SDSKeyValueStore(collection: .fetcherStoreCollection)
 
     private static let delayBetweenSyncs: TimeInterval = 3 * kDayInterval
 
     func shouldSync(transaction: SDSAnyReadTransaction) -> Bool {
         guard
-            let appVersionAtLastFetch = Self.fetcherStore.getString(.appVersionAtLastFetchKey, transaction: transaction.asV2Read),
-            let lastFetchDate = Self.fetcherStore.getDate(.lastFetchDateKey, transaction: transaction.asV2Read)
+            let appVersionAtLastFetch = Self.fetcherStore.getString(.appVersionAtLastFetchKey, transaction: transaction),
+            let lastFetchDate = Self.fetcherStore.getDate(.lastFetchDateKey, transaction: transaction)
         else {
             // If we have never recorded last-fetch data, we should sync.
             return true
@@ -83,13 +77,13 @@ private extension RemoteMegaphoneFetcher {
         Self.fetcherStore.setString(
             AppVersionImpl.shared.currentAppVersion,
             key: .appVersionAtLastFetchKey,
-            transaction: transaction.asV2Write
+            transaction: transaction
         )
 
         Self.fetcherStore.setDate(
             Date(),
             key: .lastFetchDateKey,
-            transaction: transaction.asV2Write
+            transaction: transaction
         )
     }
 }
@@ -173,10 +167,10 @@ private extension RemoteMegaphoneFetcher {
         var remainingRetries = remainingRetries
         while true {
             do {
-                let response = try await getUrlSession().performRequest(
+                let response = try await getUrlSession().dataTaskPromise(
                     .manifestUrlPath,
                     method: .get
-                )
+                ).awaitable()
 
                 guard let responseJson = response.responseBodyJson else {
                     throw OWSAssertionError("Missing body JSON for manifest!")
@@ -184,7 +178,6 @@ private extension RemoteMegaphoneFetcher {
 
                 return try RemoteMegaphoneModel.Manifest.parseFrom(responseJson: responseJson)
             } catch where remainingRetries > 0 && error.isNetworkFailureOrTimeout {
-                Logger.warn("Retrying after failure: \(error)")
                 remainingRetries -= 1
                 continue
             }
@@ -235,13 +228,12 @@ private extension RemoteMegaphoneFetcher {
                 ) else {
                     throw OWSAssertionError("Failed to create translation URL path for manifest \(manifest.id)")
                 }
-                let response = try await getUrlSession().performRequest(translationUrlPath, method: .get)
+                let response = try await getUrlSession().dataTaskPromise(translationUrlPath, method: .get).awaitable()
                 guard let responseJson = response.responseBodyJson else {
                     throw OWSAssertionError("Missing body JSON for translation!")
                 }
                 return try RemoteMegaphoneModel.Translation.parseFrom(responseJson: responseJson)
             } catch where remainingRetries > 0 && error.isNetworkFailureOrTimeout {
-                Logger.warn("Retrying after failure: \(error)")
                 remainingRetries -= 1
                 continue
             }
@@ -265,10 +257,10 @@ private extension RemoteMegaphoneFetcher {
         var remainingRetries = remainingRetries
         while !FileManager.default.fileExists(atPath: imageFileUrl.path) {
             do {
-                let response = try await getUrlSession().performDownload(
+                let response = try await getUrlSession().downloadTaskPromise(
                     imageRemoteUrlPath,
                     method: .get
-                )
+                ).awaitable()
 
                 do {
                     try FileManager.default.moveItem(

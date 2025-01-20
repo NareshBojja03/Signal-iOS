@@ -19,7 +19,7 @@ enum AvatarContext {
 }
 
 public class AvatarHistoryManager: NSObject {
-    static let keyValueStore = KeyValueStore(collection: "AvatarHistory")
+    static let keyValueStore = SDSKeyValueStore(collection: "AvatarHistory")
     static let appSharedDataDirectory = URL(fileURLWithPath: OWSFileSystem.appSharedDataDirectoryPath())
     static let imageHistoryDirectory = URL(fileURLWithPath: "AvatarHistory", isDirectory: true, relativeTo: appSharedDataDirectory)
 
@@ -41,7 +41,7 @@ public class AvatarHistoryManager: NSObject {
 
         let allRecords: [[AvatarRecord]] = SSKEnvironment.shared.databaseStorageRef.read { transaction in
             do {
-                return try Self.keyValueStore.allCodableValues(transaction: transaction.asV2Read)
+                return try Self.keyValueStore.allCodableValues(transaction: transaction)
             } catch {
                 owsFailDebug("Failed to decode avatar history for orphan cleanup \(error)")
                 return []
@@ -111,7 +111,7 @@ public class AvatarHistoryManager: NSObject {
         }
 
         do {
-            try Self.keyValueStore.setCodable(records, key: context.key, transaction: transaction.asV2Write)
+            try Self.keyValueStore.setCodable(records, key: context.key, transaction: transaction)
         } catch {
             owsFailDebug("Failed to touch avatar history \(error)")
         }
@@ -139,7 +139,7 @@ public class AvatarHistoryManager: NSObject {
         }
 
         do {
-            try Self.keyValueStore.setCodable(records, key: context.key, transaction: transaction.asV2Write)
+            try Self.keyValueStore.setCodable(records, key: context.key, transaction: transaction)
         } catch {
             owsFailDebug("Failed to touch avatar history \(error)")
         }
@@ -174,7 +174,7 @@ public class AvatarHistoryManager: NSObject {
         let records: [AvatarRecord]?
 
         do {
-            records = try Self.keyValueStore.getCodableValue(forKey: context.key, transaction: transaction.asV2Read)
+            records = try Self.keyValueStore.getCodableValue(forKey: context.key, transaction: transaction)
         } catch {
             owsFailDebug("Failed to load persisted avatar records \(error)")
             records = nil

@@ -38,7 +38,7 @@ class MediaGalleryItem: Equatable, Hashable, MediaGallerySectionItem {
 
     let message: TSMessage
     let sender: Sender?
-    let attachmentStream: ReferencedAttachmentStream
+    let attachmentStream: ReferencedTSResourceStream
     let receivedAtDate: Date
 
     var renderingFlag: AttachmentReference.RenderingFlag { attachmentStream.reference.renderingFlag }
@@ -52,7 +52,7 @@ class MediaGalleryItem: Equatable, Hashable, MediaGallerySectionItem {
     init(
         message: TSMessage,
         sender: Sender?,
-        attachmentStream: ReferencedAttachmentStream,
+        attachmentStream: ReferencedTSResourceStream,
         albumIndex: Int,
         numItemsInAlbum: Int,
         spoilerState: SpoilerRenderState,
@@ -84,39 +84,46 @@ class MediaGalleryItem: Equatable, Hashable, MediaGallerySectionItem {
     private var mimeType: String { attachmentStream.attachmentStream.mimeType }
 
     var isVideo: Bool {
-        switch attachmentStream.attachmentStream.contentType {
+        switch attachmentStream.attachmentStream.cachedContentType {
         case .video:
             return  renderingFlag != .shouldLoop
         case .file, .invalid, .image, .animatedImage, .audio:
             return false
+        case nil:
+            return MimeTypeUtil.isSupportedVideoMimeType(mimeType) && renderingFlag != .shouldLoop
         }
     }
 
     var isAnimated: Bool {
-        switch attachmentStream.attachmentStream.contentType {
+        switch attachmentStream.attachmentStream.cachedContentType {
         case .animatedImage:
             return true
         case .video:
             return renderingFlag == .shouldLoop
         case .file, .invalid, .image, .audio:
             return false
+        case nil:
+            return MimeTypeUtil.isSupportedDefinitelyAnimatedMimeType(mimeType) || renderingFlag == .shouldLoop
         }
     }
 
     var isImage: Bool {
-        switch attachmentStream.attachmentStream.contentType {
+        switch attachmentStream.attachmentStream.cachedContentType {
         case .image:
             return  true
         case .file, .invalid, .video, .animatedImage, .audio:
             return false
+        case nil:
+            return MimeTypeUtil.isSupportedImageMimeType(mimeType)
         }
     }
 
     var imageSizePoints: CGSize {
-        switch attachmentStream.attachmentStream.contentType {
-        case .file, .invalid, .audio, .video:
+        switch attachmentStream.attachmentStream.cachedContentType {
+        case .file, .invalid, .audio, .video, nil:
             return .zero
         case .image(let pixelSize), .animatedImage(let pixelSize):
+            guard let pixelSize = pixelSize.getCached() else { return .zero }
             return CGSize(
                 width: pixelSize.width / UIScreen.main.scale,
                 height: pixelSize.height / UIScreen.main.scale
@@ -124,7 +131,7 @@ class MediaGalleryItem: Equatable, Hashable, MediaGallerySectionItem {
         }
     }
 
-    var attachmentId: AttachmentReferenceId { attachmentStream.reference.referenceId }
+    var attachmentId: MediaGalleryResourceId { attachmentStream.reference.mediaGalleryResourceId }
 
     typealias AsyncThumbnailBlock = @MainActor (UIImage) -> Void
     func thumbnailImage(completion: @escaping AsyncThumbnailBlock) {
@@ -142,16 +149,20 @@ class MediaGalleryItem: Equatable, Hashable, MediaGallerySectionItem {
     // MARK: Equatable
 
     static func == (lhs: MediaGalleryItem, rhs: MediaGalleryItem) -> Bool {
-        return lhs.attachmentStream.attachmentStream.id == rhs.attachmentStream.attachmentStream.id
+        return lhs.attachmentStream.attachmentStream.resourceId == rhs.attachmentStream.attachmentStream.resourceId
             && lhs.attachmentStream.reference.hasSameOwner(as: rhs.attachmentStream.reference)
     }
 
     // MARK: Hashable
 
     func hash(into hasher: inout Hasher) {
-        hasher.combine(attachmentStream.attachmentStream.id)
-        let attachmentReference = attachmentStream.reference
-        hasher.combine(attachmentReference.owner.id)
+        hasher.combine(attachmentStream.attachmentStream.resourceId)
+        switch attachmentStream.reference.concreteType {
+        case .legacy:
+            break
+        case .v2(let attachmentReference):
+            hasher.combine(attachmentReference.owner.id)
+        }
     }
 
     // MARK: Sorting
@@ -295,7 +306,7 @@ class MediaGallery {
     private(set) var mediaFilter: AllMediaFilter
     private let mediaCategory: AllMediaCategory
 
-    private var deletedAttachmentIds: Set<AttachmentReferenceId> = Set() {
+    private var deletedAttachmentIds: Set<MediaGalleryResourceId> = Set() {
         didSet {
             AssertIsOnMainThread()
         }
@@ -306,7 +317,7 @@ class MediaGallery {
         }
     }
 
-    private var mediaGalleryFinder: MediaGalleryAttachmentFinder
+    private var mediaGalleryFinder: MediaGalleryResourceFinder
     private var sections: Sections!
     private let spoilerState: SpoilerRenderState
 
@@ -317,7 +328,7 @@ class MediaGallery {
     init(thread: TSThread, mediaCategory: AllMediaCategory, spoilerState: SpoilerRenderState) {
         self.thread = thread
         mediaFilter = AllMediaFilter.defaultMediaType(for: mediaCategory)
-        let finder = MediaGalleryAttachmentFinder(thread: thread, filter: mediaFilter)
+        let finder = MediaGalleryResourceFinder(thread: thread, filter: mediaFilter)
         self.mediaGalleryFinder = finder
         self.spoilerState = spoilerState
         self.mediaCategory = mediaCategory
@@ -325,13 +336,13 @@ class MediaGallery {
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(Self.newAttachmentsAvailable(_:)),
-            name: MediaGalleryChangeInfo.newAttachmentsAvailableNotification,
+            name: MediaGalleryResource.newAttachmentsAvailableNotification,
             object: nil
         )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(Self.didRemoveAttachments(_:)),
-            name: MediaGalleryChangeInfo.didRemoveAttachmentsNotification,
+            name: MediaGalleryResource.didRemoveAttachmentsNotification,
             object: nil
         )
         DependenciesBridge.shared.databaseChangeObserver.appendDatabaseChangeDelegate(self)
@@ -420,7 +431,7 @@ class MediaGallery {
         // In some cases this may result in deleting sections entirely; we do this as a follow-up step so that
         // delegates don't get confused.
         AssertIsOnMainThread()
-        let incomingDeletedAttachments = notification.object as! [MediaGalleryChangeInfo]
+        let incomingDeletedAttachments = notification.object as! [MediaGalleryResource.ChangedResourceInfo]
 
         var sectionsNeedingUpdate = Set<GalleryDate>()
         for incomingDeletedAttachment in incomingDeletedAttachments {
@@ -428,7 +439,7 @@ class MediaGallery {
                 // This attachment is from a different thread.
                 continue
             }
-            guard deletedAttachmentIds.remove(incomingDeletedAttachment.referenceId) == nil else {
+            guard deletedAttachmentIds.remove(incomingDeletedAttachment.attachmentId) == nil else {
                 // This attachment was removed through MediaGallery and we already adjusted accordingly.
                 continue
             }
@@ -451,7 +462,7 @@ class MediaGallery {
     @objc
     private func newAttachmentsAvailable(_ notification: Notification) {
         AssertIsOnMainThread()
-        let incomingNewAttachments = notification.object as! [MediaGalleryChangeInfo]
+        let incomingNewAttachments = notification.object as! [MediaGalleryResource.ChangedResourceInfo]
         let relevantAttachments = incomingNewAttachments.filter { $0.threadGrdbId == mediaGalleryFinder.threadId }
 
         guard !relevantAttachments.isEmpty else {
@@ -484,11 +495,11 @@ class MediaGallery {
     internal var galleryDates: [GalleryDate] { sections.sectionDates }
 
     private func buildGalleryItem(
-        attachment: ReferencedAttachment,
+        attachment: ReferencedTSResource,
         spoilerState: SpoilerRenderState,
         transaction: SDSAnyReadTransaction
     ) -> MediaGalleryItem? {
-        guard let attachmentStream = attachment.attachment.asStream() else {
+        guard let attachmentStream = attachment.attachment.asResourceStream() else {
             owsFailDebug("gallery doesn't yet support showing undownloaded attachments")
             return nil
         }
@@ -532,18 +543,16 @@ class MediaGallery {
             return nil
         }()
 
-        let itemsInAlbum = message.sqliteRowId.map {
-            DependenciesBridge.shared.attachmentStore.fetchReferences(
-                owner: .messageBodyAttachment(messageRowId: $0),
-                tx: transaction.asV2Read
-            )
-        } ?? []
+        let itemsInAlbum = DependenciesBridge.shared.tsResourceStore.bodyMediaAttachments(
+            for: message,
+            tx: transaction.asV2Read
+        )
         // Re-normalize the index in the album; albumOrder may have gaps but MediaGalleryItem.albumIndex
         // needs to have no gaps as its used to index _into_ the ordered attachments.
-        let albumOrder = attachment.reference.orderInOwningMessage
+        let albumOrder = attachment.reference.orderInOwningMessage(message)
         let albumIndex: Int
         if let albumOrder {
-            albumIndex = itemsInAlbum.firstIndex(where: { $0.orderInOwningMessage == albumOrder }) ?? 0
+            albumIndex = itemsInAlbum.firstIndex(where: { $0.orderInOwningMessage(message) == albumOrder }) ?? 0
         } else {
             albumIndex = 0
         }
@@ -666,7 +675,7 @@ class MediaGallery {
                                  shouldLoadAlbumRemainder: shouldLoadAlbumRemainder)
     }
 
-    internal func ensureLoadedForDetailView(focusedAttachment: ReferencedAttachment) -> MediaGalleryItem? {
+    internal func ensureLoadedForDetailView(focusedAttachment: ReferencedTSResource) -> MediaGalleryItem? {
         Logger.info("")
         let newItem: MediaGalleryItem? = SSKEnvironment.shared.databaseStorageRef.read { transaction -> MediaGalleryItem? in
             guard let focusedItem = buildGalleryItem(
@@ -807,10 +816,10 @@ class MediaGallery {
                     atIndexPaths: givenIndexPaths,
                     initiatedBy: initiatedBy,
                     deps: DeleteItemsDependencies(
-                        attachmentManager: DependenciesBridge.shared.attachmentManager,
                         deleteForMeOutgoingSyncMessageManager: DependenciesBridge.shared.deleteForMeOutgoingSyncMessageManager,
                         interactionDeleteManager: interactionDeleteManager,
-                        tsAccountManager: DependenciesBridge.shared.tsAccountManager
+                        tsAccountManager: DependenciesBridge.shared.tsAccountManager,
+                        tsResourceManager: DependenciesBridge.shared.tsResourceManager
                     )
                 )
             }
@@ -818,10 +827,10 @@ class MediaGallery {
     }
 
     private struct DeleteItemsDependencies {
-        let attachmentManager: any AttachmentManager
         let deleteForMeOutgoingSyncMessageManager: any DeleteForMeOutgoingSyncMessageManager
         let interactionDeleteManager: any InteractionDeleteManager
         let tsAccountManager: any TSAccountManager
+        let tsResourceManager: any TSResourceManager
     }
 
     private func _deleteInternal(
@@ -840,7 +849,7 @@ class MediaGallery {
         delegates.forEach { $0.mediaGallery(self, willDelete: items, initiatedBy: initiatedBy) }
 
         deletedAttachmentIds.formUnion(items.lazy.map {
-            $0.attachmentStream.reference.referenceId
+            $0.attachmentStream.reference.mediaGalleryResourceId
         })
 
         SSKEnvironment.shared.databaseStorageRef.asyncWrite { tx in
@@ -848,14 +857,15 @@ class MediaGallery {
                 // Ensure we have the latest in-memory state for our thread.
                 self.thread.anyReload(transaction: tx)
 
-                var attachmentsRemoved = [TSMessage: [ReferencedAttachment]]()
+                var attachmentsRemoved = [TSMessage: [ReferencedTSResource]]()
 
                 for item in items {
                     let message = item.message
-                    let referencedAttachment: ReferencedAttachment = item.attachmentStream
+                    let referencedAttachment: ReferencedTSResource = item.attachmentStream
 
-                    try deps.attachmentManager.removeAttachment(
-                        reference: referencedAttachment.reference,
+                    try deps.tsResourceManager.removeBodyAttachment(
+                        referencedAttachment.attachment,
+                        from: message,
                         tx: tx.asV2Write
                     )
 
@@ -866,7 +876,7 @@ class MediaGallery {
                 }
 
                 var messagesWithAllAttachmentsRemoved = [TSMessage]()
-                var messagesWithAttachmentsRemaining = [TSMessage: [ReferencedAttachment]]()
+                var messagesWithAttachmentsRemaining = [TSMessage: [ReferencedTSResource]]()
 
                 /// After removing attachments, we want to segment our affected
                 /// messages into those that have attachments still and those
@@ -886,7 +896,7 @@ class MediaGallery {
 
                     let noBodyAttachments = message.hasBodyAttachments(transaction: tx).negated
                     let finderIsEmptyOfAttachments = try self.mediaGalleryFinder
-                        .countAllAttachments(of: message, tx: tx.asV2Read) == 0
+                        .isEmptyOfAttachments(interaction: message, tx: tx.asV2Read)
 
                     if noBodyAttachments || finderIsEmptyOfAttachments {
                         messagesWithAllAttachmentsRemoved.append(message)
@@ -969,7 +979,7 @@ class MediaGallery {
     func setMediaFilter(_ mediaFilter: AllMediaFilter, loadUntil: GalleryDate, batchSize: Int, firstVisibleIndexPath: MediaGalleryIndexPath?) -> MediaGalleryIndexPath? {
         self.mediaFilter = mediaFilter
         return mutate { sections in
-            mediaGalleryFinder = MediaGalleryAttachmentFinder(
+            mediaGalleryFinder = MediaGalleryResourceFinder(
                 thread: mediaGalleryFinder.thread,
                 filter: mediaFilter
             )
@@ -1055,18 +1065,18 @@ extension MediaGallery: DatabaseChangeDelegate {
 
 extension MediaGallery {
     internal struct Loader: MediaGallerySectionLoader {
-        typealias EnumerationCompletion = MediaGalleryAttachmentFinder.EnumerationCompletion
+        typealias EnumerationCompletion = MediaGalleryResourceFinder.EnumerationCompletion
         typealias Item = MediaGalleryItem
 
         fileprivate weak var mediaGallery: MediaGallery?
-        fileprivate let finder: MediaGalleryAttachmentFinder
+        fileprivate let finder: MediaGalleryResourceFinder
 
         func rowIdsAndDatesOfItemsInSection(
             for date: GalleryDate,
             offset: Int,
             ascending: Bool,
             transaction: SDSAnyReadTransaction
-        ) -> [DatedAttachmentReferenceId] {
+        ) -> [DatedMediaGalleryItemId] {
             guard let mediaGallery else {
                 return []
             }
@@ -1083,7 +1093,7 @@ extension MediaGallery {
             before date: Date,
             count: Int,
             transaction: SDSAnyReadTransaction,
-            block: (DatedAttachmentReferenceId) -> Void
+            block: (DatedMediaGalleryItemId) -> Void
         ) -> EnumerationCompletion {
             guard let mediaGallery else {
                 return .reachedEnd
@@ -1101,7 +1111,7 @@ extension MediaGallery {
             after date: Date,
             count: Int,
             transaction: SDSAnyReadTransaction,
-            block: (DatedAttachmentReferenceId) -> Void
+            block: (DatedMediaGalleryItemId) -> Void
         ) -> EnumerationCompletion {
             guard let mediaGallery else {
                 return .reachedEnd
@@ -1119,7 +1129,7 @@ extension MediaGallery {
             in interval: DateInterval,
             range: Range<Int>,
             transaction: SDSAnyReadTransaction,
-            block: (_ offset: Int, _ attachmentId: AttachmentReferenceId, _ buildItem: () -> MediaGalleryItem) -> Void
+            block: (_ offset: Int, _ attachmentId: MediaGalleryResourceId, _ buildItem: () -> MediaGalleryItem) -> Void
         ) {
             guard let mediaGallery else {
                 return
@@ -1130,7 +1140,7 @@ extension MediaGallery {
                 range: NSRange(range),
                 tx: transaction.asV2Read
             ) { offset, attachment in
-                block(offset, attachment.reference.referenceId) {
+                block(offset, attachment.reference.mediaGalleryResourceId) {
                     guard let item: MediaGalleryItem = mediaGallery.buildGalleryItem(
                         attachment: attachment,
                         spoilerState: mediaGallery.spoilerState,

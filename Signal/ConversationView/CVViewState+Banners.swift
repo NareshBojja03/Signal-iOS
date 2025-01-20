@@ -26,7 +26,7 @@ private class BannerHiding {
         let numberOfTimesHidden: UInt
     }
 
-    let bannerHidingStore: KeyValueStore
+    let bannerHidingStore: SDSKeyValueStore
 
     private let hideDuration: TimeInterval
     private let hideForeverAfterNumberOfHides: UInt?
@@ -39,7 +39,7 @@ private class BannerHiding {
         hideDuration: TimeInterval,
         hideForeverAfterNumberOfHides: UInt? = nil
     ) {
-        bannerHidingStore = KeyValueStore(collection: identifier)
+        bannerHidingStore = SDSKeyValueStore(collection: identifier)
 
         self.hideDuration = hideDuration
         self.hideForeverAfterNumberOfHides = hideForeverAfterNumberOfHides
@@ -84,7 +84,7 @@ private class BannerHiding {
             try bannerHidingStore.setCodable(
                 stateToWrite,
                 key: Self.hiddenStateKey(forThreadId: threadId),
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
         } catch let error {
             owsFailDebug("Caught error while encoding banner hiding state: \(error)!")
@@ -95,7 +95,7 @@ private class BannerHiding {
         do {
             return try bannerHidingStore.getCodableValue(
                 forKey: Self.hiddenStateKey(forThreadId: threadId),
-                transaction: transaction.asV2Read
+                transaction: transaction
             )
         } catch let error {
             owsFailDebug("Caught error while getting banner hiding state: \(error)!")
@@ -153,7 +153,7 @@ private class PendingMemberRequestsBannerHiding: BannerHiding {
             try bannerHidingStore.setCodable(
                 newPendingMemberRequestState,
                 key: Self.requestingMembersStateKey(forThreadId: threadId),
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
         } catch let error {
             owsFailDebug("Caught error while encoding banner hiding state: \(error)!")
@@ -167,7 +167,7 @@ private class PendingMemberRequestsBannerHiding: BannerHiding {
         do {
             return try bannerHidingStore.getCodableValue(
                 forKey: Self.requestingMembersStateKey(forThreadId: threadId),
-                transaction: transaction.asV2Read
+                transaction: transaction
             )
         } catch let error {
             owsFailDebug("Caught error while getting banner hiding state: \(error)!")

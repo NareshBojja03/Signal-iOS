@@ -76,6 +76,7 @@ final class ThreadMerger {
         }
         return shouldInsertEvent
         // TODO: [optional] Merge `lastVisibleInteractionStore` (we use `targetThread`s right now).
+        // TODO: [optional] Merge TSAttachmentMultisendJobRecord (they are canceled right now).
         // TODO: [optional] Merge MessageSenderJobRecord (they are canceled right now).
         // TODO: [optional] Merge SessionResetJobRecord (they are canceled right now).
         // TODO: [optional] Merge SendGiftBadgeJobRecord (they are canceled right now).
@@ -321,9 +322,9 @@ class _ThreadMerger_SDSThreadMergerWrapper: _ThreadMerger_SDSThreadMergerShim {
     func mergeThread(_ thread: TSContactThread, into targetThread: TSContactThread, tx: DBWriteTransaction) {
         let threadPair = MergePair<TSContactThread>(fromValue: thread, intoValue: targetThread)
         mergeInteractions(threadPair, tx: SDSDB.shimOnlyBridge(tx))
+        mergeMediaGalleryItems(threadPair, tx: SDSDB.shimOnlyBridge(tx))
         mergeReceiptsPendingMessageRequest(threadPair, tx: SDSDB.shimOnlyBridge(tx))
         mergeMessageSendLogPayloads(threadPair, tx: SDSDB.shimOnlyBridge(tx))
-        mergeMessageAttachmentReferences(threadPair, tx: tx)
         // We might have changed something in the cache -- evacuate it.
         SSKEnvironment.shared.modelReadCachesRef.evacuateAllCaches()
     }
@@ -337,6 +338,16 @@ class _ThreadMerger_SDSThreadMergerWrapper: _ThreadMerger_SDSThreadMergerShim {
                 WHERE "\(interactionColumn: .threadUniqueId)" = ?
             """,
             arguments: [uniqueIds.intoValue, uniqueIds.fromValue]
+        )
+    }
+
+    private func mergeMediaGalleryItems(_ threadPair: MergePair<TSContactThread>, tx: SDSAnyWriteTransaction) {
+        let threadRowIds = threadPair.map { $0.sqliteRowId! }
+        tx.unwrapGrdbWrite.execute(
+            sql: """
+                UPDATE "media_gallery_items" SET "threadId" = ? WHERE "threadId" = ?
+            """,
+            arguments: [threadRowIds.intoValue, threadRowIds.fromValue]
         )
     }
 
@@ -360,20 +371,6 @@ class _ThreadMerger_SDSThreadMergerWrapper: _ThreadMerger_SDSThreadMergerShim {
         let threadUniqueIdPair = threadPair.map { $0.uniqueId }
         let messageSendLog = SSKEnvironment.shared.messageSendLogRef
         messageSendLog.mergePayloads(from: threadUniqueIdPair.fromValue, into: threadUniqueIdPair.intoValue, tx: tx)
-    }
-
-    private func mergeMessageAttachmentReferences(_ threadPair: MergePair<TSContactThread>, tx: DBWriteTransaction) {
-        guard
-            let fromThreadRowId = threadPair.fromValue.sqliteRowId,
-            let intoThreadRowId = threadPair.intoValue.sqliteRowId
-        else {
-            return
-        }
-        try? DependenciesBridge.shared.attachmentStore.updateMessageAttachmentThreadRowIdsForThreadMerge(
-            fromThreadRowId: fromThreadRowId,
-            intoThreadRowId: intoThreadRowId,
-            tx: tx
-        )
     }
 }
 
@@ -450,24 +447,27 @@ protocol _ThreadMerger_SDSThreadMergerShim {
 extension ThreadMerger {
     static func forUnitTests(
         interactionStore: InteractionStore = MockInteractionStore(),
+        keyValueStoreFactory: KeyValueStoreFactory = InMemoryKeyValueStoreFactory(),
         threadAssociatedDataStore: MockThreadAssociatedDataStore = MockThreadAssociatedDataStore(),
         threadStore: ThreadStore = MockThreadStore()
     ) -> ThreadMerger {
         let disappearingMessagesConfigurationStore = MockDisappearingMessagesConfigurationStore()
-        let threadReplyInfoStore = ThreadReplyInfoStore()
+        let threadReplyInfoStore = ThreadReplyInfoStore(keyValueStoreFactory: keyValueStoreFactory)
         let wallpaperImageStore = MockWallpaperImageStore()
         let wallpaperStore = WallpaperStore(
+            keyValueStoreFactory: keyValueStoreFactory,
             notificationScheduler: SyncScheduler(),
             wallpaperImageStore: wallpaperImageStore
         )
         let chatColorSettingStore = ChatColorSettingStore(
+            keyValueStoreFactory: keyValueStoreFactory,
             wallpaperStore: wallpaperStore
         )
         let threadRemover = ThreadRemoverImpl(
             chatColorSettingStore: chatColorSettingStore,
             databaseStorage: ThreadRemover_MockDatabaseStorage(),
             disappearingMessagesConfigurationStore: disappearingMessagesConfigurationStore,
-            lastVisibleInteractionStore: LastVisibleInteractionStore(),
+            sdsThreadRemover: ThreadRemover_MockSDSThreadRemover(),
             threadAssociatedDataStore: threadAssociatedDataStore,
             threadReadCache: ThreadRemover_MockThreadReadCache(),
             threadReplyInfoStore: threadReplyInfoStore,

@@ -261,12 +261,10 @@ extension SendMessageFlow {
                     throw OWSAssertionError("Unexpected thread state.")
             }
             return SSKEnvironment.shared.databaseStorageRef.write { transaction -> TSThread in
-                thread.updateWithDraft(
-                    draftMessageBody: messageBody,
-                    replyInfo: nil,
-                    editTargetTimestamp: nil,
-                    transaction: transaction
-                )
+                thread.update(withDraft: messageBody,
+                              replyInfo: nil,
+                              editTargetTimestamp: nil,
+                              transaction: transaction)
                 return thread
             }
         }.done { (thread: TSThread) in
@@ -382,9 +380,9 @@ extension SendMessageFlow {
             }
         case .media(let signalAttachments, let messageBody):
             let conversations = selectedConversations
-            return AttachmentMultisend.sendApprovedMedia(
+            return TSResourceMultisend.sendApprovedMedia(
                 conversations: conversations,
-                approvedMessageBody: messageBody,
+                approvalMessageBody: messageBody,
                 approvedAttachments: signalAttachments
             ).enqueuedPromise
         }

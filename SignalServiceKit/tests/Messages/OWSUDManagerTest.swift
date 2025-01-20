@@ -58,14 +58,14 @@ class OWSUDManagerTest: SSKBaseTest {
         write { tx in
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.unknown, udAccess.udAccessMode)
-            XCTAssertEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssert(udAccess.isRandomKey)
         }
 
         write { tx in
             udManagerImpl.setUnidentifiedAccessMode(.unknown, for: bobRecipientAci, tx: tx)
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.unknown, udAccess.udAccessMode)
-            XCTAssertEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssert(udAccess.isRandomKey)
         }
 
         write { tx in
@@ -85,7 +85,7 @@ class OWSUDManagerTest: SSKBaseTest {
             udManagerImpl.setUnidentifiedAccessMode(.unrestricted, for: bobRecipientAci, tx: tx)
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.unrestricted, udAccess.udAccessMode)
-            XCTAssertEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssert(udAccess.isRandomKey)
         }
     }
 
@@ -119,14 +119,15 @@ class OWSUDManagerTest: SSKBaseTest {
         write { tx in
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.unknown, udAccess.udAccessMode)
-            XCTAssertNotEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssertFalse(udAccess.isRandomKey)
         }
 
         write { tx in
             udManagerImpl.setUnidentifiedAccessMode(.unknown, for: bobRecipientAci, tx: tx)
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.unknown, udAccess.udAccessMode)
-            XCTAssertNotEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssertFalse(udAccess.isRandomKey)
+
         }
 
         write { tx in
@@ -139,14 +140,14 @@ class OWSUDManagerTest: SSKBaseTest {
             udManagerImpl.setUnidentifiedAccessMode(.enabled, for: bobRecipientAci, tx: tx)
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.enabled, udAccess.udAccessMode)
-            XCTAssertNotEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssertFalse(udAccess.isRandomKey)
         }
 
         write { tx in
             udManagerImpl.setUnidentifiedAccessMode(.unrestricted, for: bobRecipientAci, tx: tx)
             let udAccess = udManagerImpl.udAccess(for: bobRecipientAci, tx: tx)!
             XCTAssertEqual(.unrestricted, udAccess.udAccessMode)
-            XCTAssertEqual(udAccess.udAccessKey.keyData, SMKUDAccessKey.zeroedKey.keyData)
+            XCTAssert(udAccess.isRandomKey)
         }
     }
 }

@@ -33,7 +33,7 @@ class MessageReceiptSet: NSObject, Codable {
         uniqueIds.subtract(other.uniqueIds)
     }
 
-    fileprivate func union(timestampSet: some Sequence<UInt64>) {
+    fileprivate func union(timestampSet: Set<UInt64>) {
         timestamps.formUnion(timestampSet)
     }
 }
@@ -53,12 +53,12 @@ public class ReceiptSender: NSObject {
     private let pendingTasks = PendingTasks(label: #fileID)
     private let sendingState: AtomicValue<SendingState>
 
-    public init(appReadiness: AppReadiness, recipientDatabaseTable: any RecipientDatabaseTable) {
+    public init(appReadiness: AppReadiness, kvStoreFactory: KeyValueStoreFactory, recipientDatabaseTable: any RecipientDatabaseTable) {
         self.appReadiness = appReadiness
         self.recipientDatabaseTable = recipientDatabaseTable
-        self.deliveryReceiptStore = KeyValueStore(collection: "kOutgoingDeliveryReceiptManagerCollection")
-        self.readReceiptStore = KeyValueStore(collection: "kOutgoingReadReceiptManagerCollection")
-        self.viewedReceiptStore = KeyValueStore(collection: "kOutgoingViewedReceiptManagerCollection")
+        self.deliveryReceiptStore = kvStoreFactory.keyValueStore(collection: "kOutgoingDeliveryReceiptManagerCollection")
+        self.readReceiptStore = kvStoreFactory.keyValueStore(collection: "kOutgoingReadReceiptManagerCollection")
+        self.viewedReceiptStore = kvStoreFactory.keyValueStore(collection: "kOutgoingViewedReceiptManagerCollection")
 
         self.sendingState = AtomicValue(SendingState(), lock: .init())
 
@@ -367,7 +367,7 @@ public class ReceiptSender: NSObject {
         let result = MessageReceiptSet()
         if let receiptSet: MessageReceiptSet = try? store.getCodableValue(forKey: identifier, transaction: tx) {
             result.union(receiptSet)
-        } else if let numberSet = store.getSet(identifier, ofClass: NSNumber.self, transaction: tx)?.map({ $0.uint64Value }) {
+        } else if let numberSet = store.getObject(forKey: identifier, transaction: tx) as? Set<UInt64> {
             result.union(timestampSet: numberSet)
         }
         return result

@@ -61,19 +61,24 @@ class _AttachmentUploadManager_NetworkManagerMock: NetworkManager {
 
 public class _AttachmentUploadManager_OWSURLSessionMock: BaseOWSURLSessionMock {
 
-    public var performUploadDataBlock: ((URLRequest, Data, OWSProgressSource?) async throws -> any HTTPResponse)?
-    public override func performUpload(request: URLRequest, requestData: Data, progress: OWSProgressSource?) async throws -> any HTTPResponse {
-        return try await performUploadDataBlock!(request, requestData, progress)
+    public var promiseForUploadDataTaskBlock: ((URLRequest, Data, ProgressBlock?) -> Promise<HTTPResponse>)?
+    public override func uploadTaskPromise(request: URLRequest, data requestData: Data, progress progressBlock: ProgressBlock?) -> Promise<HTTPResponse> {
+        return promiseForUploadDataTaskBlock!(request, requestData, progressBlock)
     }
 
-    public var performUploadFileBlock: ((URLRequest, URL, Bool, OWSProgressSource?) async throws -> any HTTPResponse)?
-    public override func performUpload(request: URLRequest, fileUrl: URL, ignoreAppExpiry: Bool, progress: OWSProgressSource?) async throws -> any HTTPResponse {
-        return try await performUploadFileBlock!(request, fileUrl, ignoreAppExpiry, progress)
+    public var promiseForUploadFileTaskBlock: ((URLRequest, URL, Bool, ProgressBlock?) -> Promise<HTTPResponse>)?
+    public override func uploadTaskPromise(
+        request: URLRequest,
+        fileUrl: URL,
+        ignoreAppExpiry: Bool = false,
+        progress progressBlock: ProgressBlock? = nil
+    ) -> Promise<HTTPResponse> {
+        return promiseForUploadFileTaskBlock!(request, fileUrl, ignoreAppExpiry, progressBlock)
     }
 
-    public var performRequestBlock: ((URLRequest) async throws -> any HTTPResponse)?
-    public override func performRequest(request: URLRequest, ignoreAppExpiry: Bool) async throws -> any HTTPResponse {
-        return try await performRequestBlock!(request)
+    public var promiseForDataTaskBlock: ((URLRequest) -> Promise<HTTPResponse>)?
+    public override func dataTaskPromise(request: URLRequest, ignoreAppExpiry: Bool = false) -> Promise<HTTPResponse> {
+        return promiseForDataTaskBlock!(request)
     }
 }
 
@@ -87,34 +92,55 @@ class _AttachmentUploadManager_ChatConnectionManagerMock: ChatConnectionManager 
 }
 
 class _AttachmentUploadManager_MessageBackupKeyMaterialMock: MessageBackupKeyMaterial {
-    func backupKey(
-        type: MessageBackupAuthCredentialType,
-        tx: DBReadTransaction
-    ) throws(MessageBackupKeyMaterialError) -> BackupKey {
+    func backupID(localAci: Aci, mode: MessageBackup.EncryptionMode, tx: DBReadTransaction) throws -> Data {
         fatalError("Unimplemented for tests")
     }
 
-    func mediaEncryptionMetadata(
-        mediaName: String,
-        type: MediaTierEncryptionType,
-        tx: any DBReadTransaction
-    ) throws(MessageBackupKeyMaterialError) -> MediaTierEncryptionMetadata {
-        return .init(type: type, mediaId: Data(), hmacKey: Data(), aesKey: Data())
+    func backupPrivateKey(localAci: Aci, tx: DBReadTransaction) throws -> PrivateKey {
+        fatalError("Unimplemented for tests")
+    }
+
+    func backupAuthRequestContext(localAci: Aci, tx: DBReadTransaction) throws -> BackupAuthCredentialRequestContext {
+        fatalError("Unimplemented for tests")
+    }
+
+    func messageBackupKey(localAci: Aci, mode: MessageBackup.EncryptionMode, tx: DBReadTransaction) throws -> MessageBackupKey {
+        fatalError("Unimplemented for tests")
+    }
+
+    func mediaEncryptionMetadata(mediaName: String, type: MediaTierEncryptionType, tx: DBReadTransaction) throws -> MediaTierEncryptionMetadata {
+        return .init(type: type, mediaId: Data(), hmacKey: Data(), aesKey: Data(), iv: Data())
+    }
+
+    func mediaId(mediaName: String, type: MediaTierEncryptionType, backupKey: SVR.DerivedKeyData) throws -> Data {
+        return Data()
+    }
+
+    func createEncryptingStreamTransform(localAci: Aci, mode: MessageBackup.EncryptionMode, tx: DBReadTransaction) throws -> EncryptingStreamTransform {
+        fatalError("Unimplemented for tests")
+    }
+
+    func createDecryptingStreamTransform(localAci: Aci, mode: MessageBackup.EncryptionMode, tx: DBReadTransaction) throws -> DecryptingStreamTransform {
+        fatalError("Unimplemented for tests")
+    }
+
+    func createHmacGeneratingStreamTransform(localAci: Aci, mode: MessageBackup.EncryptionMode, tx: DBReadTransaction) throws -> HmacStreamTransform {
+        fatalError("Unimplemented for tests")
+    }
+
+    func createHmacValidatingStreamTransform(localAci: Aci, mode: MessageBackup.EncryptionMode, tx: DBReadTransaction) throws -> HmacStreamTransform {
+        fatalError("Unimplemented for tests")
     }
 }
 
 class _AttachmentUploadManager_MessageBackupRequestManagerMock: MessageBackupRequestManager {
-    func fetchBackupServiceAuth(
-        for type: MessageBackupAuthCredentialType,
-        localAci: Aci,
-        auth: ChatServiceAuth
-    ) async throws -> MessageBackupServiceAuth {
+    func fetchBackupServiceAuth(localAci: Aci, auth: ChatServiceAuth) async throws -> MessageBackupServiceAuth {
         fatalError("Unimplemented for tests")
     }
 
     func reserveBackupId(localAci: Aci, auth: ChatServiceAuth) async throws { }
 
-    func registerBackupKeys(localAci: Aci, auth: ChatServiceAuth) async throws {}
+    func registerBackupKeys(auth: MessageBackupServiceAuth) async throws { }
 
     func fetchBackupUploadForm(auth: MessageBackupServiceAuth) async throws -> Upload.Form {
         fatalError("Unimplemented for tests")

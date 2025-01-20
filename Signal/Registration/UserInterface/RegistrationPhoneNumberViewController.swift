@@ -31,7 +31,7 @@ class RegistrationPhoneNumberViewController: OWSViewController {
                     return result
                 }
                 return RegistrationPhoneNumber(
-                    country: .defaultValue,
+                    countryState: .defaultValue,
                     nationalNumber: ""
                 )
             case let .reregistration(state):
@@ -74,10 +74,7 @@ class RegistrationPhoneNumberViewController: OWSViewController {
     private var nowTimer: Timer?
 
     private var nationalNumber: String { phoneNumberInput.nationalNumber }
-
-    private var countryCode: String {
-        return phoneNumberInput.country.countryCode
-    }
+    private var e164: E164? { phoneNumberInput.e164 }
 
     private var localValidationError: RegistrationPhoneNumberViewState.ValidationError? {
         didSet { render() }
@@ -101,17 +98,23 @@ class RegistrationPhoneNumberViewController: OWSViewController {
         }
     }
 
-    private func canSubmit(isBlockedByValidationError: Bool) -> Bool {
-        if phoneNumberInput.nationalNumber.isEmpty {
+    private var canSubmit: Bool {
+        guard !nationalNumber.isEmpty, let e164 else {
             return false
         }
 
         switch state {
         case .initialRegistration:
-            return !isBlockedByValidationError
+            break
         case .reregistration:
             return true
         }
+
+        if validationError?.canSubmit(e164: e164, dateProvider: Date.provider) == false {
+            return false
+        }
+
+        return true
     }
 
     // MARK: Rendering
@@ -189,7 +192,7 @@ class RegistrationPhoneNumberViewController: OWSViewController {
             switch validationError {
             case .rateLimited:
                 return false
-            case nil, .invalidInput, .invalidE164:
+            case nil, .invalidNumber:
                 break
             }
 
@@ -271,40 +274,26 @@ class RegistrationPhoneNumberViewController: OWSViewController {
         contextButton.setImage(Theme.iconImage(.buttonMore), for: .normal)
         contextButton.tintColor = Theme.accentBlueColor
 
-        let now = Date()
-
-        let isBlockedByValidationError = { () -> Bool in
-            switch validationError {
-            case let .invalidInput(error):
-                return !error.canSubmit(countryCode: countryCode, nationalNumber: nationalNumber)
-            case let .invalidE164(error):
-                return !error.canSubmit(e164: parseE164())
-            case let .rateLimited(error):
-                return !error.canSubmit(e164: parseE164(), dateProvider: { now })
-            case nil:
-                return false
-            }
-        }()
-
-        navigationItem.rightBarButtonItem = canSubmit(isBlockedByValidationError: isBlockedByValidationError) ? nextBarButton : nil
+        navigationItem.rightBarButtonItem = canSubmit ? nextBarButton : nil
 
         phoneNumberInput.isEnabled = canChangePhoneNumber
         phoneNumberInput.render()
 
         // We always render the warning label but sometimes invisibly. This avoids UI jumpiness.
-        if isBlockedByValidationError, let validationError {
+        if
+            let e164,
+            let warningLabelText = validationError?.warningLabelText(e164: e164, dateProvider: Date.provider)
+        {
             validationWarningLabel.alpha = 1
-            validationWarningLabel.text = validationError.warningLabelText(dateProvider: { now })
+            validationWarningLabel.text = warningLabelText
         } else {
             validationWarningLabel.alpha = 0
         }
         switch validationError {
         case nil, .rateLimited:
             break
-        case let .invalidInput(error):
-            showInvalidPhoneNumberAlertIfNecessary(for: .invalidInput(countryCode: error.invalidCountryCode, nationalNumber: error.invalidNationalNumber))
-        case let .invalidE164(error):
-            showInvalidPhoneNumberAlertIfNecessary(for: .invalidE164(error.invalidE164))
+        case let .invalidNumber(error):
+            showInvalidPhoneNumberAlertIfNecessary(for: error.invalidE164.stringValue)
         }
 
         view.backgroundColor = Theme.backgroundColor
@@ -321,15 +310,10 @@ class RegistrationPhoneNumberViewController: OWSViewController {
         view.layoutSubviews()
     }
 
-    private enum InvalidNumberError: Equatable {
-        case invalidInput(countryCode: String, nationalNumber: String)
-        case invalidE164(E164)
-    }
+    private var previousInvalidE164: String?
 
-    private var previousInvalidNumberError: InvalidNumberError?
-
-    private func showInvalidPhoneNumberAlertIfNecessary(for invalidNumberError: InvalidNumberError) {
-        let shouldShowAlert = invalidNumberError != previousInvalidNumberError
+    private func showInvalidPhoneNumberAlertIfNecessary(for e164: String) {
+        let shouldShowAlert = e164 != previousInvalidE164
         if shouldShowAlert {
             OWSActionSheets.showActionSheet(
                 title: OWSLocalizedString(
@@ -343,7 +327,7 @@ class RegistrationPhoneNumberViewController: OWSViewController {
             )
         }
 
-        previousInvalidNumberError = invalidNumberError
+        previousInvalidE164 = e164
     }
 
     // MARK: Events
@@ -353,22 +337,20 @@ class RegistrationPhoneNumberViewController: OWSViewController {
         goToNextStep()
     }
 
-    private func parseE164() -> E164? {
-        let phoneNumberUtil = SSKEnvironment.shared.phoneNumberUtilRef
-        return E164(phoneNumberUtil.parsePhoneNumber(countryCode: countryCode, nationalNumber: nationalNumber)?.e164)
-    }
-
     private func goToNextStep() {
         Logger.info("")
 
         phoneNumberInput.resignFirstResponder()
 
-        guard let e164 = parseE164() else {
-            localValidationError = .invalidInput(.init(invalidCountryCode: countryCode, invalidNationalNumber: nationalNumber))
+        guard let e164 = self.e164 else {
             return
         }
-        guard PhoneNumberValidator().isValidForRegistration(phoneNumber: e164) else {
-            localValidationError = .invalidE164(.init(invalidE164: e164))
+
+        guard
+            let phoneNumber = SSKEnvironment.shared.phoneNumberUtilRef.parseE164(e164.stringValue),
+            PhoneNumberValidator().isValidForRegistration(phoneNumber: phoneNumber)
+        else {
+            localValidationError = .invalidNumber(.init(invalidE164: e164))
             return
         }
         localValidationError = nil

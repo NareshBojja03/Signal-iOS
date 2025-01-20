@@ -16,10 +16,10 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
     public static let maxAvatarDiameterPixels: UInt = 1024
     public static let notificationKeyUserProfileWriter = "kNSNotificationKey_UserProfileWriter"
 
-    public let whitelistedPhoneNumbersStore = KeyValueStore(collection: "kOWSProfileManager_UserWhitelistCollection")
-    public let whitelistedServiceIdsStore = KeyValueStore(collection: "kOWSProfileManager_UserUUIDWhitelistCollection")
-    public let whitelistedGroupsStore = KeyValueStore(collection: "kOWSProfileManager_GroupWhitelistCollection")
-    public let settingsStore = KeyValueStore(collection: "kOWSProfileManager_SettingsStore")
+    public let whitelistedPhoneNumbersStore = SDSKeyValueStore(collection: "kOWSProfileManager_UserWhitelistCollection")
+    public let whitelistedServiceIdsStore = SDSKeyValueStore(collection: "kOWSProfileManager_UserUUIDWhitelistCollection")
+    public let whitelistedGroupsStore = SDSKeyValueStore(collection: "kOWSProfileManager_GroupWhitelistCollection")
+    public let settingsStore = SDSKeyValueStore(collection: "kOWSProfileManager_SettingsStore")
     public let badgeStore = BadgeStore()
 
     // This can be inlined soon, but first a direct port from objc to swift
@@ -37,7 +37,7 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
     // it is not. The pattern of use in the objc code has been replicated here for the time being.
     @Atomic private var _localUserProfile: OWSUserProfile?
 
-    fileprivate let metadataStore = KeyValueStore(collection: "kOWSProfileManager_Metadata")
+    fileprivate let metadataStore = SDSKeyValueStore(collection: "kOWSProfileManager_Metadata")
     @Atomic fileprivate var isRotatingProfileKey: Bool = false
 
     private let appReadiness: AppReadiness
@@ -255,13 +255,32 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
         Logger.warn("Clearing the profile whitelist.")
 
         SSKEnvironment.shared.databaseStorageRef.asyncWrite { transaction in
-            self.whitelistedPhoneNumbersStore.removeAll(transaction: transaction.asV2Write)
-            self.whitelistedServiceIdsStore.removeAll(transaction: transaction.asV2Write)
-            self.whitelistedGroupsStore.removeAll(transaction: transaction.asV2Write)
+            self.whitelistedPhoneNumbersStore.removeAll(transaction: transaction)
+            self.whitelistedServiceIdsStore.removeAll(transaction: transaction)
+            self.whitelistedGroupsStore.removeAll(transaction: transaction)
 
-            owsAssertDebug(self.whitelistedPhoneNumbersStore.numberOfKeys(transaction: transaction.asV2Read) == 0)
-            owsAssertDebug(self.whitelistedServiceIdsStore.numberOfKeys(transaction: transaction.asV2Read) == 0)
-            owsAssertDebug(self.whitelistedGroupsStore.numberOfKeys(transaction: transaction.asV2Read) == 0)
+            owsAssertDebug(self.whitelistedPhoneNumbersStore.numberOfKeys(transaction: transaction) == 0)
+            owsAssertDebug(self.whitelistedServiceIdsStore.numberOfKeys(transaction: transaction) == 0)
+            owsAssertDebug(self.whitelistedGroupsStore.numberOfKeys(transaction: transaction) == 0)
+        }
+    }
+
+    public func logProfileWhitelist() {
+        SSKEnvironment.shared.databaseStorageRef.read { transaction in
+            Logger.error("\(self.whitelistedPhoneNumbersStore.collection): \(self.whitelistedPhoneNumbersStore.numberOfKeys(transaction: transaction))")
+            for key in self.whitelistedPhoneNumbersStore.allKeys(transaction: transaction) {
+                Logger.error("\t profile whitelist user phone number: \(key)")
+            }
+
+            Logger.error("\(self.whitelistedServiceIdsStore.collection): \(self.whitelistedServiceIdsStore.numberOfKeys(transaction: transaction))")
+            for key in self.whitelistedServiceIdsStore.allKeys(transaction: transaction) {
+                Logger.error("\t profile whitelist user service id: \(key)")
+            }
+
+            Logger.error("\(self.whitelistedGroupsStore.collection): \(self.whitelistedGroupsStore.numberOfKeys(transaction: transaction))")
+            for key in self.whitelistedGroupsStore.allKeys(transaction: transaction) {
+                Logger.error("\t profile whitelist group: \(key)")
+            }
         }
     }
 
@@ -373,11 +392,11 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
     }
 
     private func isAddressInWhitelist(_ address: SignalServiceAddress, tx: SDSAnyReadTransaction) -> Bool {
-        if let uppercaseServiceId = address.serviceIdUppercaseString, whitelistedServiceIdsStore.hasValue(uppercaseServiceId, transaction: tx.asV2Read) {
+        if let uppercaseServiceId = address.serviceIdUppercaseString, whitelistedServiceIdsStore.hasValue(forKey: uppercaseServiceId, transaction: tx) {
             return true
         }
 
-        if let phoneNumber = address.phoneNumber, whitelistedPhoneNumbersStore.hasValue(phoneNumber, transaction: tx.asV2Read) {
+        if let phoneNumber = address.phoneNumber, whitelistedPhoneNumbersStore.hasValue(forKey: phoneNumber, transaction: tx) {
             return true
         }
 
@@ -394,10 +413,10 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
             // stores. We currently save only the best identifier, but we should still
             // try and remove both to handle these historical cases.
             if let uppercaseServiceId = address.serviceIdUppercaseString {
-                whitelistedServiceIdsStore.removeValue(forKey: uppercaseServiceId, transaction: transaction.asV2Write)
+                whitelistedServiceIdsStore.removeValue(forKey: uppercaseServiceId, transaction: transaction)
             }
             if let phoneNumber = address.phoneNumber {
-                whitelistedPhoneNumbersStore.removeValue(forKey: phoneNumber, transaction: transaction.asV2Write)
+                whitelistedPhoneNumbersStore.removeValue(forKey: phoneNumber, transaction: transaction)
             }
 
             if let thread = TSContactThread.getWithContactAddress(address, transaction: transaction) {
@@ -428,11 +447,11 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
         for address in addressesToAdd {
             let serviceId = address.serviceId
             if let serviceId = serviceId as? Aci {
-                whitelistedServiceIdsStore.setBool(true, key: serviceId.serviceIdUppercaseString, transaction: transaction.asV2Write)
+                whitelistedServiceIdsStore.setBool(true, key: serviceId.serviceIdUppercaseString, transaction: transaction)
             } else if let phoneNumber = address.phoneNumber {
-                whitelistedPhoneNumbersStore.setBool(true, key: phoneNumber, transaction: transaction.asV2Write)
+                whitelistedPhoneNumbersStore.setBool(true, key: phoneNumber, transaction: transaction)
             } else if let serviceId = serviceId as? Pni {
-                whitelistedServiceIdsStore.setBool(true, key: serviceId.serviceIdUppercaseString, transaction: transaction.asV2Write)
+                whitelistedServiceIdsStore.setBool(true, key: serviceId.serviceIdUppercaseString, transaction: transaction)
             }
 
             if let thread = TSContactThread.getWithContactAddress(address, transaction: transaction) {
@@ -468,7 +487,7 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
     public func addGroupId(toProfileWhitelist groupId: Data, userProfileWriter: UserProfileWriter, transaction: SDSAnyWriteTransaction) {
         owsAssertDebug(!groupId.isEmpty)
         let groupIdKey = groupKey(groupId: groupId)
-        if !whitelistedGroupsStore.hasValue(groupIdKey, transaction: transaction.asV2Read) {
+        if !whitelistedGroupsStore.hasValue(forKey: groupIdKey, transaction: transaction) {
             addConfirmedUnwhitelistedGroupId(groupId, userProfileWriter: userProfileWriter, transaction: transaction)
         }
     }
@@ -476,7 +495,7 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
     public func removeGroupId(fromProfileWhitelist groupId: Data, userProfileWriter: UserProfileWriter, transaction: SDSAnyWriteTransaction) {
         owsAssertDebug(!groupId.isEmpty)
         let groupIdKey = groupKey(groupId: groupId)
-        if whitelistedGroupsStore.hasValue(groupIdKey, transaction: transaction.asV2Read) {
+        if whitelistedGroupsStore.hasValue(forKey: groupIdKey, transaction: transaction) {
             removeConfirmedWhitelistedGroupId(groupId, userProfileWriter: userProfileWriter, transaction: transaction)
         }
     }
@@ -484,14 +503,14 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
     private func removeConfirmedWhitelistedGroupId(_ groupId: Data, userProfileWriter: UserProfileWriter, transaction: SDSAnyWriteTransaction) {
         owsAssertDebug(!groupId.isEmpty)
         let groupIdKey = groupKey(groupId: groupId)
-        whitelistedGroupsStore.removeValue(forKey: groupIdKey, transaction: transaction.asV2Write)
+        whitelistedGroupsStore.removeValue(forKey: groupIdKey, transaction: transaction)
         groupIdWhitelistWasUpdated(groupId, userProfileWriter: userProfileWriter, transaction: transaction)
     }
 
     private func addConfirmedUnwhitelistedGroupId(_ groupId: Data, userProfileWriter: UserProfileWriter, transaction: SDSAnyWriteTransaction) {
         owsAssertDebug(!groupId.isEmpty)
         let groupIdKey = groupKey(groupId: groupId)
-        whitelistedGroupsStore.setBool(true, key: groupIdKey, transaction: transaction.asV2Write)
+        whitelistedGroupsStore.setBool(true, key: groupIdKey, transaction: transaction)
         groupIdWhitelistWasUpdated(groupId, userProfileWriter: userProfileWriter, transaction: transaction)
     }
 
@@ -538,7 +557,7 @@ public class OWSProfileManager: NSObject, ProfileManagerProtocol {
             return false
         }
         let groupIdKey = groupKey(groupId: groupId)
-        return whitelistedGroupsStore.hasValue(groupIdKey, transaction: transaction.asV2Read)
+        return whitelistedGroupsStore.hasValue(forKey: groupIdKey, transaction: transaction)
     }
 
     public func isThread(inProfileWhitelist thread: TSThread, transaction: SDSAnyReadTransaction) -> Bool {
@@ -891,10 +910,10 @@ extension OWSProfileManager: ProfileManager {
 
     public func allWhitelistedAddresses(tx: SDSAnyReadTransaction) -> [SignalServiceAddress] {
         var addresses = Set<SignalServiceAddress>()
-        for serviceIdString in whitelistedServiceIdsStore.allKeys(transaction: tx.asV2Read) {
+        for serviceIdString in whitelistedServiceIdsStore.allKeys(transaction: tx) {
             addresses.insert(SignalServiceAddress(serviceIdString: serviceIdString))
         }
-        for phoneNumber in whitelistedPhoneNumbersStore.allKeys(transaction: tx.asV2Read) {
+        for phoneNumber in whitelistedPhoneNumbersStore.allKeys(transaction: tx) {
             addresses.insert(SignalServiceAddress.legacyAddress(serviceId: nil, phoneNumber: phoneNumber))
         }
 
@@ -1149,15 +1168,15 @@ extension OWSProfileManager: ProfileManager {
         // profile key rotation as "complete" (removing newly blocked users from the whitelist).
         self.whitelistedPhoneNumbersStore.removeValues(
             forKeys: trigger.phoneNumbers,
-            transaction: tx.asV2Write
+            transaction: tx
         )
         self.whitelistedServiceIdsStore.removeValues(
             forKeys: trigger.serviceIds.map { $0.serviceIdUppercaseString },
-            transaction: tx.asV2Write
+            transaction: tx
         )
         self.whitelistedGroupsStore.removeValues(
             forKeys: trigger.groupIds.map { self.groupKey(groupId: $0) },
-            transaction: tx.asV2Write
+            transaction: tx
         )
     }
 
@@ -1204,7 +1223,7 @@ extension OWSProfileManager: ProfileManager {
     }
 
     private func blockedPhoneNumbersInWhitelist(tx: SDSAnyReadTransaction) -> [String] {
-        let allWhitelistedNumbers = whitelistedPhoneNumbersStore.allKeys(transaction: tx.asV2Read)
+        let allWhitelistedNumbers = whitelistedPhoneNumbersStore.allKeys(transaction: tx)
 
         return allWhitelistedNumbers.filter { candidate in
             let address = SignalServiceAddress.legacyAddress(serviceId: nil, phoneNumber: candidate)
@@ -1213,7 +1232,7 @@ extension OWSProfileManager: ProfileManager {
     }
 
     private func blockedServiceIdsInWhitelist(tx: SDSAnyReadTransaction) -> [ServiceId] {
-        let allWhitelistedServiceIds = whitelistedServiceIdsStore.allKeys(transaction: tx.asV2Read).compactMap {
+        let allWhitelistedServiceIds = whitelistedServiceIdsStore.allKeys(transaction: tx).compactMap {
             try? ServiceId.parseFrom(serviceIdString: $0)
         }
 
@@ -1223,7 +1242,7 @@ extension OWSProfileManager: ProfileManager {
     }
 
     private func blockedGroupIDsInWhitelist(tx: SDSAnyReadTransaction) -> [Data] {
-        let allWhitelistedGroupKeys = whitelistedGroupsStore.allKeys(transaction: tx.asV2Read)
+        let allWhitelistedGroupKeys = whitelistedGroupsStore.allKeys(transaction: tx)
 
         return allWhitelistedGroupKeys.lazy
             .compactMap { self.groupIdForGroupKey($0) }
@@ -1305,7 +1324,7 @@ extension OWSProfileManager: ProfileManager {
         let hasUpdated = SSKEnvironment.shared.databaseStorageRef.read { transaction in
             storageServiceStore.getBool(Self.hasUpdatedStorageServiceKey,
                                         defaultValue: false,
-                                        transaction: transaction.asV2Read)
+                                        transaction: transaction)
         }
 
         guard !hasUpdated else {
@@ -1322,11 +1341,11 @@ extension OWSProfileManager: ProfileManager {
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
             storageServiceStore.setBool(true,
                                         key: Self.hasUpdatedStorageServiceKey,
-                                        transaction: transaction.asV2Write)
+                                        transaction: transaction)
         }
     }
 
-    private static let storageServiceStore = KeyValueStore(collection: "OWSProfileManager.storageServiceStore")
+    private static let storageServiceStore = SDSKeyValueStore(collection: "OWSProfileManager.storageServiceStore")
     private static let hasUpdatedStorageServiceKey = "hasUpdatedStorageServiceKey"
 
     // MARK: - Other User's Profiles
@@ -1533,7 +1552,6 @@ extension OWSProfileManager: ProfileManager {
                 DispatchQueue.global().async {
                     parameters?.future.reject(error)
                 }
-                Logger.warn("Retrying profile update after \(retryDelay)s due to error: \(error)")
                 DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
                     self._updateProfileOnServiceIfNecessary(retryDelay: retryDelay * 2)
                 }
@@ -1642,10 +1660,10 @@ extension OWSProfileManager: ProfileManager {
     private static let maxAvatarRepairAttempts = 5
 
     private func avatairRepairAttemptCount(_ transaction: SDSAnyReadTransaction) -> Int {
-        let store = KeyValueStore(collection: GRDBSchemaMigrator.migrationSideEffectsCollectionName)
+        let store = SDSKeyValueStore(collection: GRDBSchemaMigrator.migrationSideEffectsCollectionName)
         return store.getInt(GRDBSchemaMigrator.avatarRepairAttemptCount,
                             defaultValue: Self.maxAvatarRepairAttempts,
-                            transaction: transaction.asV2Read)
+                            transaction: transaction)
     }
 
     private func avatarRepairNeeded() -> Bool {
@@ -1656,13 +1674,13 @@ extension OWSProfileManager: ProfileManager {
     }
 
     private func incrementAvatarRepairAttempts(tx: SDSAnyWriteTransaction) {
-        let store = KeyValueStore(collection: GRDBSchemaMigrator.migrationSideEffectsCollectionName)
-        store.setInt(avatairRepairAttemptCount(tx) + 1, key: GRDBSchemaMigrator.avatarRepairAttemptCount, transaction: tx.asV2Write)
+        let store = SDSKeyValueStore(collection: GRDBSchemaMigrator.migrationSideEffectsCollectionName)
+        store.setInt(avatairRepairAttemptCount(tx) + 1, key: GRDBSchemaMigrator.avatarRepairAttemptCount, transaction: tx)
     }
 
     private func clearAvatarRepairNeeded(tx: SDSAnyWriteTransaction) {
-        let store = KeyValueStore(collection: GRDBSchemaMigrator.migrationSideEffectsCollectionName)
-        store.removeValue(forKey: GRDBSchemaMigrator.avatarRepairAttemptCount, transaction: tx.asV2Write)
+        let store = SDSKeyValueStore(collection: GRDBSchemaMigrator.migrationSideEffectsCollectionName)
+        store.removeValue(forKey: GRDBSchemaMigrator.avatarRepairAttemptCount, transaction: tx)
     }
 
     private func updateProfileOnService(
@@ -1751,7 +1769,6 @@ extension OWSProfileManager: ProfileManager {
         } catch {
             // Other errors cause us to give up immediately.
             await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in self.tryToDequeueProfileChanges(profileChanges, tx: tx) }
-            Logger.error("Discarding profile update due to fatal error: \(error)")
             throw error
         }
     }
@@ -1787,7 +1804,6 @@ extension OWSProfileManager: ProfileManager {
                 // Ignore the error because it's not likely to go away if we retry. If we
                 // can't decrypt the existing avatar, then we don't really have any choice
                 // other than blowing it away.
-                Logger.warn("Dropping unfetchable avatar: \(error)")
             }
             if let avatarFilename = localUserProfile.avatarFileName, let avatarData = localProfileAvatarData {
                 return (.changeAvatar(avatarData), .setTo(avatarFilename))
@@ -1845,12 +1861,19 @@ extension OWSProfileManager: ProfileManager {
             visibleBadgeIds: visibleBadgeIds.orElseIfNoChange(oldChanges?.visibleBadgeIds ?? .noChange),
             userProfileWriter: userProfileWriter
         )
-        settingsStore.setObject(newChanges, key: Self.kPendingProfileUpdateKey, transaction: tx.asV2Write)
+        settingsStore.setObject(newChanges, key: Self.kPendingProfileUpdateKey, transaction: tx)
         return newChanges
     }
 
     private func currentPendingProfileChanges(tx: SDSAnyReadTransaction) -> PendingProfileUpdate? {
-        return settingsStore.getObject(Self.kPendingProfileUpdateKey, ofClass: PendingProfileUpdate.self, transaction: tx.asV2Read)
+        guard let value = settingsStore.getObject(forKey: Self.kPendingProfileUpdateKey, transaction: tx) else {
+            return nil
+        }
+        guard let profileChanges = value as? PendingProfileUpdate else {
+            owsFailDebug("Invalid value.")
+            return nil
+        }
+        return profileChanges
     }
 
     private func isCurrentPendingProfileChanges(_ profileChanges: PendingProfileUpdate, tx: SDSAnyReadTransaction) -> Bool {
@@ -1865,7 +1888,7 @@ extension OWSProfileManager: ProfileManager {
             Logger.warn("Ignoring stale update completion.")
             return
         }
-        settingsStore.removeValue(forKey: Self.kPendingProfileUpdateKey, transaction: tx.asV2Write)
+        settingsStore.removeValue(forKey: Self.kPendingProfileUpdateKey, transaction: tx)
     }
 
     /// Rotates the local profile key. Intended specifically
@@ -1907,39 +1930,39 @@ extension OWSProfileManager: ProfileManager {
     private static let kLastGroupProfileKeyCheckTimestampKey = "lastGroupProfileKeyCheckTimestamp"
 
     private func lastGroupProfileKeyCheckTimestamp(tx: SDSAnyReadTransaction) -> Date? {
-        return self.metadataStore.getDate(Self.kLastGroupProfileKeyCheckTimestampKey, transaction: tx.asV2Read)
+        return self.metadataStore.getDate(Self.kLastGroupProfileKeyCheckTimestampKey, transaction: tx)
     }
 
     private func setLastGroupProfileKeyCheckTimestamp(tx: SDSAnyWriteTransaction) {
-        return self.metadataStore.setDate(Date(), key: Self.kLastGroupProfileKeyCheckTimestampKey, transaction: tx.asV2Write)
+        return self.metadataStore.setDate(Date(), key: Self.kLastGroupProfileKeyCheckTimestampKey, transaction: tx)
     }
 
     private static let recipientHidingTriggerTimestampKey = "recipientHidingTriggerTimestampKey"
 
     private func recipientHidingTriggerTimestamp(tx: SDSAnyReadTransaction) -> Date? {
-        return self.metadataStore.getDate(Self.recipientHidingTriggerTimestampKey, transaction: tx.asV2Read)
+        return self.metadataStore.getDate(Self.recipientHidingTriggerTimestampKey, transaction: tx)
     }
 
     private func setRecipientHidingTriggerTimestamp(_ date: Date?, tx: SDSAnyWriteTransaction) {
         guard let date else {
-            self.metadataStore.removeValue(forKey: Self.recipientHidingTriggerTimestampKey, transaction: tx.asV2Write)
+            self.metadataStore.removeValue(forKey: Self.recipientHidingTriggerTimestampKey, transaction: tx)
             return
         }
-        return self.metadataStore.setDate(date, key: Self.recipientHidingTriggerTimestampKey, transaction: tx.asV2Write)
+        return self.metadataStore.setDate(date, key: Self.recipientHidingTriggerTimestampKey, transaction: tx)
     }
 
     private static let leaveGroupTriggerTimestampKey = "leaveGroupTriggerTimestampKey"
 
     private func leaveGroupTriggerTimestamp(tx: SDSAnyReadTransaction) -> Date? {
-        return self.metadataStore.getDate(Self.leaveGroupTriggerTimestampKey, transaction: tx.asV2Read)
+        return self.metadataStore.getDate(Self.leaveGroupTriggerTimestampKey, transaction: tx)
     }
 
     private func setLeaveGroupTriggerTimestamp(_ date: Date?, tx: SDSAnyWriteTransaction) {
         guard let date else {
-            self.metadataStore.removeValue(forKey: Self.leaveGroupTriggerTimestampKey, transaction: tx.asV2Write)
+            self.metadataStore.removeValue(forKey: Self.leaveGroupTriggerTimestampKey, transaction: tx)
             return
         }
-        return self.metadataStore.setDate(date, key: Self.leaveGroupTriggerTimestampKey, transaction: tx.asV2Write)
+        return self.metadataStore.setDate(date, key: Self.leaveGroupTriggerTimestampKey, transaction: tx)
     }
 
     // MARK: - Last Messaging Date
@@ -1984,7 +2007,7 @@ extension OWSProfileManager: ProfileManager {
 
 // MARK: -
 
-public class PendingProfileUpdate: NSObject, NSSecureCoding {
+public class PendingProfileUpdate: NSObject, NSCoding {
     let id: UUID
 
     let profileGivenName: OptionalChange<OWSUserProfile.NameComponent>
@@ -2024,8 +2047,6 @@ public class PendingProfileUpdate: NSObject, NSSecureCoding {
     }
 
     // MARK: - NSCoding
-
-    public class var supportsSecureCoding: Bool { true }
 
     private enum NSCodingKeys: String {
         case id
@@ -2086,28 +2107,28 @@ public class PendingProfileUpdate: NSObject, NSSecureCoding {
         aCoder.encodeCInt(Int32(userProfileWriter.rawValue), forKey: NSCodingKeys.userProfileWriter.rawValue)
     }
 
-    private static func decodeOptionalChange<T: NSObject & NSSecureCoding>(of cls: T.Type, for codingKey: NSCodingKeys, with aDecoder: NSCoder) -> OptionalChange<T?> {
+    private static func decodeOptionalChange<T>(for codingKey: NSCodingKeys, with aDecoder: NSCoder) -> OptionalChange<T?> {
         if aDecoder.containsValue(forKey: codingKey.changedKey), !aDecoder.decodeBool(forKey: codingKey.changedKey) {
             return .noChange
         }
-        return .setTo(aDecoder.decodeObject(of: cls, forKey: codingKey.rawValue) as T?)
+        return .setTo(aDecoder.decodeObject(forKey: codingKey.rawValue) as? T? ?? nil)
     }
 
-    private static func decodeOptionalAvatarChange(for codingKey: NSCodingKeys, with aDecoder: NSCoder) -> OptionalAvatarChange<Data?> {
+    private static func decodeOptionalAvatarChange<T>(for codingKey: NSCodingKeys, with aDecoder: NSCoder) -> OptionalAvatarChange<T?> {
         if aDecoder.containsValue(forKey: codingKey.changedKey), !aDecoder.decodeBool(forKey: codingKey.changedKey) {
             if aDecoder.containsValue(forKey: codingKey.mustReuploadKey), aDecoder.decodeBool(forKey: codingKey.mustReuploadKey) {
                 return .noChangeButMustReupload
             }
             return .noChange
         }
-        return .setTo(aDecoder.decodeObject(of: NSData.self, forKey: codingKey.rawValue) as Data?)
+        return .setTo(aDecoder.decodeObject(forKey: codingKey.rawValue) as? T? ?? nil)
     }
 
     private static func decodeOptionalNameChange(
         for codingKey: NSCodingKeys,
         with aDecoder: NSCoder
     ) -> OptionalChange<OWSUserProfile.NameComponent?> {
-        let stringChange = decodeOptionalChange(of: NSString.self, for: codingKey, with: aDecoder)
+        let stringChange: OptionalChange<String?> = decodeOptionalChange(for: codingKey, with: aDecoder)
         switch stringChange {
         case .noChange:
             return .noChange
@@ -2116,7 +2137,7 @@ public class PendingProfileUpdate: NSObject, NSSecureCoding {
         case .setTo(.some(let value)):
             // We shouldn't be able to encode an invalid value. If we do, fall back to
             // `.noChange` rather than clearing it.
-            guard let nameComponent = OWSUserProfile.NameComponent(truncating: value as String) else {
+            guard let nameComponent = OWSUserProfile.NameComponent(truncating: value) else {
                 return .noChange
             }
             return .setTo(nameComponent)
@@ -2140,7 +2161,7 @@ public class PendingProfileUpdate: NSObject, NSSecureCoding {
     }
 
     private static func decodeVisibleBadgeIds(for codingKey: NSCodingKeys, with aDecoder: NSCoder) -> OptionalChange<[String]> {
-        guard let visibleBadgeIds = aDecoder.decodeArrayOfObjects(ofClass: NSString.self, forKey: codingKey.rawValue) as [String]? else {
+        guard let visibleBadgeIds = aDecoder.decodeObject(forKey: codingKey.rawValue) as? [String] else {
             return .noChange
         }
         return .setTo(visibleBadgeIds)
@@ -2148,7 +2169,7 @@ public class PendingProfileUpdate: NSObject, NSSecureCoding {
 
     public required init?(coder aDecoder: NSCoder) {
         guard
-            let idString = aDecoder.decodeObject(of: NSString.self, forKey: NSCodingKeys.id.rawValue) as String?,
+            let idString = aDecoder.decodeObject(forKey: NSCodingKeys.id.rawValue) as? String,
             let id = UUID(uuidString: idString)
         else {
             owsFailDebug("Missing id")
@@ -2157,8 +2178,8 @@ public class PendingProfileUpdate: NSObject, NSSecureCoding {
         self.id = id
         self.profileGivenName = Self.decodeRequiredNameChange(for: .profileGivenName, with: aDecoder)
         self.profileFamilyName = Self.decodeOptionalNameChange(for: .profileFamilyName, with: aDecoder)
-        self.profileBio = Self.decodeOptionalChange(of: NSString.self, for: .profileBio, with: aDecoder).map({ $0 as String? })
-        self.profileBioEmoji = Self.decodeOptionalChange(of: NSString.self, for: .profileBioEmoji, with: aDecoder).map({ $0 as String? })
+        self.profileBio = Self.decodeOptionalChange(for: .profileBio, with: aDecoder)
+        self.profileBioEmoji = Self.decodeOptionalChange(for: .profileBioEmoji, with: aDecoder)
         self.profileAvatarData = Self.normalizeAvatar(Self.decodeOptionalAvatarChange(for: .profileAvatarData, with: aDecoder))
         self.visibleBadgeIds = Self.decodeVisibleBadgeIds(for: .visibleBadgeIds, with: aDecoder)
         if
@@ -2243,7 +2264,7 @@ extension OWSProfileManager {
         do {
             Logger.info("")
             let urlSession = self.avatarUrlSession
-            let response = try await urlSession.performDownload(avatarUrlPath, method: .get)
+            let response = try await urlSession.downloadTaskPromise(avatarUrlPath, method: .get).awaitable()
             let decryptedFileUrl = OWSFileSystem.temporaryFileUrl(isAvailableWhileDeviceLocked: true)
             try decryptAvatar(at: response.downloadUrl, to: decryptedFileUrl, profileKey: profileKey)
             guard Data.ows_isValidImage(at: decryptedFileUrl, mimeType: nil) else {

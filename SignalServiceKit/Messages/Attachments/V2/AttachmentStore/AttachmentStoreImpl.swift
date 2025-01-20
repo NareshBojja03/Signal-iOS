@@ -246,7 +246,6 @@ public class AttachmentStoreImpl: AttachmentStore {
         with existingReference: AttachmentReference,
         newOwnerMessageRowId: Int64,
         newOwnerThreadRowId: Int64,
-        newOwnerIsPastEditRevision: Bool,
         tx: DBWriteTransaction
     ) throws {
         var newRecord = MessageAttachmentReferenceRecord(
@@ -261,7 +260,6 @@ public class AttachmentStoreImpl: AttachmentStore {
             throw OWSAssertionError("Copying reference to a message on another thread!")
         }
         newRecord.ownerRowId = newOwnerMessageRowId
-        newRecord.ownerIsPastEditRevision = newOwnerIsPastEditRevision
         try newRecord.insert(tx.databaseConnection)
     }
 
@@ -488,60 +486,15 @@ public class AttachmentStoreImpl: AttachmentStore {
         }
     }
 
-    public func removeAllOwners(
-        withId owner: AttachmentReference.OwnerId,
+    public func removeOwner(
+        _ owner: AttachmentReference.OwnerId,
         for attachmentId: Attachment.IDType,
         tx: DBWriteTransaction
     ) throws {
         try AttachmentReference.recordTypes.forEach { recordType in
             try removeOwner(
                 owner,
-                idInOwner: nil,
                 for: attachmentId,
-                recordType: recordType,
-                tx: tx
-            )
-        }
-    }
-
-    public func removeOwner(
-        reference: AttachmentReference,
-        tx: DBWriteTransaction
-    ) throws {
-        let idInOwner: UUID?
-        switch reference.owner {
-        case .message(let messageSource):
-            switch messageSource {
-            case .bodyAttachment(let metadata):
-                idInOwner = metadata.idInOwner
-            case
-                    .oversizeText,
-                    .linkPreview,
-                    .quotedReply,
-                    .sticker,
-                    .contactAvatar:
-                idInOwner = nil
-            }
-        case .storyMessage(let storyMessageSource):
-            switch storyMessageSource {
-            case
-                    .media,
-                    .textStoryLinkPreview:
-                idInOwner = nil
-            }
-        case .thread(let threadSource):
-            switch threadSource {
-            case
-                    .threadWallpaperImage,
-                    .globalThreadWallpaperImage:
-                idInOwner = nil
-            }
-        }
-        try AttachmentReference.recordTypes.forEach { recordType in
-            try removeOwner(
-                reference.owner.id,
-                idInOwner: idInOwner,
-                for: reference.attachmentRowId,
                 recordType: recordType,
                 tx: tx
             )
@@ -550,7 +503,6 @@ public class AttachmentStoreImpl: AttachmentStore {
 
     private func removeOwner<RecordType: FetchableAttachmentReferenceRecord>(
         _ owner: AttachmentReference.OwnerId,
-        idInOwner: UUID?,
         for attachmentId: Attachment.IDType,
         recordType: RecordType.Type,
         tx: DBWriteTransaction
@@ -575,12 +527,6 @@ public class AttachmentStoreImpl: AttachmentStore {
             sql += "AND (\(typeColumn.name) = ? AND \(recordType.ownerRowIdColumn.name) = ?)"
             _ = arguments.append(contentsOf: [ownerType, ownerRowId])
         }
-
-        if let idInOwner, let idInOwnerColumn = recordType.idInOwnerColumn {
-            sql += " AND \(idInOwnerColumn.name) = ?"
-            _ = arguments.append(contentsOf: [idInOwner.uuidString])
-        }
-
         sql += ";"
         try tx.databaseConnection.execute(
             sql: sql,
@@ -703,16 +649,5 @@ public class AttachmentStoreImpl: AttachmentStore {
 
     public func removeAllThreadOwners(tx: DBWriteTransaction) throws {
         try ThreadAttachmentReferenceRecord.deleteAll(tx.databaseConnection)
-    }
-
-    public func updateMessageAttachmentThreadRowIdsForThreadMerge(
-        fromThreadRowId: Int64,
-        intoThreadRowId: Int64,
-        tx: DBWriteTransaction
-    ) throws {
-        let threadRowIdColumn = GRDB.Column(AttachmentReference.MessageAttachmentReferenceRecord.CodingKeys.threadRowId)
-        try AttachmentReference.MessageAttachmentReferenceRecord
-            .filter(threadRowIdColumn == fromThreadRowId)
-            .updateAll(tx.databaseConnection, threadRowIdColumn.set(to: intoThreadRowId))
     }
 }

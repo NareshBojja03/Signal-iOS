@@ -33,6 +33,7 @@ class MessageBackupTSOutgoingMessageArchiver {
 
     func archiveOutgoingMessage(
         _ outgoingMessage: TSOutgoingMessage,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> MessageBackup.ArchiveInteractionResult<Details> {
         var partialErrors = [ArchiveFrameError]()
@@ -40,6 +41,7 @@ class MessageBackupTSOutgoingMessageArchiver {
         let outgoingMessageDetails: Details
         switch editHistoryArchiver.archiveMessageAndEditHistory(
             outgoingMessage,
+            thread: thread,
             context: context,
             builder: self
         ).bubbleUp(Details.self, partialErrors: &partialErrors) {
@@ -162,18 +164,11 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
             return errorResult
         }
 
-        let expireStartDate: UInt64?
-        if outgoingMessage.expireStartedAt > 0 {
-            expireStartDate = outgoingMessage.expireStartedAt
-        } else {
-            expireStartDate = nil
-        }
-
         let details = Details(
             author: context.recipientContext.localRecipientId,
             directionalDetails: .outgoing(outgoingDetails),
             dateCreated: outgoingMessage.timestamp,
-            expireStartDate: expireStartDate,
+            expireStartDate: outgoingMessage.expireStartedAt,
             expiresInMs: UInt64(outgoingMessage.expiresInSeconds) * 1000,
             isSealedSender: wasAnySendSealedSender,
             chatItemType: chatItemType,
@@ -392,18 +387,11 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
             )])
         }
 
-        let expiresInSeconds: UInt32
-        if chatItem.hasExpiresInMs {
-            guard let _expiresInSeconds: UInt32 = .msToSecs(chatItem.expiresInMs) else {
-                return .messageFailure([.restoreFrameError(
-                    .invalidProtoData(.expirationTimerOverflowedLocalType),
-                    chatItem.id
-                )])
-            }
-            expiresInSeconds = _expiresInSeconds
-        } else {
-            // 0 == no expiration
-            expiresInSeconds = 0
+        guard let expiresInSeconds: UInt32 = .msToSecs(chatItem.expiresInMs) else {
+            return .messageFailure([.restoreFrameError(
+                .invalidProtoData(.expirationTimerOverflowedLocalType),
+                chatItem.id
+            )])
         }
 
         var partialErrors = [RestoreFrameError]()
@@ -415,8 +403,6 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
             switch context.recipientContext[recipientID] {
             case .contact(let address):
                 recipientAddress = address.asInteropAddress()
-            case .localAddress:
-                recipientAddress = context.recipientContext.localIdentifiers.aciAddress
             case .none:
                 // Missing recipient! Fail this one recipient but keep going.
                 partialErrors.append(.restoreFrameError(
@@ -424,7 +410,7 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
                     chatItem.id
                 ))
                 continue
-            case .group, .distributionList, .releaseNotesChannel, .callLink:
+            case .localAddress, .group, .distributionList, .releaseNotesChannel:
                 // Recipients can only be contacts.
                 partialErrors.append(.restoreFrameError(
                     .invalidProtoData(.outgoingNonContactMessageRecipient),
@@ -453,7 +439,7 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
         }
 
         let expireStartDate: UInt64
-        if chatItem.hasExpireStartDate {
+        if chatItem.expireStartDate > 0 {
             expireStartDate = chatItem.expireStartDate
         } else if
             expiresInSeconds > 0,
@@ -486,7 +472,7 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
                 isViewOnceMessage: false,
                 isViewOnceComplete: false,
                 wasRemotelyDeleted: false,
-                groupChangeProtoData: nil,
+                changeActionsProtoData: nil,
                 // We never restore stories.
                 storyAuthorAci: nil,
                 storyTimestamp: nil,
@@ -542,7 +528,6 @@ extension MessageBackupTSOutgoingMessageArchiver: MessageBackupTSMessageEditHist
                 outgoingMessage,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                directionalDetails: outgoingDetails,
                 context: context
             )
         } catch let error {

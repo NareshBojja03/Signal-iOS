@@ -367,6 +367,21 @@ public extension TSOutgoingMessage {
     @objc
     var isStorySend: Bool { isGroupStoryReply }
 
+    @objc
+    var canSendWithSenderKey: Bool {
+        // Sometimes we can fail to send a SenderKey message for an unknown reason. For example,
+        // the server may reject the message because one of our recipients has an invalid access
+        // token, but we don't know which recipient is the culprit. If we ever hit any of these
+        // non-transient failures, we should not send this message with sender key.
+        //
+        // By sending the message with traditional fanout, this *should* put things in order so
+        // that our next SenderKey message will send successfully.
+        guard let states = recipientAddressStates else { return true }
+        return states
+            .compactMap { $0.value.errorCode }
+            .allSatisfy { $0 != SenderKeyUnavailableError.errorCode }
+    }
+
     @objc(buildPniSignatureMessageIfNeededWithTransaction:)
     func buildPniSignatureMessageIfNeeded(transaction tx: SDSAnyReadTransaction) -> SSKProtoPniSignatureMessage? {
         guard recipientAddressStates?.count == 1 else {
@@ -415,9 +430,9 @@ public extension TSOutgoingMessage {
         }
 
         do {
-            let groupContextV2 = try GroupsV2Protos.buildGroupContextProto(
+            let groupContextV2 = try SSKEnvironment.shared.groupsV2Ref.buildGroupContextV2Proto(
                 groupModel: groupModel,
-                groupChangeProtoData: self.changeActionsProtoData
+                changeActionsProtoData: self.changeActionsProtoData
             )
             builder.setGroupV2(groupContextV2)
             return .addedWithoutGroupAvatar
@@ -494,22 +509,19 @@ extension TSOutgoingMessage {
 
     @objc
     func buildProtosForBodyAttachments(tx: SDSAnyReadTransaction) throws -> [SSKProtoAttachmentPointer] {
-        let attachments = sqliteRowId.map { sqliteRowId in
-            return DependenciesBridge.shared.attachmentStore.fetchReferencedAttachments(
-                owners: [
-                    .messageOversizeText(messageRowId: sqliteRowId),
-                    .messageBodyAttachment(messageRowId: sqliteRowId)
-                ],
-                tx: tx.asV2Read
-            )
-        } ?? []
-        return attachments.compactMap { attachment in
-            guard let pointer = attachment.attachment.asTransitTierPointer() else {
+        let references = DependenciesBridge.shared.tsResourceStore.bodyAttachments(for: self, tx: tx.asV2Read)
+        let attachments = DependenciesBridge.shared.tsResourceStore.fetch(references.map(\.resourceId), tx: tx.asV2Read)
+        return references.compactMap { reference in
+            guard let attachment = attachments.first(where: { $0.resourceId == reference.resourceId }) else {
+                owsFailDebug("Missing attachment for sending!")
+                return nil
+            }
+            guard let pointer = attachment.asTransitTierPointer() else {
                 owsFailDebug("Generating proto for non-uploaded attachment!")
                 return nil
             }
-            return DependenciesBridge.shared.attachmentManager.buildProtoForSending(
-                from: attachment.reference,
+            return DependenciesBridge.shared.tsResourceManager.buildProtoForSending(
+                from: reference,
                 pointer: pointer
             )
         }

@@ -346,7 +346,8 @@ extension ConversationViewController {
                 return
             }
             guard self.view.window != nil else {
-                owsFailDebug("Read timer fired when ConversationViewController is not in a view hierarchy")
+                //owsFailDebug("Read timer fired when ConversationViewController is not in a view hierarchy")
+                Logger.warn("Read timer fired when ConversationViewController is not in a view hierarchy")
                 timer.invalidate()
                 return
             }

@@ -52,7 +52,7 @@ public class AudioPlayer: NSObject {
 
     private enum Source {
         case decryptedFile(URL)
-        case attachment(AttachmentStream)
+        case attachment(TSResourceStream)
 
         var description: String {
             switch self {
@@ -72,8 +72,6 @@ public class AudioPlayer: NSObject {
 
     private let audioActivity: AudioActivity
 
-    private let sleepBlockObject = DeviceSleepManager.BlockObject(blockReason: "audio player")
-
     public convenience init(decryptedFileUrl: URL, audioBehavior: AudioBehavior) {
         self.init(source: .decryptedFile(decryptedFileUrl), audioBehavior: audioBehavior)
     }
@@ -85,7 +83,7 @@ public class AudioPlayer: NSObject {
         self.init(source: .decryptedFile(url), audioBehavior: audioBehavior)
     }
 
-    public convenience init(attachment: AttachmentStream, audioBehavior: AudioBehavior) {
+    public convenience init(attachment: TSResourceStream, audioBehavior: AudioBehavior) {
         self.init(source: .attachment(attachment), audioBehavior: audioBehavior)
     }
 
@@ -104,7 +102,7 @@ public class AudioPlayer: NSObject {
     }
 
     deinit {
-        DeviceSleepManager.shared.removeBlock(blockObject: sleepBlockObject)
+        DeviceSleepManager.shared.removeBlock(blockObject: self)
         stop()
     }
 
@@ -165,7 +163,7 @@ public class AudioPlayer: NSObject {
         self.audioPlayerPoller = audioPlayerPoller
 
         // Prevent device from sleeping while playing audio.
-        DeviceSleepManager.shared.addBlock(blockObject: sleepBlockObject)
+        DeviceSleepManager.shared.addBlock(blockObject: self)
     }
 
     public func pause() {
@@ -188,7 +186,7 @@ public class AudioPlayer: NSObject {
 
         endAudioActivities()
 
-        DeviceSleepManager.shared.removeBlock(blockObject: sleepBlockObject)
+        DeviceSleepManager.shared.removeBlock(blockObject: self)
     }
 
     public func setupAudioPlayer() {
@@ -273,7 +271,7 @@ public class AudioPlayer: NSObject {
         delegate?.setAudioProgress(0, duration: 0, playbackRate: playbackRate)
 
         endAudioActivities()
-        DeviceSleepManager.shared.removeBlock(blockObject: sleepBlockObject)
+        DeviceSleepManager.shared.removeBlock(blockObject: self)
         teardownRemoteCommandCenter()
     }
 

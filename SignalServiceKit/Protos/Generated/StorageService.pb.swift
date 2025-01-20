@@ -152,7 +152,7 @@ struct StorageServiceProtos_WriteOperation: @unchecked Sendable {
   fileprivate var _manifest: StorageServiceProtos_StorageManifest? = nil
 }
 
-struct StorageServiceProtos_ManifestRecord: @unchecked Sendable {
+struct StorageServiceProtos_ManifestRecord: Sendable {
   // SwiftProtobuf.Message conformance is added in an extension below. See the
   // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
   // methods supported on all messages.
@@ -163,8 +163,6 @@ struct StorageServiceProtos_ManifestRecord: @unchecked Sendable {
   var sourceDevice: UInt32 = 0
 
   var keys: [StorageServiceProtos_ManifestRecord.Key] = []
-
-  var recordIkm: Data = Data()
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -674,14 +672,14 @@ struct StorageServiceProtos_AccountRecord: @unchecked Sendable {
     set {_uniqueStorage()._preferredReactionEmoji = newValue}
   }
 
-  var donorSubscriberID: Data {
-    get {return _storage._donorSubscriberID}
-    set {_uniqueStorage()._donorSubscriberID = newValue}
+  var subscriberID: Data {
+    get {return _storage._subscriberID}
+    set {_uniqueStorage()._subscriberID = newValue}
   }
 
-  var donorSubscriberCurrencyCode: String {
-    get {return _storage._donorSubscriberCurrencyCode}
-    set {_uniqueStorage()._donorSubscriberCurrencyCode = newValue}
+  var subscriberCurrencyCode: String {
+    get {return _storage._subscriberCurrencyCode}
+    set {_uniqueStorage()._subscriberCurrencyCode = newValue}
   }
 
   var displayBadgesOnProfile: Bool {
@@ -689,9 +687,9 @@ struct StorageServiceProtos_AccountRecord: @unchecked Sendable {
     set {_uniqueStorage()._displayBadgesOnProfile = newValue}
   }
 
-  var donorSubscriptionManuallyCancelled: Bool {
-    get {return _storage._donorSubscriptionManuallyCancelled}
-    set {_uniqueStorage()._donorSubscriptionManuallyCancelled = newValue}
+  var subscriptionManuallyCancelled: Bool {
+    get {return _storage._subscriptionManuallyCancelled}
+    set {_uniqueStorage()._subscriptionManuallyCancelled = newValue}
   }
 
   var keepMutedChatsArchived: Bool {
@@ -745,15 +743,6 @@ struct StorageServiceProtos_AccountRecord: @unchecked Sendable {
   var hasUsernameLink: Bool {return _storage._usernameLink != nil}
   /// Clears the value of `usernameLink`. Subsequent reads from it will return its default value.
   mutating func clearUsernameLink() {_uniqueStorage()._usernameLink = nil}
-
-  var backupSubscriberData: StorageServiceProtos_AccountRecord.IAPSubscriberData {
-    get {return _storage._backupSubscriberData ?? StorageServiceProtos_AccountRecord.IAPSubscriberData()}
-    set {_uniqueStorage()._backupSubscriberData = newValue}
-  }
-  /// Returns true if `backupSubscriberData` has been explicitly set.
-  var hasBackupSubscriberData: Bool {return _storage._backupSubscriberData != nil}
-  /// Clears the value of `backupSubscriberData`. Subsequent reads from it will return its default value.
-  mutating func clearBackupSubscriberData() {_uniqueStorage()._backupSubscriberData = nil}
 
   var unknownFields = SwiftProtobuf.UnknownStorage()
 
@@ -941,46 +930,6 @@ struct StorageServiceProtos_AccountRecord: @unchecked Sendable {
         .pink,
         .purple,
       ]
-
-    }
-
-    init() {}
-  }
-
-  struct IAPSubscriberData: @unchecked Sendable {
-    // SwiftProtobuf.Message conformance is added in an extension below. See the
-    // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
-    // methods supported on all messages.
-
-    var subscriberID: Data = Data()
-
-    var iapSubscriptionID: StorageServiceProtos_AccountRecord.IAPSubscriberData.OneOf_IapSubscriptionID? = nil
-
-    /// Identifies an Android Play Store IAP subscription.
-    var purchaseToken: String {
-      get {
-        if case .purchaseToken(let v)? = iapSubscriptionID {return v}
-        return String()
-      }
-      set {iapSubscriptionID = .purchaseToken(newValue)}
-    }
-
-    /// Identifies an iOS App Store IAP subscription.
-    var originalTransactionID: UInt64 {
-      get {
-        if case .originalTransactionID(let v)? = iapSubscriptionID {return v}
-        return 0
-      }
-      set {iapSubscriptionID = .originalTransactionID(newValue)}
-    }
-
-    var unknownFields = SwiftProtobuf.UnknownStorage()
-
-    enum OneOf_IapSubscriptionID: Equatable, Sendable {
-      /// Identifies an Android Play Store IAP subscription.
-      case purchaseToken(String)
-      /// Identifies an iOS App Store IAP subscription.
-      case originalTransactionID(UInt64)
 
     }
 
@@ -1245,7 +1194,6 @@ extension StorageServiceProtos_ManifestRecord: SwiftProtobuf.Message, SwiftProto
     1: .same(proto: "version"),
     3: .same(proto: "sourceDevice"),
     2: .same(proto: "keys"),
-    4: .same(proto: "recordIkm"),
   ]
 
   mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
@@ -1257,7 +1205,6 @@ extension StorageServiceProtos_ManifestRecord: SwiftProtobuf.Message, SwiftProto
       case 1: try { try decoder.decodeSingularUInt64Field(value: &self.version) }()
       case 2: try { try decoder.decodeRepeatedMessageField(value: &self.keys) }()
       case 3: try { try decoder.decodeSingularUInt32Field(value: &self.sourceDevice) }()
-      case 4: try { try decoder.decodeSingularBytesField(value: &self.recordIkm) }()
       default: break
       }
     }
@@ -1273,9 +1220,6 @@ extension StorageServiceProtos_ManifestRecord: SwiftProtobuf.Message, SwiftProto
     if self.sourceDevice != 0 {
       try visitor.visitSingularUInt32Field(value: self.sourceDevice, fieldNumber: 3)
     }
-    if !self.recordIkm.isEmpty {
-      try visitor.visitSingularBytesField(value: self.recordIkm, fieldNumber: 4)
-    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1283,7 +1227,6 @@ extension StorageServiceProtos_ManifestRecord: SwiftProtobuf.Message, SwiftProto
     if lhs.version != rhs.version {return false}
     if lhs.sourceDevice != rhs.sourceDevice {return false}
     if lhs.keys != rhs.keys {return false}
-    if lhs.recordIkm != rhs.recordIkm {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1913,10 +1856,10 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
     17: .same(proto: "universalExpireTimer"),
     19: .same(proto: "e164"),
     20: .same(proto: "preferredReactionEmoji"),
-    21: .same(proto: "donorSubscriberID"),
-    22: .same(proto: "donorSubscriberCurrencyCode"),
+    21: .same(proto: "subscriberID"),
+    22: .same(proto: "subscriberCurrencyCode"),
     23: .same(proto: "displayBadgesOnProfile"),
-    24: .same(proto: "donorSubscriptionManuallyCancelled"),
+    24: .same(proto: "subscriptionManuallyCancelled"),
     25: .same(proto: "keepMutedChatsArchived"),
     26: .same(proto: "myStoryPrivacyHasBeenSet"),
     27: .same(proto: "viewedOnboardingStory"),
@@ -1926,7 +1869,6 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
     33: .same(proto: "username"),
     34: .same(proto: "completedUsernameOnboarding"),
     35: .same(proto: "usernameLink"),
-    41: .same(proto: "backupSubscriberData"),
   ]
 
   fileprivate class _StorageClass {
@@ -1949,10 +1891,10 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
     var _universalExpireTimer: UInt32 = 0
     var _e164: String = String()
     var _preferredReactionEmoji: [String] = []
-    var _donorSubscriberID: Data = Data()
-    var _donorSubscriberCurrencyCode: String = String()
+    var _subscriberID: Data = Data()
+    var _subscriberCurrencyCode: String = String()
     var _displayBadgesOnProfile: Bool = false
-    var _donorSubscriptionManuallyCancelled: Bool = false
+    var _subscriptionManuallyCancelled: Bool = false
     var _keepMutedChatsArchived: Bool = false
     var _myStoryPrivacyHasBeenSet: Bool = false
     var _viewedOnboardingStory: Bool = false
@@ -1962,7 +1904,6 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
     var _username: String = String()
     var _completedUsernameOnboarding: Bool = false
     var _usernameLink: StorageServiceProtos_AccountRecord.UsernameLink? = nil
-    var _backupSubscriberData: StorageServiceProtos_AccountRecord.IAPSubscriberData? = nil
 
     #if swift(>=5.10)
       // This property is used as the initial default value for new instances of the type.
@@ -1996,10 +1937,10 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
       _universalExpireTimer = source._universalExpireTimer
       _e164 = source._e164
       _preferredReactionEmoji = source._preferredReactionEmoji
-      _donorSubscriberID = source._donorSubscriberID
-      _donorSubscriberCurrencyCode = source._donorSubscriberCurrencyCode
+      _subscriberID = source._subscriberID
+      _subscriberCurrencyCode = source._subscriberCurrencyCode
       _displayBadgesOnProfile = source._displayBadgesOnProfile
-      _donorSubscriptionManuallyCancelled = source._donorSubscriptionManuallyCancelled
+      _subscriptionManuallyCancelled = source._subscriptionManuallyCancelled
       _keepMutedChatsArchived = source._keepMutedChatsArchived
       _myStoryPrivacyHasBeenSet = source._myStoryPrivacyHasBeenSet
       _viewedOnboardingStory = source._viewedOnboardingStory
@@ -2009,7 +1950,6 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
       _username = source._username
       _completedUsernameOnboarding = source._completedUsernameOnboarding
       _usernameLink = source._usernameLink
-      _backupSubscriberData = source._backupSubscriberData
     }
   }
 
@@ -2047,10 +1987,10 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
         case 17: try { try decoder.decodeSingularUInt32Field(value: &_storage._universalExpireTimer) }()
         case 19: try { try decoder.decodeSingularStringField(value: &_storage._e164) }()
         case 20: try { try decoder.decodeRepeatedStringField(value: &_storage._preferredReactionEmoji) }()
-        case 21: try { try decoder.decodeSingularBytesField(value: &_storage._donorSubscriberID) }()
-        case 22: try { try decoder.decodeSingularStringField(value: &_storage._donorSubscriberCurrencyCode) }()
+        case 21: try { try decoder.decodeSingularBytesField(value: &_storage._subscriberID) }()
+        case 22: try { try decoder.decodeSingularStringField(value: &_storage._subscriberCurrencyCode) }()
         case 23: try { try decoder.decodeSingularBoolField(value: &_storage._displayBadgesOnProfile) }()
-        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._donorSubscriptionManuallyCancelled) }()
+        case 24: try { try decoder.decodeSingularBoolField(value: &_storage._subscriptionManuallyCancelled) }()
         case 25: try { try decoder.decodeSingularBoolField(value: &_storage._keepMutedChatsArchived) }()
         case 26: try { try decoder.decodeSingularBoolField(value: &_storage._myStoryPrivacyHasBeenSet) }()
         case 27: try { try decoder.decodeSingularBoolField(value: &_storage._viewedOnboardingStory) }()
@@ -2060,7 +2000,6 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
         case 33: try { try decoder.decodeSingularStringField(value: &_storage._username) }()
         case 34: try { try decoder.decodeSingularBoolField(value: &_storage._completedUsernameOnboarding) }()
         case 35: try { try decoder.decodeSingularMessageField(value: &_storage._usernameLink) }()
-        case 41: try { try decoder.decodeSingularMessageField(value: &_storage._backupSubscriberData) }()
         default: break
         }
       }
@@ -2130,17 +2069,17 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
       if !_storage._preferredReactionEmoji.isEmpty {
         try visitor.visitRepeatedStringField(value: _storage._preferredReactionEmoji, fieldNumber: 20)
       }
-      if !_storage._donorSubscriberID.isEmpty {
-        try visitor.visitSingularBytesField(value: _storage._donorSubscriberID, fieldNumber: 21)
+      if !_storage._subscriberID.isEmpty {
+        try visitor.visitSingularBytesField(value: _storage._subscriberID, fieldNumber: 21)
       }
-      if !_storage._donorSubscriberCurrencyCode.isEmpty {
-        try visitor.visitSingularStringField(value: _storage._donorSubscriberCurrencyCode, fieldNumber: 22)
+      if !_storage._subscriberCurrencyCode.isEmpty {
+        try visitor.visitSingularStringField(value: _storage._subscriberCurrencyCode, fieldNumber: 22)
       }
       if _storage._displayBadgesOnProfile != false {
         try visitor.visitSingularBoolField(value: _storage._displayBadgesOnProfile, fieldNumber: 23)
       }
-      if _storage._donorSubscriptionManuallyCancelled != false {
-        try visitor.visitSingularBoolField(value: _storage._donorSubscriptionManuallyCancelled, fieldNumber: 24)
+      if _storage._subscriptionManuallyCancelled != false {
+        try visitor.visitSingularBoolField(value: _storage._subscriptionManuallyCancelled, fieldNumber: 24)
       }
       if _storage._keepMutedChatsArchived != false {
         try visitor.visitSingularBoolField(value: _storage._keepMutedChatsArchived, fieldNumber: 25)
@@ -2168,9 +2107,6 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
       }
       try { if let v = _storage._usernameLink {
         try visitor.visitSingularMessageField(value: v, fieldNumber: 35)
-      } }()
-      try { if let v = _storage._backupSubscriberData {
-        try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
       } }()
     }
     try unknownFields.traverse(visitor: &visitor)
@@ -2200,10 +2136,10 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
         if _storage._universalExpireTimer != rhs_storage._universalExpireTimer {return false}
         if _storage._e164 != rhs_storage._e164 {return false}
         if _storage._preferredReactionEmoji != rhs_storage._preferredReactionEmoji {return false}
-        if _storage._donorSubscriberID != rhs_storage._donorSubscriberID {return false}
-        if _storage._donorSubscriberCurrencyCode != rhs_storage._donorSubscriberCurrencyCode {return false}
+        if _storage._subscriberID != rhs_storage._subscriberID {return false}
+        if _storage._subscriberCurrencyCode != rhs_storage._subscriberCurrencyCode {return false}
         if _storage._displayBadgesOnProfile != rhs_storage._displayBadgesOnProfile {return false}
-        if _storage._donorSubscriptionManuallyCancelled != rhs_storage._donorSubscriptionManuallyCancelled {return false}
+        if _storage._subscriptionManuallyCancelled != rhs_storage._subscriptionManuallyCancelled {return false}
         if _storage._keepMutedChatsArchived != rhs_storage._keepMutedChatsArchived {return false}
         if _storage._myStoryPrivacyHasBeenSet != rhs_storage._myStoryPrivacyHasBeenSet {return false}
         if _storage._viewedOnboardingStory != rhs_storage._viewedOnboardingStory {return false}
@@ -2213,7 +2149,6 @@ extension StorageServiceProtos_AccountRecord: SwiftProtobuf.Message, SwiftProtob
         if _storage._username != rhs_storage._username {return false}
         if _storage._completedUsernameOnboarding != rhs_storage._completedUsernameOnboarding {return false}
         if _storage._usernameLink != rhs_storage._usernameLink {return false}
-        if _storage._backupSubscriberData != rhs_storage._backupSubscriberData {return false}
         return true
       }
       if !storagesAreEqual {return false}
@@ -2441,72 +2376,6 @@ extension StorageServiceProtos_AccountRecord.UsernameLink.Color: SwiftProtobuf._
     7: .same(proto: "PINK"),
     8: .same(proto: "PURPLE"),
   ]
-}
-
-extension StorageServiceProtos_AccountRecord.IAPSubscriberData: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
-  static let protoMessageName: String = StorageServiceProtos_AccountRecord.protoMessageName + ".IAPSubscriberData"
-  static let _protobuf_nameMap: SwiftProtobuf._NameMap = [
-    1: .same(proto: "subscriberId"),
-    2: .same(proto: "purchaseToken"),
-    3: .same(proto: "originalTransactionId"),
-  ]
-
-  mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
-    while let fieldNumber = try decoder.nextFieldNumber() {
-      // The use of inline closures is to circumvent an issue where the compiler
-      // allocates stack space for every case branch when no optimizations are
-      // enabled. https://github.com/apple/swift-protobuf/issues/1034
-      switch fieldNumber {
-      case 1: try { try decoder.decodeSingularBytesField(value: &self.subscriberID) }()
-      case 2: try {
-        var v: String?
-        try decoder.decodeSingularStringField(value: &v)
-        if let v = v {
-          if self.iapSubscriptionID != nil {try decoder.handleConflictingOneOf()}
-          self.iapSubscriptionID = .purchaseToken(v)
-        }
-      }()
-      case 3: try {
-        var v: UInt64?
-        try decoder.decodeSingularUInt64Field(value: &v)
-        if let v = v {
-          if self.iapSubscriptionID != nil {try decoder.handleConflictingOneOf()}
-          self.iapSubscriptionID = .originalTransactionID(v)
-        }
-      }()
-      default: break
-      }
-    }
-  }
-
-  func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
-    // The use of inline closures is to circumvent an issue where the compiler
-    // allocates stack space for every if/case branch local when no optimizations
-    // are enabled. https://github.com/apple/swift-protobuf/issues/1034 and
-    // https://github.com/apple/swift-protobuf/issues/1182
-    if !self.subscriberID.isEmpty {
-      try visitor.visitSingularBytesField(value: self.subscriberID, fieldNumber: 1)
-    }
-    switch self.iapSubscriptionID {
-    case .purchaseToken?: try {
-      guard case .purchaseToken(let v)? = self.iapSubscriptionID else { preconditionFailure() }
-      try visitor.visitSingularStringField(value: v, fieldNumber: 2)
-    }()
-    case .originalTransactionID?: try {
-      guard case .originalTransactionID(let v)? = self.iapSubscriptionID else { preconditionFailure() }
-      try visitor.visitSingularUInt64Field(value: v, fieldNumber: 3)
-    }()
-    case nil: break
-    }
-    try unknownFields.traverse(visitor: &visitor)
-  }
-
-  static func ==(lhs: StorageServiceProtos_AccountRecord.IAPSubscriberData, rhs: StorageServiceProtos_AccountRecord.IAPSubscriberData) -> Bool {
-    if lhs.subscriberID != rhs.subscriberID {return false}
-    if lhs.iapSubscriptionID != rhs.iapSubscriptionID {return false}
-    if lhs.unknownFields != rhs.unknownFields {return false}
-    return true
-  }
 }
 
 extension StorageServiceProtos_StoryDistributionListRecord: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {

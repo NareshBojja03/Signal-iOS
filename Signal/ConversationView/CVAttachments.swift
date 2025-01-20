@@ -11,11 +11,11 @@ public import SignalServiceKit
 public class AudioAttachment {
     public enum State: Equatable {
         case attachmentStream(
-            attachmentStream: ReferencedAttachmentStream,
+            attachmentStream: ReferencedTSResourceStream,
             audioDurationSeconds: TimeInterval
         )
         case attachmentPointer(
-            attachmentPointer: ReferencedAttachmentTransitPointer,
+            attachmentPointer: ReferencedTSResourcePointer,
             transitTierDownloadState: AttachmentDownloadState
         )
 
@@ -25,14 +25,14 @@ public class AudioAttachment {
                 .attachmentStream(lhsStream, lhsDuration),
                 .attachmentStream(rhsStream, rhsDuration)
             ):
-                return lhsStream.attachmentStream.id == rhsStream.attachmentStream.id
+                return lhsStream.attachmentStream.resourceId == rhsStream.attachmentStream.resourceId
                     && lhsStream.reference.hasSameOwner(as: rhsStream.reference)
                     && lhsDuration == rhsDuration
             case let (
                 .attachmentPointer(lhsPointer, lhsState),
                 .attachmentPointer(rhsPointer, rhsState)
             ):
-                return lhsPointer.attachment.id == rhsPointer.attachment.id
+                return lhsPointer.attachment.resourceId == rhsPointer.attachment.resourceId
                     && lhsPointer.reference.hasSameOwner(as: rhsPointer.reference)
                     && lhsState == rhsState
             case (.attachmentStream, _), (.attachmentPointer, _):
@@ -59,17 +59,18 @@ public class AudioAttachment {
     public let isDownloading: Bool
 
     public init?(
-        attachmentStream: ReferencedAttachmentStream,
+        attachmentStream: ReferencedTSResourceStream,
         owningMessage: TSMessage?,
         metadata: MediaMetadata?,
         receivedAtDate: Date
     ) {
         let audioDurationSeconds: TimeInterval
-        switch attachmentStream.attachmentStream.contentType {
-        case .audio(var duration, _):
+        switch attachmentStream.attachmentStream.computeContentType() {
+        case .audio(let duration):
+            var duration = duration.compute()
             // TODO: Remove & replace with a full fix to recompute the duration for invalid files.
-            if duration <= 0 {
-                duration = Self.cachedAudioDuration(forAttachment: attachmentStream.attachmentStream)
+            if duration <= 0, case .v2(let attachment) = attachmentStream.attachmentStream.concreteStreamType {
+                duration = Self.cachedAudioDuration(forAttachment: attachment)
             }
             if duration <= 0 {
                 fallthrough
@@ -88,7 +89,7 @@ public class AudioAttachment {
     }
 
     public init(
-        attachmentPointer: ReferencedAttachmentTransitPointer,
+        attachmentPointer: ReferencedTSResourcePointer,
         owningMessage: TSMessage?,
         metadata: MediaMetadata?,
         receivedAtDate: Date,
@@ -131,16 +132,16 @@ public class AudioAttachment {
 extension AudioAttachment {
     var isDownloaded: Bool { attachmentStream != nil }
 
-    public var attachment: Attachment {
+    public var attachment: TSResource {
         switch state {
         case .attachmentStream(let attachmentStream, _):
-            return attachmentStream.attachment
+            return attachmentStream.attachmentStream
         case .attachmentPointer(let attachmentPointer, _):
             return attachmentPointer.attachment
         }
     }
 
-    public var attachmentStream: ReferencedAttachmentStream? {
+    public var attachmentStream: ReferencedTSResourceStream? {
         switch state {
         case .attachmentStream(let attachmentStream, _):
             return attachmentStream
@@ -149,7 +150,7 @@ extension AudioAttachment {
         }
     }
 
-    public var attachmentPointer: ReferencedAttachmentTransitPointer? {
+    public var attachmentPointer: ReferencedTSResourcePointer? {
         switch state {
         case .attachmentStream:
             return nil

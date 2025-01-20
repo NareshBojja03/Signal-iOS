@@ -242,7 +242,7 @@ class GroupCallViewController: UIViewController {
 
     private var membersAtJoin: Set<SignalServiceAddress>?
 
-    private static let keyValueStore = KeyValueStore(collection: "GroupCallViewController")
+    private static let keyValueStore = SDSKeyValueStore(collection: "GroupCallViewController")
     private static let didUserSwipeToSpeakerViewKey = "didUserSwipeToSpeakerView"
     private static let didUserSwipeToScreenShareKey = "didUserSwipeToScreenShare"
 
@@ -328,6 +328,9 @@ class GroupCallViewController: UIViewController {
         for callLink: CallLink,
         callLinkStateRetrievalStrategy: CallService.CallLinkStateRetrievalStrategy = .fetch
     ) {
+        guard FeatureFlags.callLinkJoin else {
+            return
+        }
         self._presentLobby { viewController in
             do {
                 return try await self._prepareLobby(from: viewController, shouldAskForCameraPermission: true) {
@@ -535,12 +538,12 @@ class GroupCallViewController: UIViewController {
             self.didUserEverSwipeToSpeakerView = Self.keyValueStore.getBool(
                 Self.didUserSwipeToSpeakerViewKey,
                 defaultValue: false,
-                transaction: readTx.asV2Read
+                transaction: readTx
             )
             self.didUserEverSwipeToScreenShare = Self.keyValueStore.getBool(
                 Self.didUserSwipeToScreenShareKey,
                 defaultValue: false,
-                transaction: readTx.asV2Read
+                transaction: readTx
             )
 
             phoneNumberSharingMode = SSKEnvironment.shared.udManagerRef
@@ -975,13 +978,13 @@ class GroupCallViewController: UIViewController {
                 if !isAutoScrollingToScreenShare {
                     didUserEverSwipeToScreenShare = true
                     SSKEnvironment.shared.databaseStorageRef.asyncWrite { writeTx in
-                        Self.keyValueStore.setBool(true, key: Self.didUserSwipeToScreenShareKey, transaction: writeTx.asV2Write)
+                        Self.keyValueStore.setBool(true, key: Self.didUserSwipeToScreenShareKey, transaction: writeTx)
                     }
                 }
             } else {
                 didUserEverSwipeToSpeakerView = true
                 SSKEnvironment.shared.databaseStorageRef.asyncWrite { writeTx in
-                    Self.keyValueStore.setBool(true, key: Self.didUserSwipeToSpeakerViewKey, transaction: writeTx.asV2Write)
+                    Self.keyValueStore.setBool(true, key: Self.didUserSwipeToSpeakerViewKey, transaction: writeTx)
                 }
             }
 
@@ -1588,14 +1591,14 @@ extension GroupCallViewController: CallViewControllerWindowReference {
             let atLeastOneUnresolvedPresentAtJoin = unresolvedAddresses.contains { membersAtJoin?.contains($0) ?? false }
             switch groupCall.concreteType {
             case .groupThread(let call):
-                SSKEnvironment.shared.notificationPresenterRef.notifyForGroupCallSafetyNumberChange(
+                SSKEnvironment.shared.notificationPresenterImplRef.notifyForGroupCallSafetyNumberChange(
                     callTitle: call.groupThread.groupNameOrDefault,
                     threadUniqueId: call.groupThread.uniqueId,
                     roomId: nil,
                     presentAtJoin: atLeastOneUnresolvedPresentAtJoin
                 )
             case .callLink(let call):
-                SSKEnvironment.shared.notificationPresenterRef.notifyForGroupCallSafetyNumberChange(
+                SSKEnvironment.shared.notificationPresenterImplRef.notifyForGroupCallSafetyNumberChange(
                     callTitle: call.callLinkState.localizedName,
                     threadUniqueId: nil,
                     roomId: call.callLink.rootKey.deriveRoomId(),

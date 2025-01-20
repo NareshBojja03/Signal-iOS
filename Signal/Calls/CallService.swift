@@ -191,8 +191,6 @@ final class CallService: CallServiceStateObserver, CallServiceStateDelegate {
         self.callUIAdapter = CallUIAdapter()
     }
 
-    private let sleepBlockObject = DeviceSleepManager.BlockObject(blockReason: "call")
-
     func didUpdateCall(from oldValue: SignalCall?, to newValue: SignalCall?) {
         switch oldValue?.mode {
         case nil:
@@ -226,11 +224,11 @@ final class CallService: CallServiceStateObserver, CallServiceStateDelegate {
         updateIsVideoEnabled()
 
         // Prevent device from sleeping while we have an active call.
-        if oldValue != nil {
-            self.deviceSleepManager.removeBlock(blockObject: sleepBlockObject)
+        if let oldValue {
+            self.deviceSleepManager.removeBlock(blockObject: oldValue)
         }
-        if newValue != nil {
-            self.deviceSleepManager.addBlock(blockObject: sleepBlockObject)
+        if let newValue {
+            self.deviceSleepManager.addBlock(blockObject: newValue)
         }
 
         if !UIDevice.current.isIPad {
@@ -863,14 +861,14 @@ final class CallService: CallServiceStateObserver, CallServiceStateDelegate {
     // MARK: - Data Modes
 
     static let callServicePreferencesDidChange = Notification.Name("CallServicePreferencesDidChange")
-    private static let keyValueStore = KeyValueStore(collection: "CallService")
+    private static let keyValueStore = SDSKeyValueStore(collection: "CallService")
     // This used to be called "high bandwidth", but "data" is more accurate.
     private static let highDataPreferenceKey = "HighBandwidthPreferenceKey"
 
     static func setHighDataInterfaces(_ interfaceSet: NetworkInterfaceSet, writeTx: SDSAnyWriteTransaction) {
         Logger.info("Updating preferred low data interfaces: \(interfaceSet.rawValue)")
 
-        keyValueStore.setUInt(interfaceSet.rawValue, key: highDataPreferenceKey, transaction: writeTx.asV2Write)
+        keyValueStore.setUInt(interfaceSet.rawValue, key: highDataPreferenceKey, transaction: writeTx)
         writeTx.addSyncCompletion {
             NotificationCenter.default.postNotificationNameAsync(callServicePreferencesDidChange, object: nil)
         }
@@ -879,7 +877,7 @@ final class CallService: CallServiceStateObserver, CallServiceStateDelegate {
     static func highDataNetworkInterfaces(readTx: SDSAnyReadTransaction) -> NetworkInterfaceSet {
         guard let highDataPreference = keyValueStore.getUInt(
                 highDataPreferenceKey,
-                transaction: readTx.asV2Read) else { return .wifiAndCellular }
+                transaction: readTx) else { return .wifiAndCellular }
 
         return NetworkInterfaceSet(rawValue: highDataPreference)
     }

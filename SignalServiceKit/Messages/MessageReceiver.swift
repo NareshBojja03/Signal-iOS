@@ -646,17 +646,6 @@ public final class MessageReceiver {
                 deleteForMeProto: deleteForMe,
                 tx: tx.asV2Write
             )
-        } else if let deviceNameChange = syncMessage.deviceNameChange {
-            Task {
-                let deviceService = DependenciesBridge.shared.deviceService
-
-                /// Opportunistically try and refresh our device list. If this
-                /// fails that's ok – there are other places we'll do this
-                /// refresh as well.
-                try await Retry.performWithBackoff(maxAttempts: 4) {
-                    _ = try await deviceService.refreshDevices()
-                }
-            }
         } else {
             Logger.warn("Ignoring unsupported sync message.")
         }
@@ -722,6 +711,10 @@ public final class MessageReceiver {
         let callLinkStore = DependenciesBridge.shared.callLinkStore
         do {
             let rootKey = try CallLinkRootKey(callLinkUpdate.rootKey ?? Data())
+            guard FeatureFlags.callLinkSync else {
+                Logger.warn("Ignoring CallLinkUpdate")
+                return
+            }
             var (callLink, _) = try callLinkStore.fetchOrInsert(rootKey: rootKey, tx: tx.asV2Write)
             callLink.adminPasskey = callLink.adminPasskey ?? callLinkUpdate.adminPasskey
             callLink.setNeedsFetch()
@@ -966,11 +959,6 @@ public final class MessageReceiver {
             return nil
         }
 
-        guard dataMessage.body?.utf8.count ?? 0 <= kOversizeTextMessageSizeThreshold else {
-            Logger.error("Dropping message with too large body: \(dataMessage.body?.utf8.count ?? 0)")
-            return nil
-        }
-
         let body = dataMessage.body
         let bodyRanges = dataMessage.bodyRanges.isEmpty ? nil : MessageBodyRanges(protos: dataMessage.bodyRanges)
         let serverGuid = envelope.envelope.serverGuid.flatMap { UUID(uuidString: $0) }
@@ -1000,6 +988,7 @@ public final class MessageReceiver {
                 linkPreviewBuilder = try DependenciesBridge.shared.linkPreviewManager.validateAndBuildLinkPreview(
                     from: linkPreview,
                     dataMessage: dataMessage,
+                    ownerType: .message,
                     tx: tx.asV2Write
                 )
             } catch let error as LinkPreviewError {
@@ -1064,21 +1053,9 @@ public final class MessageReceiver {
             storyTimestamp = storyContext.sentTimestamp
             storyAuthorAci = Aci.parseFrom(aciString: storyContext.authorAci)
             Logger.info("Processing storyContext for message w/ts \(envelope.timestamp), storyTimestamp: \(String(describing: storyTimestamp)), authorAci: \(String(describing: storyAuthorAci))")
-            guard let storyAuthorAci else {
+            guard storyAuthorAci != nil else {
                 owsFailDebug("Discarding story reply with invalid ACI")
                 return nil
-            }
-
-            if thread.isGroupThread {
-                // Drop group story replies if we can't find the story message
-                guard StoryFinder.story(
-                    timestamp: storyContext.sentTimestamp,
-                    author: storyAuthorAci,
-                    transaction: tx
-                ) != nil else {
-                    Logger.warn("Couldn't find story message; discarding group story reply")
-                    return nil
-                }
             }
         }
 
@@ -1150,19 +1127,9 @@ public final class MessageReceiver {
         thread.anyReload(transaction: tx)
 
         do {
-            try DependenciesBridge.shared.attachmentManager.createAttachmentPointers(
-                from: dataMessage.attachments.map { proto in
-                    return .init(
-                        proto: proto,
-                        owner: .messageBodyAttachment(.init(
-                            messageRowId: message.sqliteRowId!,
-                            receivedAtTimestamp: message.receivedAtTimestamp,
-                            threadRowId: thread.sqliteRowId!,
-                            isViewOnce: message.isViewOnceMessage,
-                            isPastEditRevision: message.isPastEditRevision()
-                        ))
-                    )
-                },
+            try DependenciesBridge.shared.tsResourceManager.createBodyAttachmentPointers(
+                from: dataMessage.attachments,
+                message: message,
                 tx: tx.asV2Write
             )
 
@@ -1170,8 +1137,7 @@ public final class MessageReceiver {
                 owner: .quotedReplyAttachment(.init(
                     messageRowId: message.sqliteRowId!,
                     receivedAtTimestamp: message.receivedAtTimestamp,
-                    threadRowId: thread.sqliteRowId!,
-                    isPastEditRevision: message.isPastEditRevision()
+                    threadRowId: thread.sqliteRowId!
                 )),
                 tx: tx.asV2Write
             )
@@ -1179,8 +1145,7 @@ public final class MessageReceiver {
                 owner: .messageLinkPreview(.init(
                     messageRowId: message.sqliteRowId!,
                     receivedAtTimestamp: message.receivedAtTimestamp,
-                    threadRowId: thread.sqliteRowId!,
-                    isPastEditRevision: message.isPastEditRevision()
+                    threadRowId: thread.sqliteRowId!
                 )),
                 tx: tx.asV2Write
             )
@@ -1190,7 +1155,6 @@ public final class MessageReceiver {
                         messageRowId: message.sqliteRowId!,
                         receivedAtTimestamp: message.receivedAtTimestamp,
                         threadRowId: thread.sqliteRowId!,
-                        isPastEditRevision: message.isPastEditRevision(),
                         stickerPackId: $0.info.packId,
                         stickerId: $0.info.stickerId
                     )),
@@ -1201,8 +1165,7 @@ public final class MessageReceiver {
                 owner: .messageContactAvatar(.init(
                     messageRowId: message.sqliteRowId!,
                     receivedAtTimestamp: message.receivedAtTimestamp,
-                    threadRowId: thread.sqliteRowId!,
-                    isPastEditRevision: message.isPastEditRevision()
+                    threadRowId: thread.sqliteRowId!
                 )),
                 tx: tx.asV2Write
             )
@@ -1238,7 +1201,7 @@ public final class MessageReceiver {
             )
         }
 
-        DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForMessage(message, tx: tx.asV2Write)
+        DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForMessage(message, tx: tx.asV2Write)
         SSKEnvironment.shared.notificationPresenterRef.notifyUser(forIncomingMessage: message, thread: thread, transaction: tx)
 
         if CurrentAppContext().isMainApp {
@@ -1763,7 +1726,7 @@ public final class MessageReceiver {
         )
 
         // Start downloading any new attachments
-        DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForMessage(
+        DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForMessage(
             message,
             tx: tx.asV2Write
         )
@@ -2077,9 +2040,6 @@ extension SSKProtoSyncMessage {
         }
         if deleteForMe != nil {
             parts.append("deleteForMe")
-        }
-        if deviceNameChange != nil {
-            parts.append("deviceNameChange")
         }
         if hasUnknownFields {
             parts.append("unknown fields")

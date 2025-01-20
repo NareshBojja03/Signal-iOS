@@ -11,7 +11,7 @@ public class ReactionManager: NSObject {
     public static let localUserReacted = Notification.Name("localUserReacted")
     public static let defaultEmojiSet = ["❤️", "👍", "👎", "😂", "😮", "😢"]
 
-    private static let emojiSetKVS = KeyValueStore(collection: "EmojiSetKVS")
+    private static let emojiSetKVS = SDSKeyValueStore(collection: "EmojiSetKVS")
     private static let emojiSetKey = "EmojiSetKey"
 
     /// Returns custom emoji set by the user, or `nil` if the user has never customized their emoji
@@ -19,11 +19,11 @@ public class ReactionManager: NSObject {
     ///
     /// This is important because we shouldn't ever send the default set of reactions over storage service.
     public class func customEmojiSet(transaction: SDSAnyReadTransaction) -> [String]? {
-        return emojiSetKVS.getStringArray(emojiSetKey, transaction: transaction.asV2Read)
+        return emojiSetKVS.getObject(forKey: emojiSetKey, transaction: transaction) as? [String]
     }
 
     public class func setCustomEmojiSet(_ emojis: [String]?, transaction: SDSAnyWriteTransaction) {
-        emojiSetKVS.setObject(emojis, key: emojiSetKey, transaction: transaction.asV2Write)
+        emojiSetKVS.setObject(emojis, key: emojiSetKey, transaction: transaction)
     }
 
     @discardableResult

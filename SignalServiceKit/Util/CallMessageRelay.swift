@@ -29,7 +29,7 @@ public class CallMessagePushPayload: CustomStringConvertible {
 }
 
 public class CallMessageRelay {
-    private static let pendingCallMessageStore = KeyValueStore(collection: "PendingCallMessageStore")
+    private static let pendingCallMessageStore = SDSKeyValueStore(collection: "PendingCallMessageStore")
 
     public static func handleVoipPayload(_ payload: CallMessagePushPayload) {
         Logger.info("Handling incoming VoIP payload: \(payload)")
@@ -37,11 +37,11 @@ public class CallMessageRelay {
         // Process all the pending call messages from the NSE in 1 batch.
         // This should almost always be a batch of one.
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
-            defer { pendingCallMessageStore.removeAll(transaction: transaction.asV2Write) }
+            defer { pendingCallMessageStore.removeAll(transaction: transaction) }
             let pendingPayloads: [Payload]
 
             do {
-                pendingPayloads = try pendingCallMessageStore.allCodableValues(transaction: transaction.asV2Read).sorted {
+                pendingPayloads = try pendingCallMessageStore.allCodableValues(transaction: transaction).sorted {
                     $0.envelope.timestamp < $1.envelope.timestamp
                 }
             } catch {
@@ -93,7 +93,7 @@ public class CallMessageRelay {
             enqueueTimestamp: Date()
         )
 
-        try pendingCallMessageStore.setCodable(payload, key: "\(envelope.timestamp)", transaction: transaction.asV2Write)
+        try pendingCallMessageStore.setCodable(payload, key: "\(envelope.timestamp)", transaction: transaction)
         return CallMessagePushPayload()
     }
 

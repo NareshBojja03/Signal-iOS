@@ -35,6 +35,7 @@ final class ThreadMergerTest: XCTestCase {
     private var phoneNumberThread: TSContactThread!
 
     override func setUp() {
+        let keyValueStoreFactory = InMemoryKeyValueStoreFactory()
 
         _signalServiceAddressCache = SignalServiceAddressCache()
 
@@ -47,20 +48,22 @@ final class ThreadMergerTest: XCTestCase {
         interactionStore = MockInteractionStore()
         threadAssociatedDataStore = MockThreadAssociatedDataStore()
         threadAssociatedDataManager = ThreadMerger_MockThreadAssociatedDataManager(threadAssociatedDataStore)
-        threadReplyInfoStore = ThreadReplyInfoStore()
+        threadReplyInfoStore = ThreadReplyInfoStore(keyValueStoreFactory: keyValueStoreFactory)
         threadStore = MockThreadStore()
         wallpaperStore = WallpaperStore(
+            keyValueStoreFactory: keyValueStoreFactory,
             notificationScheduler: SyncScheduler(),
             wallpaperImageStore: MockWallpaperImageStore()
         )
         chatColorSettingStore = ChatColorSettingStore(
+            keyValueStoreFactory: keyValueStoreFactory,
             wallpaperStore: wallpaperStore
         )
         threadRemover = ThreadRemoverImpl(
             chatColorSettingStore: chatColorSettingStore,
             databaseStorage: ThreadRemover_MockDatabaseStorage(),
             disappearingMessagesConfigurationStore: disappearingMessagesConfigurationStore,
-            lastVisibleInteractionStore: LastVisibleInteractionStore(),
+            sdsThreadRemover: ThreadRemover_MockSDSThreadRemover(),
             threadAssociatedDataStore: threadAssociatedDataStore,
             threadReadCache: ThreadRemover_MockThreadReadCache(),
             threadReplyInfoStore: threadReplyInfoStore,

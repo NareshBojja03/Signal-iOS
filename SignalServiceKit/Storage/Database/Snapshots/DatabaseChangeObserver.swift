@@ -71,6 +71,7 @@ public class DatabaseChangeObserverImpl: SDSDatabaseChangeObserver {
     public static let kMaxIncrementalRowChanges = 200
 
     private lazy var nonModelTables: Set<String> = Set([
+        MediaGalleryRecord.databaseTableName,
         PendingReadReceiptRecord.databaseTableName
     ])
 

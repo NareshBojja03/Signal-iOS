@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Memperkenalkan Pautan Panggilan: Penghubung yang diperlukan untuk jemputan kalendar dan perjumpaan spontan.
+• Kini anda boleh membuat pautan mudah dengan cepat yang boleh digunakan oleh sesiapa sahaja di Signal untuk menyertai panggilan kumpulan tanpa perlu menyertai sembang kumpulan Signal terlebih dahulu.
+• Pautan panggilan boleh diguna semula dan sesuai untuk janji temu telefon berulang dengan rakan baik atau mesyuarat mingguan dengan rakan sekerja.
+• Anda boleh mengurus pautan panggilan anda, mengawal tetapan kelulusan dan menyalin pautan daripada tab panggilan untuk perkongsian pantas.

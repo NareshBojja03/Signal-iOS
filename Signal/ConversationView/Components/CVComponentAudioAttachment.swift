@@ -12,8 +12,8 @@ public class CVComponentAudioAttachment: CVComponentBase, CVComponent {
 
     private let audioAttachment: AudioAttachment
     private let nextAudioAttachment: AudioAttachment?
-    private var attachment: Attachment { audioAttachment.attachment }
-    private var attachmentStream: AttachmentStream? { audioAttachment.attachmentStream?.attachmentStream }
+    private var attachment: TSResource { audioAttachment.attachment }
+    private var attachmentStream: TSResourceStream? { audioAttachment.attachmentStream?.attachmentStream }
     private let footerOverlay: CVComponent?
 
     init(itemModel: CVItemModel, audioAttachment: AudioAttachment, nextAudioAttachment: AudioAttachment?, footerOverlay: CVComponent?) {
@@ -145,7 +145,7 @@ public class CVComponentAudioAttachment: CVComponentBase, CVComponent {
         }
 
         if messageWasDeleted,
-           AppEnvironment.shared.cvAudioPlayerRef.audioPlaybackState(forAttachmentId: attachment.id) == .playing {
+           AppEnvironment.shared.cvAudioPlayerRef.audioPlaybackState(forAttachmentId: attachment.resourceId) == .playing {
             AppEnvironment.shared.cvAudioPlayerRef.stopAll()
         }
     }
@@ -173,10 +173,10 @@ public class CVComponentAudioAttachment: CVComponentBase, CVComponent {
             AppEnvironment.shared.cvAudioPlayerRef.togglePlayState(forAudioAttachment: audioAttachment)
             return true
 
-        } else if audioAttachment.isDownloading, let pointerId = audioAttachment.attachmentPointer?.attachment.id {
+        } else if audioAttachment.isDownloading, let pointerId = audioAttachment.attachmentPointer?.attachment.resourceId {
             Logger.debug("Cancelling in-progress download because of user action: \(interaction.uniqueId):\(pointerId)")
             SSKEnvironment.shared.databaseStorageRef.write { tx in
-                DependenciesBridge.shared.attachmentDownloadManager.cancelDownload(
+                DependenciesBridge.shared.tsResourceDownloadManager.cancelDownload(
                     for: pointerId,
                     tx: tx.asV2Write
                 )
@@ -310,14 +310,14 @@ public class CVComponentAudioAttachment: CVComponentBase, CVComponent {
 // MARK: - CVAudioPlayerListener
 
 extension CVComponentAudioAttachment: CVAudioPlayerListener {
-    func audioPlayerStateDidChange(attachmentId: Attachment.IDType) {}
+    func audioPlayerStateDidChange(attachmentId: TSResourceId) {}
 
-    func audioPlayerDidFinish(attachmentId: Attachment.IDType) {
-        guard attachmentId == audioAttachment.attachment.id else { return }
+    func audioPlayerDidFinish(attachmentId: TSResourceId) {
+        guard attachmentId == audioAttachment.attachment.resourceId else { return }
         AppEnvironment.shared.cvAudioPlayerRef.autoplayNextAudioAttachmentIfNeeded(nextAudioAttachment)
     }
 
-    func audioPlayerDidMarkViewed(attachmentId: Attachment.IDType) {}
+    func audioPlayerDidMarkViewed(attachmentId: TSResourceId) {}
 }
 
 // MARK: - DatabaseChangeDelegate

@@ -91,11 +91,11 @@ final class CallRecordStoreTest: XCTestCase {
 
     // MARK: - Insert and fetch
 
-    func testInsertAndFetch() throws {
+    func testInsertAndFetch() {
         let callRecord = makeCallRecord()
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: callRecord, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: callRecord, tx: tx)
         }
 
         let fetchedByCallId = inMemoryDB.read { tx in
@@ -140,13 +140,13 @@ final class CallRecordStoreTest: XCTestCase {
 
     // MARK: - Delete
 
-    func testDelete() throws {
+    func testDelete() {
         let callRecord1 = makeCallRecord()
         let callRecord2 = makeCallRecord()
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: callRecord1, tx: tx)
-            try callRecordStore._insert(callRecord: callRecord2, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: callRecord1, tx: tx)
+            callRecordStore._insert(callRecord: callRecord2, tx: tx)
         }
 
         inMemoryDB.write { tx in
@@ -177,11 +177,11 @@ final class CallRecordStoreTest: XCTestCase {
 
     // MARK: - updateCallStatus
 
-    func testUpdateRecordStatus() throws {
+    func testUpdateRecordStatus() {
         let callRecord = makeCallRecord(callStatus: .group(.generic))
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: callRecord, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: callRecord, tx: tx)
         }
 
         inMemoryDB.write { tx in
@@ -204,7 +204,7 @@ final class CallRecordStoreTest: XCTestCase {
         XCTAssertTrue(callRecord.matches(fetched))
     }
 
-    func testUpdateRecordStatusAndUnread() throws {
+    func testUpdateRecordStatusAndUnread() {
         /// Some of these are not updates that can happen in production; for
         /// example, a missed individual call cannot move into a pending state.
         ///
@@ -241,8 +241,8 @@ final class CallRecordStoreTest: XCTestCase {
             let callRecord = makeCallRecord(callStatus: beforeCallStatus)
             XCTAssertEqual(callRecord.unreadStatus, beforeUnreadStatus)
 
-            try inMemoryDB.write { tx in
-                try callRecordStore._insert(callRecord: callRecord, tx: tx)
+            inMemoryDB.write { tx in
+                callRecordStore._insert(callRecord: callRecord, tx: tx)
 
                 callRecordStore._updateCallAndUnreadStatus(
                     callRecord: callRecord,
@@ -264,13 +264,13 @@ final class CallRecordStoreTest: XCTestCase {
 
     // MARK: - markAsRead
 
-    func testMarkAsRead() throws {
+    func testMarkAsRead() {
         let unreadCallRecord = makeCallRecord(callStatus: .group(.ringingMissed))
         XCTAssertEqual(unreadCallRecord.unreadStatus, .unread)
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: unreadCallRecord, tx: tx)
-            try callRecordStore.markAsRead(callRecord: unreadCallRecord, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: unreadCallRecord, tx: tx)
+            callRecordStore.markAsRead(callRecord: unreadCallRecord, tx: tx)
             XCTAssertEqual(unreadCallRecord.unreadStatus, .read)
         }
 
@@ -287,12 +287,12 @@ final class CallRecordStoreTest: XCTestCase {
 
     // MARK: - updateWithMergedThread
 
-    func testUpdateWithMergedThread() throws {
+    func testUpdateWithMergedThread() {
         let callRecord = makeCallRecord()
         let (newThreadRowId, _) = insertThreadAndInteraction()
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: callRecord, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: callRecord, tx: tx)
         }
 
         inMemoryDB.write { tx in
@@ -322,8 +322,8 @@ final class CallRecordStoreTest: XCTestCase {
     func testDeletingInteractionDeletesCallRecord() throws {
         let callRecord = makeCallRecord()
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: callRecord, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: callRecord, tx: tx)
         }
 
         try inMemoryDB.write { tx in
@@ -351,8 +351,8 @@ final class CallRecordStoreTest: XCTestCase {
     func testDeletingThreadFailsIfCallRecordExtant() throws {
         let callRecord = makeCallRecord()
 
-        try inMemoryDB.write { tx in
-            try callRecordStore._insert(callRecord: callRecord, tx: tx)
+        inMemoryDB.write { tx in
+            callRecordStore._insert(callRecord: callRecord, tx: tx)
         }
 
         try inMemoryDB.write { tx in

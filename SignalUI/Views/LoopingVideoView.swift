@@ -19,11 +19,19 @@ public class LoopingVideo: NSObject {
         self.init(decryptedLocalFileUrl: url)
     }
 
-    public convenience init?(_ attachment: AttachmentStream) {
-        guard let asset = try? attachment.decryptedAVAsset() else {
-            return nil
+    public convenience init?(_ attachment: TSResourceStream) {
+        switch attachment.concreteStreamType {
+        case .legacy(let tsAttachmentStream):
+            guard let url = tsAttachmentStream.originalMediaURL else {
+                return nil
+            }
+            self.init(decryptedLocalFileUrl: url)
+        case .v2(let attachmentStream):
+            guard let asset = try? attachmentStream.decryptedAVAsset() else {
+                return nil
+            }
+            self.init(asset: asset)
         }
-        self.init(asset: asset)
     }
 
     public convenience init?(decryptedLocalFileUrl url: URL) {

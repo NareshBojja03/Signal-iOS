@@ -20,11 +20,13 @@ public class SignalProtocolStoreImpl: SignalProtocolStore {
 
     public init(
         for identity: OWSIdentity,
+        keyValueStoreFactory: KeyValueStoreFactory,
         recipientIdFinder: RecipientIdFinder,
         remoteConfigProvider: any RemoteConfigProvider
     ) {
         sessionStore = SSKSessionStore(
             for: identity,
+            keyValueStoreFactory: keyValueStoreFactory,
             recipientIdFinder: recipientIdFinder
         )
         preKeyStore = SSKPreKeyStore(for: identity)
@@ -32,6 +34,7 @@ public class SignalProtocolStoreImpl: SignalProtocolStore {
         kyberPreKeyStore = SSKKyberPreKeyStore(
             for: identity,
             dateProvider: Date.provider,
+            keyValueStoreFactory: keyValueStoreFactory,
             remoteConfigProvider: remoteConfigProvider
         )
     }

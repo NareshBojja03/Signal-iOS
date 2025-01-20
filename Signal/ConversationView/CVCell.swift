@@ -149,7 +149,7 @@ public class CVCell: UICollectionViewCell, CVItemCell, CVRootComponentHost {
     private func applyLastLayoutAttributes() {
 
         guard let layoutAttributes = self.lastLayoutAttributes else {
-            Logger.verbose("Missing layoutAttributes.")
+            Logger.warn("Missing layoutAttributes.")
             return
         }
 
@@ -422,7 +422,7 @@ public extension CVRootComponentHost {
                                                   messageSwipeActionState: messageSwipeActionState)
     }
 
-    func albumItemView(forAttachment attachment: ReferencedAttachment) -> UIView? {
+    func albumItemView(forAttachment attachment: ReferencedTSResource) -> UIView? {
         guard let renderItem = renderItem else {
             owsFailDebug("Missing renderItem.")
             return nil

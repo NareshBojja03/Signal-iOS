@@ -6,13 +6,18 @@
 import Foundation
 public import libPhoneNumber_iOS
 
+private let rpDefaultsKeyPhoneNumberString = "RPDefaultsKeyPhoneNumberString"
+private let rpDefaultsKeyPhoneNumberCanonical = "RPDefaultsKeyPhoneNumberCanonical"
+
 /// PhoneNumber is used to deal with the nitty details of parsing/canonicalizing phone numbers.
-public struct PhoneNumber {
+@objc(PhoneNumber)
+public class PhoneNumber: NSObject, NSCoding, Comparable {
 
     public static let countryCodePrefix = "+"
 
     public let nbPhoneNumber: NBPhoneNumber
     public let e164: String
+    public override var description: String { e164 }
 
     init(nbPhoneNumber: NBPhoneNumber, e164: String) {
         owsAssertDebug(!e164.isEmpty)
@@ -21,27 +26,59 @@ public struct PhoneNumber {
         self.e164 = e164
     }
 
-    public func getCallingCode() -> Int? {
-        // Note that NBPhoneNumber uses "countryCode" to refer to what we call a
-        // "callingCode" (e.g., the "44" in "+44123123"). Elsewhere, we use use
-        // "country code" (and sometimes "region code") to refer to a country's
-        // 2-letter code (e.g., "US").
-        return nbPhoneNumber.countryCode?.intValue
+    public required init?(coder: NSCoder) {
+        guard
+            let nbPhoneNumber = coder.decodeObject(of: NBPhoneNumber.self, forKey: rpDefaultsKeyPhoneNumberString),
+            let e164 = coder.decodeObject(of: NSString.self, forKey: rpDefaultsKeyPhoneNumberCanonical)
+        else {
+            return nil
+        }
+        self.nbPhoneNumber = nbPhoneNumber
+        self.e164 = e164 as String
+    }
+
+    public func encode(with coder: NSCoder) {
+        coder.encode(nbPhoneNumber, forKey: rpDefaultsKeyPhoneNumberString)
+        coder.encode(e164, forKey: rpDefaultsKeyPhoneNumberCanonical)
+    }
+
+    public func getCallingCode() -> NSNumber? {
+        nbPhoneNumber.countryCode
+    }
+
+    public func isValid() -> Bool {
+        SSKEnvironment.shared.phoneNumberUtilRef.isValidNumber(nbPhoneNumber)
+    }
+
+    public func compare(_ other: PhoneNumber) -> ComparisonResult {
+        e164.compare(other.e164)
+    }
+
+    public override func isEqual(_ object: Any?) -> Bool {
+        guard let otherPhoneNumber = object as? PhoneNumber else {
+            return false
+        }
+        return e164 == otherPhoneNumber.e164
+    }
+
+    public override var hash: Int { e164.hash }
+
+    public static func < (_ lhs: PhoneNumber, _ rhs: PhoneNumber) -> Bool {
+        lhs.compare(rhs) == .orderedAscending
     }
 
     public static func bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(_ input: String) -> String {
         bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(input, regionCode: PhoneNumberUtil.defaultCountryCode())
     }
 
-    public static func bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(_ input: String, plusPrefixedCallingCode: String) -> String {
-        bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(input, regionCode: regionCode(from: plusPrefixedCallingCode))
+    public static func bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(_ input: String, countryCodeString: String) -> String {
+        bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(input, regionCode: regionCode(from: countryCodeString))
     }
 
     private static func bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(_ input: String, regionCode: String) -> String {
-        let formatter: NBAsYouTypeFormatter = NBAsYouTypeFormatter(
-            regionCode: regionCode,
-            metadataHelper: SSKEnvironment.shared.phoneNumberUtilRef.nbMetadataHelper
-        )
+        guard let formatter = NBAsYouTypeFormatter(regionCode: regionCode) else {
+            owsFail("failed to create NBAsYouTypeFormatter for region code \(regionCode)")
+        }
         var result = input
         // Note that the objc code this was converted from would've performed this in UTF-16 code units.
         // We assume NBAsYouTypeFormatter can handle Character types given the API takes String.
@@ -60,17 +97,17 @@ public struct PhoneNumber {
             Logger.warn("could not parse phone number")
             return e164
         }
-        guard parsedPhoneNumber.getCallingCode() != nil else {
+        guard let callingCode = parsedPhoneNumber.getCallingCode() else {
             Logger.warn("parsed phone number has no calling code")
             return e164
         }
-        return bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(e164)
+        return bestEffortFormatPartialUserSpecifiedTextToLookLikeAPhoneNumber(e164, regionCode: String(callingCode.intValue))
     }
 
-    private static func regionCode(from plusPrefixedCallingCode: String) -> String {
+    private static func regionCode(from countryCodeString: String) -> String {
         // Int(String) could be used here except it doesn't skip whitespace and so would be a change
         // from the objc NSString.integerValue behavior...
-        let callingCode = (plusPrefixedCallingCode.dropFirst() as NSString).integerValue
-        return SSKEnvironment.shared.phoneNumberUtilRef.getRegionCodeForCallingCode(callingCode)
+        let countryCallingCode = (countryCodeString.dropFirst() as NSString).integerValue
+        return SSKEnvironment.shared.phoneNumberUtilRef.getRegionCodeForCountryCode(NSNumber(value: countryCallingCode))
     }
 }

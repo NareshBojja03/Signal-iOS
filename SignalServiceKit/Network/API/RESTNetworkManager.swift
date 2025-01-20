@@ -38,9 +38,11 @@ class RESTNetworkManager {
         failure failureParam: @escaping Failure
     ) {
         let isUdRequest = request.isUDRequest
+        let label = isUdRequest ? "UD request" : "Non-UD request"
         if (isUdRequest) {
             owsPrecondition(!request.shouldHaveAuthorizationHeaders)
         }
+        Logger.info("Making \(label): \(request)")
 
         let sessionManagerPool = isUdRequest ? self.udSessionManagerPool : self.nonUdSessionManagerPool
         let sessionManager = sessionManagerPool.get()
@@ -56,6 +58,7 @@ class RESTNetworkManager {
                 sessionManagerPool.returnToPool(sessionManager)
             }
             completionQueue.async {
+                Logger.info("\(label) succeeded (\(response.responseStatusCode)) : \(request)")
                 successParam(response)
                 OutageDetection.shared.reportConnectionSuccess()
             }
@@ -96,7 +99,7 @@ class RESTNetworkManager {
 private class RESTSessionManager {
 
     private let urlSession: OWSURLSessionProtocol
-    let createdDate = MonotonicDate()
+    public let createdDate = Date()
 
     init() {
         assertOnQueue(networkManagerQueue)
@@ -111,6 +114,12 @@ private class RESTSessionManager {
         // We should only use the RESTSessionManager for requests to the Signal main service.
         let urlSession = self.urlSession
         owsAssertDebug(urlSession.unfrontedBaseUrl == URL(string: TSConstants.mainServiceIdentifiedURL))
+
+        guard let requestUrl = request.url else {
+            owsFailDebug("Missing requestUrl.")
+            failure(.missingRequest)
+            return
+        }
 
         firstly {
             urlSession.promiseForTSRequest(request)
@@ -134,7 +143,7 @@ private class RESTSessionManager {
             } else {
                 owsFailDebug("Unexpected error: \(error)")
 
-                failure(.invalidRequest)
+                failure(.invalidRequest(requestUrl: requestUrl))
             }
         }
     }
@@ -180,13 +189,13 @@ private class RESTSessionManager {
 // Concurrent requests can interfere with each other. Therefore we use a pool
 // do not re-use a session manager until its request succeeds or fails.
 private class OWSSessionManagerPool {
-    private let maxSessionManagerAge = 5 * 60 * NSEC_PER_SEC
+    private let maxSessionManagerAge = 5 * kMinuteInterval
 
     // must only be accessed from the networkManagerQueue for thread-safety
     private var pool: [RESTSessionManager] = []
 
     // accessed from both networkManagerQueue and the main thread so needs a lock
-    @Atomic private var lastDiscardDate: MonotonicDate?
+    @Atomic private var lastDiscardDate: Date?
 
     init() {
         NotificationCenter.default.addObserver(
@@ -204,13 +213,13 @@ private class OWSSessionManagerPool {
     @objc
     private func isCensorshipCircumventionActiveDidChange() {
         AssertIsOnMainThread()
-        lastDiscardDate = MonotonicDate()
+        lastDiscardDate = Date()
     }
 
     @objc
     private func isSignalProxyReadyDidChange() {
         AssertIsOnMainThread()
-        lastDiscardDate = MonotonicDate()
+        lastDiscardDate = Date()
     }
 
     func get() -> RESTSessionManager {
@@ -241,9 +250,9 @@ private class OWSSessionManagerPool {
     }
 
     private func shouldDiscardSessionManager(_ sessionManager: RESTSessionManager) -> Bool {
-        if let lastDiscardDate, sessionManager.createdDate < lastDiscardDate {
+        if lastDiscardDate?.isAfter(sessionManager.createdDate) ?? false {
             return true
         }
-        return (MonotonicDate() - sessionManager.createdDate) > maxSessionManagerAge
+        return fabs(sessionManager.createdDate.timeIntervalSinceNow) > maxSessionManagerAge
     }
 }

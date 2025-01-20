@@ -10,8 +10,6 @@ import SignalUI
 
 class DebugUITableViewController: OWSTableViewController {
 
-    private let sleepBlockObject = DeviceSleepManager.BlockObject(blockReason: "debug ui")
-
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
@@ -19,17 +17,13 @@ class DebugUITableViewController: OWSTableViewController {
         //
         // This is useful if you're using long-running actions in the
         // Debug UI, like "send 1k messages", etc.
-        DeviceSleepManager.shared.addBlock(blockObject: sleepBlockObject)
+        DeviceSleepManager.shared.addBlock(blockObject: self)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
-        DeviceSleepManager.shared.removeBlock(blockObject: sleepBlockObject)
-    }
-
-    deinit {
-        DeviceSleepManager.shared.removeBlock(blockObject: sleepBlockObject)
+        DeviceSleepManager.shared.removeBlock(blockObject: self)
     }
 
     // MARK: Public
@@ -68,6 +62,7 @@ class DebugUITableViewController: OWSTableViewController {
             subsectionItems.append(itemForSubsection(DebugUICalling(), viewController: viewController, thread: thread))
         }
         subsectionItems += [
+            itemForSubsection(DebugUINotifications(databaseStorage: SSKEnvironment.shared.databaseStorageRef, notificationPresenterImpl: SSKEnvironment.shared.notificationPresenterImplRef), viewController: viewController, thread: thread),
             itemForSubsection(DebugUIStress(contactsManager: SSKEnvironment.shared.contactManagerRef, databaseStorage: SSKEnvironment.shared.databaseStorageRef, messageSender: SSKEnvironment.shared.messageSenderRef), viewController: viewController, thread: thread),
             itemForSubsection(DebugUISyncMessages(), viewController: viewController, thread: thread),
 

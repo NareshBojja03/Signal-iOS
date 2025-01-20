@@ -12,7 +12,6 @@ public import SignalUI
 
 public protocol RegistrationSplashPresenter: AnyObject {
     func continueFromSplash()
-    func restoreOrTransfer()
 
     func switchToDeviceLinkingMode()
     func transferDevice()
@@ -113,29 +112,24 @@ public class RegistrationSplashViewController: OWSViewController {
         let titleLabel = UILabel.titleLabelForRegistration(text: titleText)
         titleLabel.accessibilityIdentifier = "registration.splash.titleLabel"
         stackView.addArrangedSubview(titleLabel)
-        stackView.setCustomSpacing(12, after: titleLabel)
+        stackView.setCustomSpacing(92, after: titleLabel)
 
-        let explanationButton = UIButton()
-        explanationButton.setTitle(
-            OWSLocalizedString(
-                "ONBOARDING_SPLASH_TERM_AND_PRIVACY_POLICY",
-                comment: "Link to the 'terms and privacy policy' in the 'onboarding splash' view."
-            ),
-            for: .normal
+        // TODO: This should be a button, not a label.
+        let explanationLabel = UILabel()
+        explanationLabel.text = OWSLocalizedString(
+            "ONBOARDING_SPLASH_TERM_AND_PRIVACY_POLICY",
+            comment: "Link to the 'terms and privacy policy' in the 'onboarding splash' view."
         )
-        explanationButton.setTitleColor(Theme.secondaryTextAndIconColor, for: .normal)
-        explanationButton.titleLabel?.font = UIFont.dynamicTypeBody2
-        explanationButton.titleLabel?.numberOfLines = 0
-        explanationButton.titleLabel?.textAlignment = .center
-        explanationButton.titleLabel?.lineBreakMode = .byWordWrapping
-        explanationButton.addTarget(
-            self,
-            action: #selector(explanationButtonTapped),
-            for: .touchUpInside
-        )
-        explanationButton.accessibilityIdentifier = "registration.splash.explanationLabel"
-        stackView.addArrangedSubview(explanationButton)
-        stackView.setCustomSpacing(57, after: explanationButton)
+        explanationLabel.textColor = Theme.accentBlueColor
+        explanationLabel.font = UIFont.dynamicTypeSubheadlineClamped
+        explanationLabel.numberOfLines = 0
+        explanationLabel.textAlignment = .center
+        explanationLabel.lineBreakMode = .byWordWrapping
+        explanationLabel.isUserInteractionEnabled = true
+        explanationLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(explanationLabelTapped)))
+        explanationLabel.accessibilityIdentifier = "registration.splash.explanationLabel"
+        stackView.addArrangedSubview(explanationLabel)
+        stackView.setCustomSpacing(24, after: explanationLabel)
 
         let continueButton = OWSFlatButton.primaryButtonForRegistration(
             title: CommonStrings.continueButton,
@@ -149,27 +143,6 @@ public class RegistrationSplashViewController: OWSViewController {
         NSLayoutConstraint.autoSetPriority(.defaultLow) {
             continueButton.autoPinEdge(toSuperviewEdge: .leading)
             continueButton.autoPinEdge(toSuperviewEdge: .trailing)
-        }
-
-        if FeatureFlags.messageBackupQuickRestoreFlow {
-            stackView.setCustomSpacing(16, after: continueButton)
-
-            let restoreOrTransferButton = OWSFlatButton.secondaryButtonForRegistration(
-                title: OWSLocalizedString(
-                    "ONBOARDING_SPLASH_RESTORE_OR_TRANSFER_BUTTON_TITLE",
-                    comment: "Button for restoring or transferring account in the 'onboarding splash' view."
-                ),
-                target: self,
-                selector: #selector(didTapRestoreOrTransfer)
-            )
-            restoreOrTransferButton.accessibilityIdentifier = "registration.splash.continueButton"
-            stackView.addArrangedSubview(restoreOrTransferButton)
-            restoreOrTransferButton.autoSetDimension(.width, toSize: 280)
-            restoreOrTransferButton.autoHCenterInSuperview()
-            NSLayoutConstraint.autoSetPriority(.defaultLow) {
-                restoreOrTransferButton.autoPinEdge(toSuperviewEdge: .leading)
-                restoreOrTransferButton.autoPinEdge(toSuperviewEdge: .trailing)
-            }
         }
     }
 
@@ -190,7 +163,8 @@ public class RegistrationSplashViewController: OWSViewController {
     }
 
     @objc
-    private func explanationButtonTapped(sender: UIGestureRecognizer) {
+    private func explanationLabelTapped(sender: UIGestureRecognizer) {
+        guard sender.state == .recognized else { return }
         let safariVC = SFSafariViewController(url: TSConstants.legalTermsUrl)
         present(safariVC, animated: true)
     }
@@ -199,11 +173,5 @@ public class RegistrationSplashViewController: OWSViewController {
     private func continuePressed() {
         Logger.info("")
         presenter?.continueFromSplash()
-    }
-
-    @objc
-    private func didTapRestoreOrTransfer() {
-        Logger.info("")
-        presenter?.restoreOrTransfer()
     }
 }

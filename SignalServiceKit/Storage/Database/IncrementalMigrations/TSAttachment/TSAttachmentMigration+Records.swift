@@ -193,7 +193,7 @@ extension TSAttachmentMigration {
             self.reservedV2AttachmentVideoStillFrameFileId = reservedV2AttachmentVideoStillFrameFileId
         }
 
-        func cleanUpFiles() {
+        func cleanUpFiles() throws {
             for uuid in [
                 self.reservedV2AttachmentPrimaryFileId,
                 self.reservedV2AttachmentAudioWaveformFileId,
@@ -203,11 +203,7 @@ extension TSAttachmentMigration {
                 let fileUrl = TSAttachmentMigration.V2Attachment.absoluteAttachmentFileURL(
                     relativeFilePath: relPath
                 )
-                do {
-                    try OWSFileSystem.deleteFileIfExists(url: fileUrl)
-                } catch {
-                    owsFail("Unable to clean up reserved files")
-                }
+                try OWSFileSystem.deleteFileIfExists(url: fileUrl)
             }
         }
     }

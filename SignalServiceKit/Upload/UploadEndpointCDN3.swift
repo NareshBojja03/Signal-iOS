@@ -42,11 +42,11 @@ struct UploadEndpointCDN3: UploadEndpoint {
         let response: HTTPResponse
         do {
             let url = attempt.uploadLocation.appendingPathComponent(uploadForm.cdnKey)
-            response = try await urlSession.performRequest(
+            response = try await urlSession.dataTaskPromise(
                 url.absoluteString,
                 method: .head,
                 headers: headers
-            )
+            ).awaitable()
         } catch {
             switch error.httpStatusCode ?? 0 {
             case 404, 410, 403:
@@ -78,7 +78,7 @@ struct UploadEndpointCDN3: UploadEndpoint {
     func performUpload<Metadata: UploadMetadata>(
         startPoint: Int,
         attempt: Upload.Attempt<Metadata>,
-        progress: OWSProgressSource?
+        progress progressBlock: @escaping UploadEndpointProgress
     ) async throws {
         let urlSession = signalService.urlSessionForCdn(cdnNumber: uploadForm.cdnNumber, maxResponseSize: nil)
         let totalDataLength = attempt.encryptedDataLength
@@ -134,13 +134,13 @@ struct UploadEndpointCDN3: UploadEndpoint {
         }
 
         do {
-            let response = try await urlSession.performUpload(
+            let response = try await urlSession.uploadTaskPromise(
                 uploadURL,
                 method: method,
                 headers: headers,
                 fileUrl: temporaryFileUrl,
-                progress: progress
-            )
+                progress: progressBlock
+            ).awaitable()
 
             switch response.responseStatusCode {
             case 200...204:

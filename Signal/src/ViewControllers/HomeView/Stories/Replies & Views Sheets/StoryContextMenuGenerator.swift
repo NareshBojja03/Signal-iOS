@@ -546,7 +546,7 @@ extension StoryThumbnailView.Attachment {
         case .text:
             return true
         case .file(let attachment):
-            guard let stream = attachment.attachment.asStream() else {
+            guard let stream = attachment.attachment.asResourceStream() else {
                 return false
             }
             return MimeTypeUtil.isSupportedVisualMediaMimeType(stream.mimeType)
@@ -561,15 +561,21 @@ extension StoryThumbnailView.Attachment {
         switch self {
         case .file(let fileAttachment):
             guard
-                let attachment = fileAttachment.attachment.asStream(),
+                let attachment = fileAttachment.attachment.asResourceStream(),
                 MimeTypeUtil.isSupportedVisualMediaMimeType(attachment.mimeType)
             else { break }
 
             var mediaURL: URL?
             let shouldDeleteFileAfterComplete: Bool
-            // Make a copy since we are about to send this off to the system anyway.
-            mediaURL = try? attachment.makeDecryptedCopy(filename: fileAttachment.reference.sourceFilename)
-            shouldDeleteFileAfterComplete = true
+            switch attachment.concreteStreamType {
+            case .legacy(let tsAttachmentStream):
+                mediaURL = tsAttachmentStream.originalMediaURL
+                shouldDeleteFileAfterComplete = false
+            case .v2(let attachmentStream):
+                // Make a copy since we are about to send this off to the system anyway.
+                mediaURL = try? attachmentStream.makeDecryptedCopy(filename: fileAttachment.reference.sourceFilename)
+                shouldDeleteFileAfterComplete = true
+            }
             guard let mediaURL else {
                 break
             }
@@ -739,7 +745,7 @@ extension StoryContextMenuGenerator {
                 }
                 switch attachment {
                 case .file(let attachment):
-                    guard let attachment = try? attachment.asReferencedStream?.asShareableAttachment() else {
+                    guard let attachment = try? attachment.asReferencedStream?.asShareableResource() else {
                         completion(false)
                         return owsFailDebug("Unexpectedly tried to share undownloaded attachment")
                     }

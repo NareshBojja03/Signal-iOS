@@ -79,9 +79,9 @@ public protocol EditManager {
         targetMessage: TSOutgoingMessage,
         thread: TSThread,
         edits: MessageEdits,
-        oversizeText: AttachmentDataSource?,
+        oversizeText: OversizeTextDataSource?,
         quotedReplyEdit: MessageEdits.Edit<Void>,
-        linkPreview: LinkPreviewDataSource?,
+        linkPreview: LinkPreviewTSResourceDataSource?,
         tx: DBWriteTransaction
     ) throws -> OutgoingEditMessage
 

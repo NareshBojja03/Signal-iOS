@@ -20,6 +20,7 @@ public class ProfileFetcherJob {
     private let authedAccount: AuthedAccount
 
     private let db: any DB
+    private let deleteForMeSyncMessageSettingsStore: any DeleteForMeSyncMessageSettingsStore
     private let disappearingMessagesConfigurationStore: any DisappearingMessagesConfigurationStore
     private let identityManager: any OWSIdentityManager
     private let paymentsHelper: any PaymentsHelper
@@ -27,8 +28,6 @@ public class ProfileFetcherJob {
     private let recipientDatabaseTable: any RecipientDatabaseTable
     private let recipientManager: any SignalRecipientManager
     private let recipientMerger: any RecipientMerger
-    private let storageServiceRecordIkmCapabilityStore: any StorageServiceRecordIkmCapabilityStore
-    private let storageServiceRecordIkmMigrator: any StorageServiceRecordIkmMigrator
     private let syncManager: any SyncManagerProtocol
     private let tsAccountManager: any TSAccountManager
     private let udManager: any OWSUDManager
@@ -38,6 +37,7 @@ public class ProfileFetcherJob {
         serviceId: ServiceId,
         authedAccount: AuthedAccount,
         db: any DB,
+        deleteForMeSyncMessageSettingsStore: any DeleteForMeSyncMessageSettingsStore,
         disappearingMessagesConfigurationStore: any DisappearingMessagesConfigurationStore,
         identityManager: any OWSIdentityManager,
         paymentsHelper: any PaymentsHelper,
@@ -45,8 +45,6 @@ public class ProfileFetcherJob {
         recipientDatabaseTable: any RecipientDatabaseTable,
         recipientManager: any SignalRecipientManager,
         recipientMerger: any RecipientMerger,
-        storageServiceRecordIkmCapabilityStore: any StorageServiceRecordIkmCapabilityStore,
-        storageServiceRecordIkmMigrator: any StorageServiceRecordIkmMigrator,
         syncManager: any SyncManagerProtocol,
         tsAccountManager: any TSAccountManager,
         udManager: any OWSUDManager,
@@ -55,6 +53,7 @@ public class ProfileFetcherJob {
         self.serviceId = serviceId
         self.authedAccount = authedAccount
         self.db = db
+        self.deleteForMeSyncMessageSettingsStore = deleteForMeSyncMessageSettingsStore
         self.disappearingMessagesConfigurationStore = disappearingMessagesConfigurationStore
         self.identityManager = identityManager
         self.paymentsHelper = paymentsHelper
@@ -62,8 +61,6 @@ public class ProfileFetcherJob {
         self.recipientDatabaseTable = recipientDatabaseTable
         self.recipientManager = recipientManager
         self.recipientMerger = recipientMerger
-        self.storageServiceRecordIkmCapabilityStore = storageServiceRecordIkmCapabilityStore
-        self.storageServiceRecordIkmMigrator = storageServiceRecordIkmMigrator
         self.syncManager = syncManager
         self.tsAccountManager = tsAccountManager
         self.udManager = udManager
@@ -148,41 +145,35 @@ public class ProfileFetcherJob {
             }
         }
 
+        var versionedProfileRequest: VersionedProfileRequest?
         let requestMaker = RequestMaker(
             label: "Profile Fetch",
+            requestFactoryBlock: { (udAccessKeyForRequest) -> TSRequest in
+                if let aci = serviceId as? Aci, let profileKey {
+                    let request = try versionedProfiles.versionedProfileRequest(
+                        for: aci,
+                        profileKey: profileKey,
+                        shouldRequestCredential: shouldRequestCredential,
+                        udAccessKey: udAccessKeyForRequest,
+                        auth: self.authedAccount.chatServiceAuth
+                    )
+                    versionedProfileRequest = request
+                    return request.request
+                } else {
+                    return OWSRequestFactory.getUnversionedProfileRequest(
+                        serviceId: serviceId,
+                        udAccessKey: udAccessKeyForRequest,
+                        auth: self.authedAccount.chatServiceAuth
+                    )
+                }
+            },
             serviceId: serviceId,
-            accessKey: udAccess,
+            udAccess: udAccess,
             authedAccount: self.authedAccount,
             options: [.allowIdentifiedFallback, .isProfileFetch]
         )
 
-        var versionedProfileRequest: VersionedProfileRequest?
-        let result = try await requestMaker.makeRequest { sealedSenderAuth in
-            if let aci = serviceId as? Aci, let profileKey {
-                let udAccessKey: SMKUDAccessKey?
-                switch sealedSenderAuth {
-                case .accessKey(let _udAccessKey):
-                    udAccessKey = _udAccessKey
-                case .none:
-                    udAccessKey = nil
-                }
-                let request = try versionedProfiles.versionedProfileRequest(
-                    for: aci,
-                    profileKey: profileKey,
-                    shouldRequestCredential: shouldRequestCredential,
-                    udAccessKey: udAccessKey,
-                    auth: self.authedAccount.chatServiceAuth
-                )
-                versionedProfileRequest = request
-                return request.request
-            } else {
-                return OWSRequestFactory.getUnversionedProfileRequest(
-                    serviceId: serviceId,
-                    sealedSenderAuth: sealedSenderAuth,
-                    auth: self.authedAccount.chatServiceAuth
-                )
-            }
-        }
+        let result = try await requestMaker.makeRequest().awaitable()
 
         let profile: SignalServiceProfile = try .fromResponse(
             serviceId: serviceId,
@@ -337,12 +328,12 @@ public class ProfileFetcherJob {
                 tx: SDSDB.shimOnlyBridge(transaction)
             )
 
-            self.updateCapabilitiesIfNeeded(
-                serviceId: serviceId,
-                fetchedCapabilities: fetchedProfile.profile.capabilities,
-                localIdentifiers: localIdentifiers,
-                tx: transaction
-            )
+//            self.updateCapabilitiesIfNeeded(
+//                serviceId: serviceId,
+//                fetchedCapabilities: fetchedProfile.profile.capabilities,
+//                localIdentifiers: localIdentifiers,
+//                tx: transaction
+//            )
 
             if localIdentifiers.contains(serviceId: serviceId) {
                 self.reconcileLocalProfileIfNeeded(fetchedProfile: fetchedProfile)
@@ -398,37 +389,31 @@ public class ProfileFetcherJob {
         localIdentifiers: LocalIdentifiers,
         tx: DBWriteTransaction
     ) {
-        let registrationState = tsAccountManager.registrationState(tx: tx)
-
         var shouldSendProfileSync = false
-
         if
             localIdentifiers.contains(serviceId: serviceId),
-            fetchedCapabilities.storageServiceRecordIkm
+            fetchedCapabilities.deleteSync,
+            !deleteForMeSyncMessageSettingsStore.isSendingEnabled(tx: tx)
         {
-            if !storageServiceRecordIkmCapabilityStore.isRecordIkmCapable(tx: tx) {
-                storageServiceRecordIkmCapabilityStore.setIsRecordIkmCapable(tx: tx)
+            deleteForMeSyncMessageSettingsStore.enableSending(tx: tx)
 
+            shouldSendProfileSync = true
+        }
+
+        if
+            fetchedCapabilities.versionedExpireTimer,
+            !disappearingMessagesConfigurationStore.isVersionedDMTimerCapable(serviceId: serviceId, tx: tx)
+        {
+            disappearingMessagesConfigurationStore.setIsVersionedTimerCapable(serviceId: serviceId, tx: tx)
+
+            if localIdentifiers.contains(serviceId: serviceId) {
                 shouldSendProfileSync = true
-            }
-
-            if registrationState.isRegisteredPrimaryDevice {
-                /// Only primary devices should perform the `recordIkm`
-                /// migration, since only primaries can create a Storage Service
-                /// manifest.
-                ///
-                /// We want to do this in a transaction completion block, since
-                /// it'll read from the database and we want to ensure this
-                /// write has completed.
-                tx.addAsyncCompletion(on: DispatchQueue.global()) { [storageServiceRecordIkmMigrator] in
-                    storageServiceRecordIkmMigrator.migrateToManifestRecordIkmIfNecessary()
-                }
             }
         }
 
         if
             shouldSendProfileSync,
-            registrationState.isRegistered
+            DependenciesBridge.shared.tsAccountManager.registrationState(tx: tx).isRegistered
         {
             /// If some capability is newly enabled, we want all devices to be aware.
             /// This would happen automatically the next time those devices

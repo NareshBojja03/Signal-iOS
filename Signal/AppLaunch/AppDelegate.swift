@@ -166,7 +166,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             return true
         }
 
-        debugLogger.enableFileLogging(appContext: mainAppContext, canLaunchInBackground: true)
+        debugLogger.setUpFileLoggingIfNeeded(appContext: mainAppContext, canLaunchInBackground: true)
+        debugLogger.wipeLogsIfDisabled(appContext: mainAppContext)
         DebugLogger.configureSwiftLogging()
         if DebugFlags.audibleErrorLogging {
             debugLogger.enableErrorReporting()
@@ -211,14 +212,16 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             )
         } catch KeychainError.notAllowed where application.applicationState == .background {
             notifyThatPhoneMustBeUnlocked()
-        } catch {
+        } catch let error as DatabaseError where error.resultCode == .SQLITE_CORRUPT {
             // It's so corrupt that we can't even try to repair it.
             didAppLaunchFail = true
-            Logger.error("Couldn't launch with broken database: \(error.grdbErrorForLogging)")
+            Logger.error("Couldn't launch with corrupt database")
             let viewController = terminalErrorViewController()
             _ = initializeWindow(mainAppContext: mainAppContext, rootViewController: viewController)
             presentDatabaseUnrecoverablyCorruptedError(from: viewController, action: .submitDebugLogsAndCrash)
             return true
+        } catch {
+            owsFail("Couldn't load database: \(error.grdbErrorForLogging)")
         }
 
         // This must happen in appDidFinishLaunching or earlier to ensure we don't
@@ -237,11 +240,22 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // Do this even if `appVersion` isn't used -- there's side effects.
         let appVersion = AppVersionImpl.shared
 
+        // Set up and register incremental migration for TSAttachment -> v2 Attachment.
+        // TODO: remove this (and the incremental migrator itself) once we make this
+        // migration a launch-blocking GRDB migration.
+        let incrementalMessageTSAttachmentMigrationStore = IncrementalTSAttachmentMigrationStore()
+        let incrementalMessageTSAttachmentMigrator = IncrementalMessageTSAttachmentMigratorImpl(
+            appReadiness: appReadiness,
+            databaseStorage: databaseStorage,
+            store: incrementalMessageTSAttachmentMigrationStore
+        )
+
         let launchContext = LaunchContext(
             appContext: mainAppContext,
             databaseStorage: databaseStorage,
             keychainStorage: keychainStorage,
-            launchStartedAt: launchStartedAt
+            launchStartedAt: launchStartedAt,
+            incrementalMessageTSAttachmentMigrator: incrementalMessageTSAttachmentMigrator
         )
 
         // We need to do this _after_ we set up logging, when the keychain is unlocked,
@@ -275,6 +289,11 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         // We _must_ register BGProcessingTask handlers synchronously in didFinishLaunching.
         // https://developer.apple.com/documentation/backgroundtasks/bgtaskscheduler/register(fortaskwithidentifier:using:launchhandler:)
         // WARNING: Apple docs say we can only have 10 BGProcessingTasks registered.
+        IncrementalMessageTSAttachmentMigrationRunner.registerBGProcessingTask(
+            store: incrementalMessageTSAttachmentMigrationStore,
+            migrator: Task { incrementalMessageTSAttachmentMigrator },
+            db: databaseStorage
+        )
         let attachmentBackfillStore = AttachmentValidationBackfillStore()
         AttachmentValidationBackfillRunner.registerBGProcessingTask(
             store: attachmentBackfillStore,
@@ -291,6 +310,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         )
 
         appReadiness.runNowOrWhenAppDidBecomeReadyAsync {
+            IncrementalMessageTSAttachmentMigrationRunner.scheduleBGProcessingTaskIfNeeded(
+                store: incrementalMessageTSAttachmentMigrationStore,
+                db: databaseStorage
+            )
             AttachmentValidationBackfillRunner.scheduleBGProcessingTaskIfNeeded(
                 store: attachmentBackfillStore,
                 db: databaseStorage
@@ -319,6 +342,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         var databaseStorage: SDSDatabaseStorage
         var keychainStorage: any KeychainStorage
         var launchStartedAt: CFTimeInterval
+        var incrementalMessageTSAttachmentMigrator: IncrementalMessageTSAttachmentMigrator
     }
 
     private func launchApp(
@@ -349,8 +373,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         screenLockUI.startObserving()
     }
 
-    private func setUpMainAppEnvironment(launchContext: LaunchContext) -> Guarantee<(AppSetup.FinalContinuation, DeviceSleepManager.BlockObject)> {
-        let sleepBlockObject = DeviceSleepManager.BlockObject(blockReason: "app launch")
+    private func setUpMainAppEnvironment(launchContext: LaunchContext) -> Guarantee<(AppSetup.FinalContinuation, NSObject)> {
+        let sleepBlockObject = NSObject()
         DeviceSleepManager.shared.addBlock(blockObject: sleepBlockObject)
 
         let _currentCall = AtomicValue<SignalCall?>(nil, lock: .init())
@@ -365,6 +389,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             callMessageHandler: WebRTCCallMessageHandler(),
             currentCallProvider: currentCall,
             notificationPresenter: NotificationPresenterImpl(),
+            incrementalTSAttachmentMigrator: launchContext.incrementalMessageTSAttachmentMigrator,
             messageBackupErrorPresenterFactory: MessageBackupErrorPresenterFactoryInternal()
         )
         setupNSEInteroperation()
@@ -433,7 +458,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
     private func didLoadDatabase(
         finalContinuation: AppSetup.FinalContinuation,
         launchContext: LaunchContext,
-        sleepBlockObject: DeviceSleepManager.BlockObject,
+        sleepBlockObject: NSObject,
         window: UIWindow
     ) {
         AssertIsOnMainThread()
@@ -510,7 +535,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         let appContext = launchContext.appContext
 
         if DebugFlags.internalLogging {
-            DispatchQueue.global().async { KeyValueStore.logCollectionStatistics() }
+            DispatchQueue.global().async { SDSKeyValueStore.logCollectionStatistics() }
         }
 
         SignalApp.shared.performInitialSetup(appReadiness: appReadiness)
@@ -529,7 +554,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             Task.detached(priority: .low) {
                 await FullTextSearchOptimizer(
                     appContext: appContext,
-                    db: DependenciesBridge.shared.db
+                    db: DependenciesBridge.shared.db,
+                    keyValueStoreFactory: DependenciesBridge.shared.keyValueStoreFactory
                 ).run()
             }
         }
@@ -676,6 +702,20 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             name: .registrationStateDidChange,
             object: nil
         )
+
+        if !SSKEnvironment.shared.preferencesRef.hasGeneratedThumbnails {
+            SSKEnvironment.shared.databaseStorageRef.asyncRead(
+                block: { transaction in
+                    // TODO: remove this one TSAttachment is killed.
+                    TSAttachment.anyEnumerate(transaction: transaction, batched: true) { (_, _) in
+                        // no-op. It's sufficient to initWithCoder: each object.
+                    }
+                },
+                completion: {
+                    SSKEnvironment.shared.preferencesRef.setHasGeneratedThumbnails(true)
+                }
+            )
+        }
 
         checkDatabaseIntegrityIfNecessary(isRegistered: tsRegistrationState.isRegistered)
 
@@ -943,7 +983,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         window: UIWindow
     ) {
         var launchContext = launchContext
-        let recoveryViewController = DatabaseRecoveryViewController<(AppSetup.FinalContinuation, DeviceSleepManager.BlockObject)>(
+        let recoveryViewController = DatabaseRecoveryViewController<(AppSetup.FinalContinuation, NSObject)>(
             appReadiness: appReadiness,
             corruptDatabaseStorage: launchContext.databaseStorage,
             keychainStorage: launchContext.keychainStorage,

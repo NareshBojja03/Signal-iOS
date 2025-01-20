@@ -49,14 +49,14 @@ public enum DeleteForMeSyncMessage {
         public struct AttachmentIdentifier {
             /// A unique identifier for this attachment among others in the same
             /// message. Preferred if available.
-            /// - SeeAlso ``AttachmentReference/knownIdInOwningMessage``
+            /// - SeeAlso ``TSResourceReference/knownIdInOwningMessage(_:)``
             let clientUuid: UUID?
             /// The SHA256 hash of the encrypted (IV | ciphertext | HMAC) blob
             /// for this attachment on the CDN.
-            /// - SeeAlso ``Attachment/StreamInfo/digestSHA256Ciphertext``
+            /// - SeeAlso ``TSResource/encryptedResourceSha256Digest``
             let encryptedDigest: Data?
             /// The SHA256 hash of the plaintext of the attachment.
-            /// - SeeAlso ``Attachment/StreamInfo/sha256ContentHash``
+            /// - SeeAlso ``TSResource/knownPlaintextResourceSha256Digest``
             let plaintextHash: Data?
         }
     }
@@ -122,28 +122,28 @@ public protocol DeleteForMeIncomingSyncMessageManager {
 
 final class DeleteForMeIncomingSyncMessageManagerImpl: DeleteForMeIncomingSyncMessageManager {
     private let addressableMessageFinder: any DeleteForMeAddressableMessageFinder
-    private let attachmentManager: any AttachmentManager
-    private let attachmentStore: any AttachmentStore
     private let bulkDeleteInteractionJobQueue: BulkDeleteInteractionJobQueue
     private let interactionDeleteManager: any InteractionDeleteManager
     private let threadSoftDeleteManager: any ThreadSoftDeleteManager
+    private let tsResourceManager: any TSResourceManager
+    private let tsResourceStore: any TSResourceStore
 
     private let logger = PrefixedLogger(prefix: "[DeleteForMe]")
 
     init(
         addressableMessageFinder: any DeleteForMeAddressableMessageFinder,
-        attachmentManager: any AttachmentManager,
-        attachmentStore: any AttachmentStore,
         bulkDeleteInteractionJobQueue: BulkDeleteInteractionJobQueue,
         interactionDeleteManager: any InteractionDeleteManager,
-        threadSoftDeleteManager: any ThreadSoftDeleteManager
+        threadSoftDeleteManager: any ThreadSoftDeleteManager,
+        tsResourceManager: any TSResourceManager,
+        tsResourceStore: any TSResourceStore
     ) {
         self.addressableMessageFinder = addressableMessageFinder
-        self.attachmentManager = attachmentManager
-        self.attachmentStore = attachmentStore
         self.bulkDeleteInteractionJobQueue = bulkDeleteInteractionJobQueue
         self.interactionDeleteManager = interactionDeleteManager
         self.threadSoftDeleteManager = threadSoftDeleteManager
+        self.tsResourceManager = tsResourceManager
+        self.tsResourceStore = tsResourceStore
     }
 
     func handleMessageDelete(
@@ -187,8 +187,8 @@ final class DeleteForMeIncomingSyncMessageManagerImpl: DeleteForMeIncomingSyncMe
         /// `DeleteForMe` syncing only applies to body media attachments, so
         /// we'll pull all of them for the target message to see which one
         /// matches the attachment identifer we were given.
-        let targetAttachmentCandidates: [ReferencedAttachment] = attachmentStore.fetchReferencedAttachments(
-            for: .messageBodyAttachment(messageRowId: targetMessage.sqliteRowId!),
+        let targetAttachmentCandidates: [ReferencedTSResource] = tsResourceStore.referencedBodyMediaAttachments(
+            for: targetMessage,
             tx: tx
         )
 
@@ -197,25 +197,20 @@ final class DeleteForMeIncomingSyncMessageManagerImpl: DeleteForMeIncomingSyncMe
         /// by the `encryptedDigest` (which should identify most legacy
         /// attachments) and finally by the `plaintextHash` (a last-ditch option
         /// for if somehow the encrypted digest is missing).
-        let targetAttachment: ReferencedAttachment? = {
+        let targetAttachment: ReferencedTSResource? = {
             if
                 let clientUuid = attachmentIdentifier.clientUuid,
-                let clientUuidMatch = targetAttachmentCandidates.first(where: { $0.reference.knownIdInOwningMessage == clientUuid })
+                let clientUuidMatch = targetAttachmentCandidates.first(where: { $0.reference.knownIdInOwningMessage(targetMessage) == clientUuid })
             {
                 return clientUuidMatch
             } else if
                 let encryptedDigest = attachmentIdentifier.encryptedDigest,
-                let encryptedDigestMatch = targetAttachmentCandidates.first(where: {
-                    let attachmentDigest =
-                        $0.attachment.asStream()?.encryptedFileSha256Digest
-                        ?? $0.attachment.asTransitTierPointer()?.info.digestSHA256Ciphertext
-                    return attachmentDigest == encryptedDigest
-                })
+                let encryptedDigestMatch = targetAttachmentCandidates.first(where: { $0.attachment.encryptedResourceSha256Digest == encryptedDigest})
             {
                 return encryptedDigestMatch
             } else if
                 let plaintextHash = attachmentIdentifier.plaintextHash,
-                let plaintextHashMatch = targetAttachmentCandidates.first(where: { $0.attachment.asStream()?.sha256ContentHash == plaintextHash })
+                let plaintextHashMatch = targetAttachmentCandidates.first(where: { $0.attachment.knownPlaintextResourceSha256Hash == plaintextHash })
             {
                 return plaintextHashMatch
             }
@@ -229,8 +224,9 @@ final class DeleteForMeIncomingSyncMessageManagerImpl: DeleteForMeIncomingSyncMe
         }
 
         do {
-            try attachmentManager.removeAttachment(
-                reference: targetAttachment.reference,
+            try tsResourceManager.removeBodyAttachment(
+                targetAttachment.attachment,
+                from: targetMessage,
                 tx: tx
             )
         } catch {

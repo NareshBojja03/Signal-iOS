@@ -150,17 +150,11 @@ extension ArchivedPayment {
             transaction.status = success
 
             var identification = BackupProto_PaymentNotification.TransactionDetails.MobileCoinTxoIdentification()
-            switch direction {
-            case .incoming:
-                if let publicKey = mobileCoinIdentification?.publicKey {
-                    identification.publicKey = publicKey
-                }
-            case .outgoing:
-                if let keyImages = mobileCoinIdentification?.keyImages {
-                    identification.keyImages = keyImages
-                }
-            case .unknown:
-                owsFailDebug("Direction of payment not specified.")
+            if let keyImages = mobileCoinIdentification?.keyImages {
+                identification.keyImages = keyImages
+            }
+            if let publicKey = mobileCoinIdentification?.publicKey {
+                identification.publicKey = publicKey
             }
             transaction.mobileCoinIdentification = identification
 
@@ -192,7 +186,7 @@ extension TSPaymentModel {
                 identifier = nil
             } else {
                 identifier = ArchivedPayment.TransactionIdentifier(
-                    publicKey: nil,
+                    publicKey: mcOutputPublicKeys,
                     keyImages: mcSpentKeyImages
                 )
             }

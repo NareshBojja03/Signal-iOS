@@ -4,7 +4,6 @@
 //
 
 import SignalServiceKit
-public import SwiftUI
 
 public enum SignalSymbol: Character {
 
@@ -118,7 +117,7 @@ public enum SignalSymbol: Character {
         case regular
         case bold
 
-        fileprivate var fontName: String {
+        private var fontName: String {
             switch self {
             case .light:
                 return "SignalSymbols-Light"
@@ -242,29 +241,5 @@ public enum SignalSymbol: Character {
             string: "\(leadingCharacter?.rawValue ?? "")\(self.rawValue)",
             attributes: attributes
         )
-    }
-
-    // MARK: - SwiftUI
-
-    /// Creates a SwiftUI `Text` view with the specified dynamic type size and weight.
-    ///
-    /// Can be combined with other `Text` views with the `+` operator.
-    /// For example:
-    ///
-    /// ```swift
-    /// SignalSymbol.arrowUp.text(dynamicTypeBaseSize: 16) +
-    /// Text(" Share")
-    /// ```
-    /// - Parameters:
-    ///   - dynamicTypeBaseSize: The base size of the font at 100% Dynamic Type
-    ///   scale which will then be scaled based on the current device scale.
-    ///   - weight: The font weight.
-    /// - Returns: A SwiftUI `Text` view with this symbol and the given font.
-    public func text(
-        dynamicTypeBaseSize: CGFloat,
-        weight: Weight = .regular
-    ) -> Text {
-        Text("\(self.rawValue)")
-            .font(Font.custom(weight.fontName, size: dynamicTypeBaseSize))
     }
 }

@@ -96,20 +96,16 @@ extension ConversationViewController {
         }()
 
         let updateBlock: () -> Void = { [thread] in
-            let oldValue = DependenciesBridge.shared.db.read { tx in
-                DependenciesBridge.shared.lastVisibleInteractionStore.lastVisibleInteraction(for: thread, tx: tx)
+            let oldValue = SSKEnvironment.shared.databaseStorageRef.read { transaction in
+                thread.lastVisibleInteraction(transaction: transaction)
             }
 
             guard oldValue != newValue else {
                 return
             }
 
-            DependenciesBridge.shared.db.asyncWrite { tx in
-                DependenciesBridge.shared.lastVisibleInteractionStore.setLastVisibleInteraction(
-                    newValue,
-                    for: thread,
-                    tx: tx
-                )
+            SSKEnvironment.shared.databaseStorageRef.asyncWrite { transaction in
+                thread.setLastVisibleInteraction(newValue, transaction: transaction)
             }
         }
         if async {

@@ -46,22 +46,13 @@ public class ProfileBadgeLookup {
         return preferDarkTheme ? assets.dark16 : assets.light16
     }
 
-    public func attemptToPopulateBadgeAssets(populateAssetsOnBadge: @escaping (ProfileBadge) async throws -> Void) async -> Void {
+    public func attemptToPopulateBadgeAssets(populateAssetsOnBadge: (ProfileBadge) -> Promise<Void>) -> Guarantee<Void> {
         var badgesToLoad = Array(badgesBySubscriptionLevel.values)
         if let boostBadge = boostBadge { badgesToLoad.append(boostBadge) }
         if let giftBadge = giftBadge { badgesToLoad.append(giftBadge) }
 
-        await withTaskGroup(of: Void.self) { group in
-            for badge in badgesToLoad {
-                group.addTask {
-                    do {
-                        try await populateAssetsOnBadge(badge)
-                    } catch {}
-                }
-            }
-
-            await group.waitForAll()
-        }
+        let promises = badgesToLoad.map { populateAssetsOnBadge($0) }
+        return Promise.when(fulfilled: promises).recover { _ in Guarantee.value(()) }
     }
 }
 
@@ -274,16 +265,13 @@ public final class DonationViewsUtil {
         amount: FiatMoney,
         paymentMethod: DonationPaymentMethod
     ) -> Promise<Void> {
-        let redemptionPromise = Promise.wrapAsync {
-            try await DonationSubscriptionManager.requestAndRedeemReceipt(
-                boostPaymentIntentId: paymentIntentId,
-                amount: amount,
-                paymentProcessor: .stripe,
-                paymentMethod: paymentMethod
-            )
-        }
-
-        return DonationViewsUtil.waitForRedemptionJob(redemptionPromise, paymentMethod: paymentMethod)
+        let redemptionJob = DonationSubscriptionManager.requestAndRedeemReceipt(
+            boostPaymentIntentId: paymentIntentId,
+            amount: amount,
+            paymentProcessor: .stripe,
+            paymentMethod: paymentMethod
+        )
+        return DonationViewsUtil.waitForRedemptionJob(redemptionJob, paymentMethod: paymentMethod)
     }
 
     public static func finalizeAndRedeemSubscription(
@@ -305,19 +293,16 @@ public final class DonationViewsUtil {
         }.then(on: DispatchQueue.sharedUserInitiated) { _ in
             Logger.info("[Donations] Redeeming monthly receipts")
 
-            let redemptionPromise = Promise.wrapAsync {
-                try await DonationSubscriptionManager.requestAndRedeemReceipt(
-                    subscriberId: subscriberId,
-                    subscriptionLevel: newSubscriptionLevel.level,
-                    priorSubscriptionLevel: priorSubscriptionLevel?.level,
-                    paymentProcessor: paymentType.paymentProcessor,
-                    paymentMethod: paymentType.paymentMethod,
-                    isNewSubscription: true,
-                    shouldSuppressPaymentAlreadyRedeemed: false
-                )
-            }
-
-            return DonationViewsUtil.waitForRedemptionJob(redemptionPromise, paymentMethod: paymentType.paymentMethod)
+            let redemptionJob = DonationSubscriptionManager.requestAndRedeemReceipt(
+                subscriberId: subscriberId,
+                subscriptionLevel: newSubscriptionLevel.level,
+                priorSubscriptionLevel: priorSubscriptionLevel?.level,
+                paymentProcessor: paymentType.paymentProcessor,
+                paymentMethod: paymentType.paymentMethod,
+                isNewSubscription: true,
+                shouldSuppressPaymentAlreadyRedeemed: false
+            )
+            return DonationViewsUtil.waitForRedemptionJob(redemptionJob, paymentMethod: paymentType.paymentMethod)
         }
     }
 
@@ -327,7 +312,7 @@ public final class DonationViewsUtil {
         }.map { donationConfiguration -> [DonationSubscriptionLevel] in
             donationConfiguration.subscription.levels
         }.then { (fetchedSubscriptions: [DonationSubscriptionLevel]) -> Promise<[DonationSubscriptionLevel]> in
-            let badgeUpdatePromises = fetchedSubscriptions.map { subscription in Promise.wrapAsync { try await badgeStore.populateAssetsOnBadge(subscription.badge) } }
+            let badgeUpdatePromises = fetchedSubscriptions.map { badgeStore.populateAssetsOnBadge($0.badge) }
             return Promise.when(fulfilled: badgeUpdatePromises).map { fetchedSubscriptions }
         }
     }

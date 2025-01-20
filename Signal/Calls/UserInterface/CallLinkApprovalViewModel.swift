@@ -89,8 +89,8 @@ class CallLinkApprovalViewModel: ObservableObject {
         }
 
         let shouldUpdateFrontCard = requests.count > 2 || (requests.count == 2 && oldRequests.count >= 2)
-        if shouldUpdateFrontCard, let oldFirstID = oldRequests.first?.id {
-            requests[0].id = oldFirstID
+        if shouldUpdateFrontCard {
+            requests[0].id = oldRequests[0].id
         }
 
         withAnimation(.quickSpring()) {

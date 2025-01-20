@@ -59,6 +59,7 @@ extension HTTPMethod: CustomStringConvertible {
 // MARK: - OWSUrlDownloadResponse
 
 public struct OWSUrlDownloadResponse {
+    public let task: URLSessionTask
     public let httpUrlResponse: HTTPURLResponse
     public let downloadUrl: URL
 
@@ -92,8 +93,11 @@ struct OWSUrlFrontingInfo {
 // * Download tasks to memory.
 public protocol OWSURLSessionProtocol: AnyObject {
 
+    typealias ProgressBlock = (URLSessionTask, Progress) -> Void
+
     var endpoint: OWSURLSessionEndpoint { get }
 
+    var failOnError: Bool { get set }
     // By default OWSURLSession treats 4xx and 5xx responses as errors.
     var require2xxOr3xx: Bool { get set }
     var allowRedirects: Bool { get set }
@@ -123,36 +127,34 @@ public protocol OWSURLSessionProtocol: AnyObject {
 
     func promiseForTSRequest(_ rawRequest: TSRequest) -> Promise<HTTPResponse>
 
-    func performRequest(_ rawRequest: TSRequest) async throws -> HTTPResponse
-
-    func performUpload(
+    func uploadTaskPromise(
         request: URLRequest,
-        requestData: Data,
-        progress: OWSProgressSource?
-    ) async throws -> HTTPResponse
+        data requestData: Data,
+        progress progressBlock: ProgressBlock?
+    ) -> Promise<HTTPResponse>
 
-    func performUpload(
+    func uploadTaskPromise(
         request: URLRequest,
         fileUrl: URL,
         ignoreAppExpiry: Bool,
-        progress: OWSProgressSource?
-    ) async throws -> HTTPResponse
+        progress progressBlock: ProgressBlock?
+    ) -> Promise<HTTPResponse>
 
-    func performRequest(
+    func dataTaskPromise(
         request: URLRequest,
         ignoreAppExpiry: Bool
-    ) async throws -> HTTPResponse
+    ) -> Promise<HTTPResponse>
 
-    func performDownload(
+    func downloadTaskPromise(
         requestUrl: URL,
         resumeData: Data,
-        progress: OWSProgressSource?
-    ) async throws -> OWSUrlDownloadResponse
+        progress progressBlock: ProgressBlock?
+    ) -> Promise<OWSUrlDownloadResponse>
 
-    func performDownload(
+    func downloadTaskPromise(
         request: URLRequest,
-        progress: OWSProgressSource?
-    ) async throws -> OWSUrlDownloadResponse
+        progress progressBlock: ProgressBlock?
+    ) -> Promise<OWSUrlDownloadResponse>
 
     func webSocketTask(
         requestUrl: URL,
@@ -186,65 +188,65 @@ extension OWSURLSessionProtocol {
 // MARK: -
 
 public extension OWSURLSessionProtocol {
-    // MARK: - Promise Shims
-
-    func promiseForTSRequest(_ rawRequest: TSRequest) -> Promise<HTTPResponse> {
-        return Promise.wrapAsync { try await self.performRequest(rawRequest) }.map(on: DispatchQueue.global(), { $0 })
-    }
 
     // MARK: - Upload Tasks Convenience
 
-    func performUpload(
+    func uploadTaskPromise(
         _ urlString: String,
         method: HTTPMethod,
         headers: [String: String]? = nil,
-        requestData: Data,
-        progress: OWSProgressSource? = nil
-    ) async throws -> any HTTPResponse {
-        let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers, body: requestData)
-        return try await self.performUpload(request: request, requestData: requestData, progress: progress)
+        data requestData: Data,
+        progress progressBlock: ProgressBlock? = nil
+    ) -> Promise<HTTPResponse> {
+        firstly(on: DispatchQueue.global()) { () -> Promise<HTTPResponse> in
+            let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers, body: requestData)
+            return self.uploadTaskPromise(request: request, data: requestData, progress: progressBlock)
+        }
     }
 
-    func performUpload(
+    func uploadTaskPromise(
         _ urlString: String,
         method: HTTPMethod,
         headers: [String: String]? = nil,
         fileUrl: URL,
-        progress: OWSProgressSource? = nil
-    ) async throws -> any HTTPResponse {
-        let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers)
-        return try await self.performUpload(
-            request: request,
-            fileUrl: fileUrl,
-            ignoreAppExpiry: false,
-            progress: progress
-        )
+        progress progressBlock: ProgressBlock? = nil
+    ) -> Promise<HTTPResponse> {
+        firstly(on: DispatchQueue.global()) { () -> Promise<HTTPResponse> in
+            let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers)
+            return self.uploadTaskPromise(request: request, fileUrl: fileUrl, ignoreAppExpiry: false, progress: progressBlock)
+        }
     }
 
     // MARK: - Data Tasks Convenience
 
-    func performRequest(
+    func dataTaskPromise(
+        on scheduler: Scheduler = DispatchQueue.global(),
         _ urlString: String,
         method: HTTPMethod,
         headers: [String: String]? = nil,
         body: Data? = nil,
         ignoreAppExpiry: Bool = false
-    ) async throws -> any HTTPResponse {
-        let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers, body: body)
-        return try await self.performRequest(request: request, ignoreAppExpiry: ignoreAppExpiry)
+    ) -> Promise<HTTPResponse> {
+        firstly(on: scheduler) { () -> Promise<HTTPResponse> in
+            let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers, body: body)
+            return self.dataTaskPromise(request: request, ignoreAppExpiry: ignoreAppExpiry)
+        }
     }
 
     // MARK: - Download Tasks Convenience
 
-    func performDownload(
+    func downloadTaskPromise(
+        on scheduler: Scheduler = DispatchQueue.global(),
         _ urlString: String,
         method: HTTPMethod,
         headers: [String: String]? = nil,
         body: Data? = nil,
-        progress: OWSProgressSource? = nil
-    ) async throws -> OWSUrlDownloadResponse {
-        let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers, body: body)
-        return try await self.performDownload(request: request, progress: progress)
+        progress progressBlock: ProgressBlock? = nil
+    ) -> Promise<OWSUrlDownloadResponse> {
+        firstly(on: scheduler) { () -> Promise<OWSUrlDownloadResponse> in
+            let request = try self.endpoint.buildRequest(urlString, method: method, headers: headers, body: body)
+            return self.downloadTaskPromise(request: request, progress: progressBlock)
+        }
     }
 }
 
@@ -252,7 +254,7 @@ public extension OWSURLSessionProtocol {
 
 extension OWSURLSessionProtocol {
 
-    public func performMultiPartUpload(
+    public func multiPartUploadTaskPromise(
         request: URLRequest,
         fileUrl inputFileURL: URL,
         name: String,
@@ -260,46 +262,48 @@ extension OWSURLSessionProtocol {
         mimeType: String,
         textParts textPartsDictionary: OrderedDictionary<String, String>,
         ignoreAppExpiry: Bool = false,
-        progress: OWSProgressSource? = nil
-    ) async throws -> any HTTPResponse {
-        let multipartBodyFileURL = OWSFileSystem.temporaryFileUrl(isAvailableWhileDeviceLocked: true)
-        defer {
-            do {
-                try OWSFileSystem.deleteFileIfExists(url: multipartBodyFileURL)
-            } catch {
-                owsFailDebug("Error: \(error)")
+        progress progressBlock: ProgressBlock? = nil
+    ) -> Promise<HTTPResponse> {
+        do {
+            let multipartBodyFileURL = OWSFileSystem.temporaryFileUrl(isAvailableWhileDeviceLocked: true)
+            let boundary = OWSMultipartBody.createMultipartFormBoundary()
+            // Order of form parts matters.
+            let textParts = textPartsDictionary.map { (key, value) in
+                OWSMultipartTextPart(key: key, value: value)
             }
-        }
-        let boundary = OWSMultipartBody.createMultipartFormBoundary()
-        // Order of form parts matters.
-        let textParts = textPartsDictionary.map { (key, value) in
-            OWSMultipartTextPart(key: key, value: value)
-        }
-        try OWSMultipartBody.write(
-            inputFile: inputFileURL,
-            outputFile: multipartBodyFileURL,
-            name: name,
-            fileName: fileName,
-            mimeType: mimeType,
-            boundary: boundary,
-            textParts: textParts
-        )
-        guard let bodyFileSize = OWSFileSystem.fileSize(of: multipartBodyFileURL) else {
-            throw OWSAssertionError("Missing bodyFileSize.")
-        }
+            try OWSMultipartBody.write(inputFile: inputFileURL,
+                                       outputFile: multipartBodyFileURL,
+                                       name: name,
+                                       fileName: fileName,
+                                       mimeType: mimeType,
+                                       boundary: boundary,
+                                       textParts: textParts)
+            guard let bodyFileSize = OWSFileSystem.fileSize(of: multipartBodyFileURL) else {
+                return Promise(error: OWSAssertionError("Missing bodyFileSize."))
+            }
 
-        var request = request
-        request.httpMethod = HTTPMethod.post.methodName
-        request.setValue(Self.userAgentHeaderValueSignalIos, forHTTPHeaderField: Self.userAgentHeaderKey)
-        request.setValue(Self.acceptLanguageHeaderValue, forHTTPHeaderField: Self.acceptLanguageHeaderKey)
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.setValue(String(format: "%llu", bodyFileSize.uint64Value), forHTTPHeaderField: "Content-Length")
+            var request = request
+            request.httpMethod = HTTPMethod.post.methodName
+            request.setValue(Self.userAgentHeaderValueSignalIos, forHTTPHeaderField: Self.userAgentHeaderKey)
+            request.setValue(Self.acceptLanguageHeaderValue, forHTTPHeaderField: Self.acceptLanguageHeaderKey)
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.setValue(String(format: "%llu", bodyFileSize.uint64Value), forHTTPHeaderField: "Content-Length")
 
-        return try await performUpload(
-            request: request,
-            fileUrl: multipartBodyFileURL,
-            ignoreAppExpiry: ignoreAppExpiry,
-            progress: progress
-        )
+            return firstly {
+                uploadTaskPromise(request: request,
+                                  fileUrl: multipartBodyFileURL,
+                                  ignoreAppExpiry: ignoreAppExpiry,
+                                  progress: progressBlock)
+            }.ensure(on: DispatchQueue.global()) {
+                do {
+                    try OWSFileSystem.deleteFileIfExists(url: multipartBodyFileURL)
+                } catch {
+                    owsFailDebug("Error: \(error)")
+                }
+            }
+        } catch {
+            owsFailDebugUnlessNetworkFailure(error)
+            return Promise(error: error)
+        }
     }
 }

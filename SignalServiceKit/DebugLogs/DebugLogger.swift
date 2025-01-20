@@ -54,6 +54,10 @@ private final class DebugLogFileManager: DDLogFileManagerDefault {
         let cutoffDate = Date(timeIntervalSinceNow: -kDayInterval * Double(maximumNumberOfLogFiles))
 
         for logsDirPath in DebugLogger.allLogsDirPaths {
+            guard logsDirPath != logsDirectory else {
+                // Managed directly by the base class.
+                continue
+            }
             Self.deleteLogFiles(inDirectory: logsDirPath, olderThanDate: cutoffDate)
         }
     }
@@ -126,13 +130,27 @@ public final class DebugLogger {
         return logPathSet
     }
 
+    private let errorLogger: DDLogger = ErrorLogger(logFileManager: DDLogFileManagerDefault(logsDirectory: errorLogsDir.path))
     public func enableErrorReporting() {
-        let errorLogger = ErrorLogger(logFileManager: DDLogFileManagerDefault(logsDirectory: Self.errorLogsDir.path))
-        errorLogger.logFormatter = ScrubbingLogFormatter()
         DDLog.add(errorLogger, with: .error)
     }
 
     // MARK: Enable/Disable
+
+    public func setUpFileLoggingIfNeeded(appContext: AppContext, canLaunchInBackground: Bool) {
+        let oldValue = fileLogger != nil
+        let newValue = Preferences.isLoggingEnabled
+
+        if newValue == oldValue {
+            return
+        }
+
+        if newValue {
+            enableFileLogging(appContext: appContext, canLaunchInBackground: canLaunchInBackground)
+        } else {
+            disableFileLogging()
+        }
+    }
 
     public func enableFileLogging(appContext: AppContext, canLaunchInBackground: Bool) {
         let logsDirPath = appContext.debugLogsDirPath

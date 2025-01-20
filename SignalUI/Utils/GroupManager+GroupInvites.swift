@@ -66,7 +66,7 @@ public extension GroupManager {
                             throw OWSAssertionError("Invalid group model")
                         }
 
-                        try await self.localAcceptInviteToGroupV2(
+                        _ = try await self.localAcceptInviteToGroupV2(
                             groupModel: groupModelV2,
                             waitForMessageProcessing: true
                         )

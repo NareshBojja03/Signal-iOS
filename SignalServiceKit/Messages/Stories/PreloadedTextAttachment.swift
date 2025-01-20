@@ -9,9 +9,9 @@ import Foundation
 /// Doesn't load the preview's _image_, just the attachment database object.
 public struct PreloadedTextAttachment: Equatable {
     public let textAttachment: TextAttachment
-    public let linkPreviewAttachment: Attachment?
+    public let linkPreviewAttachment: TSResource?
 
-    private init(textAttachment: TextAttachment, linkPreviewAttachment: Attachment?) {
+    private init(textAttachment: TextAttachment, linkPreviewAttachment: TSResource?) {
         self.textAttachment = textAttachment
         self.linkPreviewAttachment = linkPreviewAttachment
     }
@@ -21,19 +21,17 @@ public struct PreloadedTextAttachment: Equatable {
         storyMessage: StoryMessage,
         tx: SDSAnyReadTransaction
     ) -> Self {
-        let linkPreviewAttachment: Attachment? = storyMessage.id.map { rowId in
-            DependenciesBridge.shared.attachmentStore
-                .fetchFirstReferencedAttachment(
-                    for: .storyMessageLinkPreview(storyMessageRowId: rowId),
-                    tx: tx.asV2Read
-                )?
-                .attachment
-        } ?? nil
+        let linkPreviewAttachment: TSResource? = DependenciesBridge.shared.tsResourceStore
+            .linkPreviewAttachment(
+                for: storyMessage,
+                tx: tx.asV2Read
+            )?
+            .fetch(tx: tx)
         return .init(textAttachment: textAttachment, linkPreviewAttachment: linkPreviewAttachment)
     }
 
     public static func == (lhs: PreloadedTextAttachment, rhs: PreloadedTextAttachment) -> Bool {
         return lhs.textAttachment == rhs.textAttachment
-            && lhs.linkPreviewAttachment?.id == rhs.linkPreviewAttachment?.id
+            && lhs.linkPreviewAttachment?.resourceId == rhs.linkPreviewAttachment?.resourceId
     }
 }

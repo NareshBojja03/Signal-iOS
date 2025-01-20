@@ -36,7 +36,7 @@ public protocol CallRecordStore {
     /// Insert the given call record.
     /// - Important
     /// Posts an `.inserted` ``CallRecordStoreNotification``.
-    func insert(callRecord: CallRecord, tx: DBWriteTransaction) throws
+    func insert(callRecord: CallRecord, tx: DBWriteTransaction)
 
     /// Deletes the given call records and creates ``DeletedCallRecord``s
     /// in their place.
@@ -81,7 +81,7 @@ public protocol CallRecordStore {
     func markAsRead(
         callRecord: CallRecord,
         tx: DBWriteTransaction
-    ) throws
+    )
 
     /// Update the direction of the given call record.
     func updateDirection(
@@ -112,7 +112,7 @@ public protocol CallRecordStore {
         callRecord: CallRecord,
         callEndedTimestamp: UInt64,
         tx: DBWriteTransaction
-    ) throws
+    )
 
     /// Update all relevant records in response to a thread merge.
     /// - Parameter fromThreadRowId
@@ -124,12 +124,6 @@ public protocol CallRecordStore {
         intoThreadRowId intoRowId: Int64,
         tx: DBWriteTransaction
     )
-
-    /// Enumerate all ad hoc call records.
-    func enumerateAdHocCallRecords(
-        tx: DBReadTransaction,
-        block: (CallRecord) -> Void
-    ) throws
 
     /// Fetch the record for the given call ID in the given thread, if one
     /// exists.
@@ -171,15 +165,13 @@ class CallRecordStoreImpl: CallRecordStore {
 
     // MARK: - Protocol methods
 
-    func insert(callRecord: CallRecord, tx: DBWriteTransaction) throws {
-        let insertResult = Result<Void, Error>.init(catching: { try _insert(callRecord: callRecord, tx: tx) })
+    func insert(callRecord: CallRecord, tx: DBWriteTransaction) {
+        _insert(callRecord: callRecord, tx: tx)
 
         postNotification(
             updateType: .inserted,
             tx: tx
         )
-
-        try insertResult.get()
     }
 
     private var deletedCallRecordIds = [CallRecord.ID]()
@@ -216,9 +208,13 @@ class CallRecordStoreImpl: CallRecordStore {
         )
     }
 
-    func markAsRead(callRecord: CallRecord, tx: DBWriteTransaction) throws {
+    func markAsRead(callRecord: CallRecord, tx: DBWriteTransaction) {
         callRecord.unreadStatus = .read
-        try callRecord.update(tx.databaseConnection)
+        do {
+            try callRecord.update(tx.databaseConnection)
+        } catch let error {
+            owsFailBeta("Failed to update call record: \(error)")
+        }
     }
 
     func updateDirection(
@@ -264,9 +260,13 @@ class CallRecordStoreImpl: CallRecordStore {
         callRecord: CallRecord,
         callEndedTimestamp: UInt64,
         tx: DBWriteTransaction
-    ) throws {
+    ) {
         callRecord.callEndedTimestamp = callEndedTimestamp
-        try callRecord.update(tx.databaseConnection)
+        do {
+            try callRecord.update(tx.databaseConnection)
+        } catch let error {
+            owsFailBeta("Failed to update call record: \(error)")
+        }
     }
 
     func updateWithMergedThread(
@@ -331,8 +331,12 @@ class CallRecordStoreImpl: CallRecordStore {
 
     // MARK: - Mutations (impl)
 
-    func _insert(callRecord: CallRecord, tx: DBWriteTransaction) throws {
-        try callRecord.insert(tx.databaseConnection)
+    func _insert(callRecord: CallRecord, tx: DBWriteTransaction) {
+        do {
+            try callRecord.insert(tx.databaseConnection)
+        } catch let error {
+            owsFailBeta("Failed to insert call record: \(error)")
+        }
     }
 
     func _delete(callRecords: [CallRecord], tx: DBWriteTransaction) {
@@ -416,22 +420,6 @@ class CallRecordStoreImpl: CallRecordStore {
                 sql: sqlString,
                 arguments: StatementArguments(sqlArgs)
             ))
-        } catch {
-            throw error.grdbErrorForLogging
-        }
-    }
-
-    func enumerateAdHocCallRecords(
-        tx: DBReadTransaction,
-        block: (CallRecord) -> Void
-    ) throws {
-        do {
-            let cursor = try CallRecord
-                .filter(Column(CallRecord.CodingKeys.callType) == CallRecord.CallType.adHocCall.rawValue)
-                .fetchCursor(tx.databaseConnection)
-            while let value = try cursor.next() {
-                block(value)
-            }
         } catch {
             throw error.grdbErrorForLogging
         }

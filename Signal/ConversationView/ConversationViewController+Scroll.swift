@@ -655,8 +655,7 @@ extension ConversationViewController {
 
     private static func lastVisibleInteraction(for thread: TSThread, tx: SDSAnyReadTransaction) -> LastVisibleInteraction? {
         guard
-            let lastVisibleInteraction = DependenciesBridge.shared.lastVisibleInteractionStore
-                .lastVisibleInteraction(for: thread, tx: tx.asV2Read),
+            let lastVisibleInteraction = thread.lastVisibleInteraction(transaction: tx),
             let interaction = thread.firstInteraction(atOrAroundSortId: lastVisibleInteraction.sortId, transaction: tx)
         else {
             return nil

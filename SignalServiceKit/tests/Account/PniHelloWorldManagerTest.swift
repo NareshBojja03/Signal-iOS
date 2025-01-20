@@ -14,8 +14,8 @@ class PniHelloWorldManagerTest: XCTestCase {
 
         private let kvStore: KeyValueStore
 
-        init() {
-            kvStore = KeyValueStore(collection: "PniHelloWorldManagerImpl")
+        init(keyValueStoreFactory: KeyValueStoreFactory) {
+            kvStore = keyValueStoreFactory.keyValueStore(collection: "PniHelloWorldManagerImpl")
         }
 
         func hasSaidHelloWorld(tx: DBReadTransaction) -> Bool {
@@ -55,7 +55,8 @@ class PniHelloWorldManagerTest: XCTestCase {
         recipientDatabaseTableMock = .init()
         tsAccountManagerMock = .init()
 
-        kvStore = TestKeyValueStore()
+        let kvStoreFactory = InMemoryKeyValueStoreFactory()
+        kvStore = TestKeyValueStore(keyValueStoreFactory: kvStoreFactory)
 
         testScheduler = TestScheduler()
         let schedulers = TestSchedulers(scheduler: testScheduler)
@@ -63,6 +64,7 @@ class PniHelloWorldManagerTest: XCTestCase {
         pniHelloWorldManager = PniHelloWorldManagerImpl(
             database: db,
             identityManager: identityManagerMock,
+            keyValueStoreFactory: kvStoreFactory,
             networkManager: networkManagerMock,
             pniDistributionParameterBuilder: pniDistributionParameterBuilderMock,
             pniSignedPreKeyStore: pniSignedPreKeyStoreMock,

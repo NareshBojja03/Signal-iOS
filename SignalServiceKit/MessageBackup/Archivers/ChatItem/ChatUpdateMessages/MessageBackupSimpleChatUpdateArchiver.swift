@@ -25,7 +25,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
 
     func archiveSimpleChatUpdate(
         infoMessage: TSInfoMessage,
-        threadInfo: MessageBackup.ChatArchivingContext.CachedThreadInfo,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         func messageFailure(
@@ -209,18 +209,17 @@ final class MessageBackupSimpleChatUpdateArchiver {
         case .precomputedRecipientId(let recipientId):
             updateAuthorRecipientId = recipientId
         case .containingContactThread:
-            switch threadInfo {
-            case .groupThread:
+            guard
+                let contactThread = thread as? TSContactThread,
+                let authorAddress = contactThread.contactAddress.asSingleServiceIdBackupAddress()
+            else {
                 return messageFailure(.simpleChatUpdateMessageNotInContactThread)
-            case .contactThread(let authorAddress):
-                guard let authorAddress else {
-                    return messageFailure(.simpleChatUpdateMessageNotInContactThread)
-                }
-                guard let authorRecipientId = context.recipientContext[.contact(authorAddress)] else {
-                    return messageFailure(.referencedRecipientIdMissing(.contact(authorAddress)))
-                }
-                updateAuthorRecipientId = authorRecipientId
             }
+            guard let authorRecipientId = context.recipientContext[.contact(authorAddress)] else {
+                return messageFailure(.referencedRecipientIdMissing(.contact(authorAddress)))
+            }
+
+            updateAuthorRecipientId = authorRecipientId
         case .localUser:
             updateAuthorRecipientId = context.recipientContext.localRecipientId
         }
@@ -247,6 +246,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
 
     func archiveSimpleChatUpdate(
         errorMessage: TSErrorMessage,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         func messageFailure(
@@ -454,7 +454,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
                 infoMessageType = .typeLocalUserEndedSession
             case .contact:
                 infoMessageType = .typeRemoteUserEndedSession
-            case .releaseNotesChannel, .group, .distributionList, .callLink:
+            case .releaseNotesChannel, .group, .distributionList:
                 return invalidProtoData(.endSessionNotFromContact)
             }
 
@@ -474,7 +474,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
                 contactAddress = context.recipientContext.localIdentifiers.aciAddress
             case .contact(let _contactAddress):
                 contactAddress = _contactAddress.asInteropAddress()
-            case .releaseNotesChannel, .group, .distributionList, .callLink:
+            case .releaseNotesChannel, .group, .distributionList:
                 return invalidProtoData(.decryptionErrorNotFromContact)
             }
 
@@ -493,7 +493,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
             case .contact(let contactAddress):
                 guard let aci = contactAddress.aci else { fallthrough }
                 senderAci = aci
-            case .releaseNotesChannel, .group, .distributionList, .callLink:
+            case .releaseNotesChannel, .group, .distributionList:
                 return invalidProtoData(.paymentsActivatedNotFromAci)
             }
 
@@ -512,7 +512,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
             case .contact(let contactAddress):
                 guard let aci = contactAddress.aci else { fallthrough }
                 senderAci = aci
-            case .releaseNotesChannel, .group, .distributionList, .callLink:
+            case .releaseNotesChannel, .group, .distributionList:
                 return invalidProtoData(.paymentsActivatedNotFromAci)
             }
 
@@ -530,7 +530,7 @@ final class MessageBackupSimpleChatUpdateArchiver {
                 senderAddress = nil
             case .contact(let contactAddress):
                 senderAddress = contactAddress.asInteropAddress()
-            case .releaseNotesChannel, .group, .distributionList, .callLink:
+            case .releaseNotesChannel, .group, .distributionList:
                 return invalidProtoData(.unsupportedProtocolVersionNotFromAci)
             }
 
@@ -564,55 +564,28 @@ final class MessageBackupSimpleChatUpdateArchiver {
             simpleChatUpdateInteraction = .simpleInfoMessage(.acceptedMessageRequest)
         }
 
-        guard let directionalDetails = chatItem.directionalDetails else {
-            return .messageFailure([.restoreFrameError(
-                .invalidProtoData(.chatItemMissingDirectionalDetails),
-                chatItem.id
-            )])
-        }
-
-        switch simpleChatUpdateInteraction {
+        let interactionToInsert: TSInteraction = switch simpleChatUpdateInteraction {
         case .simpleInfoMessage(let infoMessageType):
-            let infoMessage = TSInfoMessage(
+            TSInfoMessage(
                 thread: thread,
                 messageType: infoMessageType,
                 timestamp: chatItem.dateSent
             )
-            do {
-                try interactionStore.insert(
-                    infoMessage,
-                    in: chatThread,
-                    chatId: chatItem.typedChatId,
-                    directionalDetails: directionalDetails,
-                    context: context
-                )
-            } catch let error {
-                return .messageFailure([.restoreFrameError(.databaseInsertionFailed(error), chatItem.id)])
-            }
         case .prebuiltInfoMessage(let infoMessage):
-            do {
-                try interactionStore.insert(
-                    infoMessage,
-                    in: chatThread,
-                    chatId: chatItem.typedChatId,
-                    directionalDetails: directionalDetails,
-                    context: context
-                )
-            } catch let error {
-                return .messageFailure([.restoreFrameError(.databaseInsertionFailed(error), chatItem.id)])
-            }
+            infoMessage
         case .errorMessage(let errorMessage):
-            do {
-                try interactionStore.insert(
-                    errorMessage,
-                    in: chatThread,
-                    chatId: chatItem.typedChatId,
-                    directionalDetails: directionalDetails,
-                    context: context
-                )
-            } catch let error {
-                return .messageFailure([.restoreFrameError(.databaseInsertionFailed(error), chatItem.id)])
-            }
+            errorMessage
+        }
+
+        do {
+            try interactionStore.insert(
+                interactionToInsert,
+                in: chatThread,
+                chatId: chatItem.typedChatId,
+                context: context
+            )
+        } catch let error {
+            return .messageFailure([.restoreFrameError(.databaseInsertionFailed(error), chatItem.id)])
         }
 
         return .success(())

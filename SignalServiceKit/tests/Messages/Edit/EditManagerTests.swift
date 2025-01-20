@@ -51,11 +51,11 @@ class EditManagerTests: SSKBaseTest {
         let editMessageStoreMock = EditMessageStoreMock()
         let editManager = EditManagerImpl(context:
             .init(
-                attachmentStore: AttachmentStoreMock(),
                 dataStore: dataStoreMock,
-                editManagerAttachments: MockEditManagerAttachments(),
+                editManagerAttachments: MockEditManagerTSResources(),
                 editMessageStore: editMessageStoreMock,
-                receiptManagerShim: ReceiptManagerMock()
+                receiptManagerShim: ReceiptManagerMock(),
+                tsResourceStore: TSResourceStoreMock()
             )
         )
 
@@ -98,11 +98,11 @@ class EditManagerTests: SSKBaseTest {
         let editMessageStoreMock = EditMessageStoreMock()
         let editManager = EditManagerImpl(context:
             .init(
-                attachmentStore: AttachmentStoreMock(),
                 dataStore: dataStoreMock,
-                editManagerAttachments: MockEditManagerAttachments(),
+                editManagerAttachments: MockEditManagerTSResources(),
                 editMessageStore: editMessageStoreMock,
-                receiptManagerShim: ReceiptManagerMock()
+                receiptManagerShim: ReceiptManagerMock(),
+                tsResourceStore: TSResourceStoreMock()
             )
         )
 
@@ -142,11 +142,11 @@ class EditManagerTests: SSKBaseTest {
         let editMessageStoreMock = EditMessageStoreMock()
         let editManager = EditManagerImpl(context:
             .init(
-                attachmentStore: AttachmentStoreMock(),
                 dataStore: dataStoreMock,
-                editManagerAttachments: MockEditManagerAttachments(),
+                editManagerAttachments: MockEditManagerTSResources(),
                 editMessageStore: editMessageStoreMock,
-                receiptManagerShim: ReceiptManagerMock()
+                receiptManagerShim: ReceiptManagerMock(),
+                tsResourceStore: TSResourceStoreMock()
             )
         )
 
@@ -188,11 +188,11 @@ class EditManagerTests: SSKBaseTest {
 
         let editManager = EditManagerImpl(context:
             .init(
-                attachmentStore: AttachmentStoreMock(),
                 dataStore: dataStoreMock,
-                editManagerAttachments: MockEditManagerAttachments(),
+                editManagerAttachments: MockEditManagerTSResources(),
                 editMessageStore: editMessageStoreMock,
-                receiptManagerShim: ReceiptManagerMock()
+                receiptManagerShim: ReceiptManagerMock(),
+                tsResourceStore: TSResourceStoreMock()
             )
         )
 
@@ -236,11 +236,11 @@ class EditManagerTests: SSKBaseTest {
 
         let editManager = EditManagerImpl(context:
             .init(
-                attachmentStore: AttachmentStoreMock(),
                 dataStore: dataStoreMock,
-                editManagerAttachments: MockEditManagerAttachments(),
+                editManagerAttachments: MockEditManagerTSResources(),
                 editMessageStore: editMessageStoreMock,
-                receiptManagerShim: ReceiptManagerMock()
+                receiptManagerShim: ReceiptManagerMock(),
+                tsResourceStore: TSResourceStoreMock()
             )
         )
 
@@ -497,7 +497,7 @@ class EditManagerTests: SSKBaseTest {
         "wasRemotelyDeleted": .unchanged,
         "storyReactionEmoji": .unchanged,
         "storedShouldStartExpireTimer": .unchanged,
-        "deprecated_attachmentIds": .unchanged,
+        "attachmentIds": .unchanged,
         "expiresAt": .unchanged,
         "hasPerConversationExpiration": .unchanged,
         "hasPerConversationExpirationStarted": .unchanged,
@@ -534,7 +534,7 @@ class EditManagerTests: SSKBaseTest {
         "wasRemotelyDeleted": .unchanged,
         "storyReactionEmoji": .unchanged,
         "storedShouldStartExpireTimer": .unchanged,
-        "deprecated_attachmentIds": .unchanged,
+        "attachmentIds": .unchanged,
         "expiresAt": .unchanged,
         "hasPerConversationExpiration": .unchanged,
         "hasPerConversationExpirationStarted": .unchanged,

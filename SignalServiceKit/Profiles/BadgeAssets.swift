@@ -8,20 +8,23 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-public class BadgeAssets {
+@objc
+public class BadgeAssets: NSObject {
     private let scale: Int
     private let remoteSourceUrl: URL
     private let localAssetDirectory: URL
 
-    private enum State: Equatable {
+    let lock = UnfairLock()
+    private var state: State = .initialized
+    public var isFetching: Bool { lock.withLock { state == .fetching } }
+
+    enum State: Equatable {
         case initialized
         case fetching
         case fetched
         case failed
         case unavailable
     }
-    private var lockedState = TSMutex(initialState: State.initialized)
-    public var isFetching: Bool { lockedState.withLock { $0 == .fetching } }
 
     fileprivate enum Variant: String, CaseIterable {
         case light16
@@ -62,8 +65,8 @@ public class BadgeAssets {
 
     // MARK: - Sprite fetching
 
-    func prepareAssetsIfNecessary() async throws {
-        let shouldFetch: Bool = lockedState.withLock { state in
+    func prepareAssetsIfNecessary() -> Promise<Void> {
+        let shouldFetch: Bool = lock.withLock {
             // If we're already fetching, or have hit a terminal state, there's nothing left to do
             guard state != .fetching, state != .fetched, state != .unavailable else { return false }
 
@@ -72,6 +75,8 @@ public class BadgeAssets {
                 state = .unavailable
                 return false
             }
+            state = .fetching
+            return false
 
             // If we have all our assets on disk, we're good to go
             let allAssetUrls = [fileUrlForSpritesheet()] + Variant.allCases.map { fileUrlForVariant($0) }
@@ -92,33 +97,38 @@ public class BadgeAssets {
             return true
         }
 
-        guard shouldFetch else { return }
+        guard shouldFetch else { return Promise.value(()) }
         OWSFileSystem.ensureDirectoryExists(localAssetDirectory.path)
-        do {
-            try await fetchSpritesheetIfNecessary()
-            try extractSpritesFromSpritesheetIfNecessary()
-            lockedState.withLock { $0 = .fetched }
-        } catch {
+        return firstly(on: DispatchQueue.sharedUtility) { () -> Promise<Void> in
+            self.fetchSpritesheetIfNecessary()
+        }.done(on: DispatchQueue.sharedUtility) { _ in
+            try self.extractSpritesFromSpritesheetIfNecessary()
+            self.lock.withLock { self.state = .fetched }
+        }.catch(on: DispatchQueue.sharedUtility) { error in
             owsFailDebug("Failed to fetch badge assets with error: \(error)")
-            lockedState.withLock { $0 = .failed }
+            self.lock.withLock { self.state = .failed }
         }
     }
 
-    private func fetchSpritesheetIfNecessary() async throws {
+    private func fetchSpritesheetIfNecessary() -> Promise<Void> {
         let spriteUrl = fileUrlForSpritesheet()
-        guard !OWSFileSystem.fileOrFolderExists(url: spriteUrl) else { return }
+        guard !OWSFileSystem.fileOrFolderExists(url: spriteUrl) else {
+            return Promise.value(())
+        }
 
         // TODO: Badges — Censorship circumvention
         let urlSession = SSKEnvironment.shared.signalServiceRef.urlSessionForUpdates2()
-        let result = try await urlSession.performDownload(remoteSourceUrl.absoluteString, method: .get)
-        let resultUrl = result.downloadUrl
-        guard OWSFileSystem.fileOrFolderExists(url: resultUrl) else {
-            throw OWSAssertionError("Sprite url missing")
+        return urlSession.downloadTaskPromise(remoteSourceUrl.absoluteString, method: .get).map { result in
+            let resultUrl = result.downloadUrl
+
+            guard OWSFileSystem.fileOrFolderExists(url: resultUrl) else {
+                throw OWSAssertionError("Sprite url missing")
+            }
+            guard Data.ows_isValidImage(at: resultUrl, mimeType: nil) else {
+                throw OWSAssertionError("Invalid sprite")
+            }
+            try OWSFileSystem.moveFile(from: resultUrl, to: spriteUrl)
         }
-        guard Data.ows_isValidImage(at: resultUrl, mimeType: nil) else {
-            throw OWSAssertionError("Invalid sprite")
-        }
-        try OWSFileSystem.moveFile(from: resultUrl, to: spriteUrl)
     }
 
     private func extractSpritesFromSpritesheetIfNecessary() throws {
@@ -153,18 +163,28 @@ public class BadgeAssets {
 extension BadgeAssets {
 
     // TODO: Badges — Lazy initialization? Double check backing memory is all purgable
+    @objc
     public var light16: UIImage? { imageForVariant(.light16) }
+    @objc
     public var light24: UIImage? { imageForVariant(.light24) }
+    @objc
     public var light36: UIImage? { imageForVariant(.light36) }
+    @objc
     public var dark16: UIImage? { imageForVariant(.dark16) }
+    @objc
     public var dark24: UIImage? { imageForVariant(.dark24) }
+    @objc
     public var dark36: UIImage? { imageForVariant(.dark36) }
+    @objc
     public var universal64: UIImage? { imageForVariant(.universal64) }
+    @objc
     public var universal112: UIImage? { imageForVariant(.universal112) }
+    @objc
     public var universal160: UIImage? { imageForVariant(.universal160) }
 
     private func imageForVariant(_ variant: Variant) -> UIImage? {
-        guard lockedState.withLock({ $0 == .fetched }) else {
+        let currentState = lock.withLock { state }
+        guard currentState == .fetched else {
             return nil
         }
 

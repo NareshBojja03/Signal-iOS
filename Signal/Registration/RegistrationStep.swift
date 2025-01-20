@@ -11,7 +11,6 @@ public enum RegistrationStep: Equatable {
     case registrationSplash
     case changeNumberSplash
     case permissions
-    case scanQuickRegistrationQrCode(RegistrationQuickRestoreQRCodeState)
 
     // MARK: - Actually registering
 
@@ -118,7 +117,6 @@ public enum RegistrationStep: Equatable {
         case .registrationSplash: return "registrationSplash"
         case .changeNumberSplash: return "changeNumberSplash"
         case .permissions: return "permissions"
-        case .scanQuickRegistrationQrCode: return "scanQuickRegistrationQrCode"
         case .phoneNumberEntry: return "phoneNumberEntry"
         case .verificationCodeEntry: return "verificationCodeEntry"
         case .transferSelection: return "transferSelection"

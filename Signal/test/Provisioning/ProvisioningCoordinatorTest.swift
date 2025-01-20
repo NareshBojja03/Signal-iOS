@@ -65,7 +65,7 @@ public class ProvisioningCoordinatorTest: XCTestCase {
             identityManager: identityManagerMock,
             linkAndSyncManager: MockLinkAndSyncManager(),
             messageFactory: messageFactoryMock,
-            mrbkStore: MediaRootBackupKeyStore(),
+            mrbkStore: MediaRootBackupKeyStore(keyValueStoreFactory: InMemoryKeyValueStoreFactory()),
             preKeyManager: prekeyManagerMock,
             profileManager: profileManagerMock,
             pushRegistrationManager: pushRegistrationManagerMock,
@@ -141,9 +141,7 @@ public class ProvisioningCoordinatorTest: XCTestCase {
 
         let provisioningResult = await provisioningCoordinator.completeProvisioning(
             provisionMessage: provisioningMessage,
-            deviceName: deviceName,
-            progressViewModel: LinkAndSyncProgressViewModel(),
-            shouldRetry: { _ in false }
+            deviceName: deviceName
         )
 
         XCTAssert(didSetLocalIdentifiers)
@@ -173,34 +171,26 @@ extension ProvisioningCoordinatorTest {
 
         var responder: ((TSRequest) -> Data)?
 
-        override func performRequest(_ rawRequest: TSRequest) async throws -> any HTTPResponse {
+        override func promiseForTSRequest(_ rawRequest: TSRequest) -> Promise<HTTPResponse> {
             let responseBody = responder!(rawRequest)
-            return HTTPResponseImpl(
+            return .value(HTTPResponseImpl(
                 requestUrl: rawRequest.url!,
                 status: 200,
                 headers: OWSHttpHeaders(),
                 bodyData: responseBody
-            )
+            ))
         }
     }
 }
 
 private class MockLinkAndSyncManager: LinkAndSyncManager {
-
-    func isLinkAndSyncEnabledOnPrimary(tx: DBReadTransaction) -> Bool {
-        true
-    }
-
-    func setIsLinkAndSyncEnabledOnPrimary(_ isEnabled: Bool, tx: DBWriteTransaction) {}
-
-    func generateEphemeralBackupKey() -> BackupKey {
+    func generateEphemeralBackupKey() -> EphemeralBackupKey {
         return .forTesting()
     }
 
     func waitForLinkingAndUploadBackup(
-        ephemeralBackupKey: BackupKey,
-        tokenId: DeviceProvisioningTokenId,
-        progress: OWSProgressSink
+        ephemeralBackupKey: EphemeralBackupKey,
+        tokenId: DeviceProvisioningTokenId
     ) async throws(PrimaryLinkNSyncError) {
         return
     }
@@ -208,8 +198,7 @@ private class MockLinkAndSyncManager: LinkAndSyncManager {
     func waitForBackupAndRestore(
         localIdentifiers: LocalIdentifiers,
         auth: ChatServiceAuth,
-        ephemeralBackupKey: BackupKey,
-        progress: OWSProgressSink
+        ephemeralBackupKey: EphemeralBackupKey
     ) async throws(SecondaryLinkNSyncError) {
         return
     }

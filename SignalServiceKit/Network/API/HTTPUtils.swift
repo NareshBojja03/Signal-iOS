@@ -31,6 +31,14 @@ private extension Dictionary where Key == String {
 
 class HTTPUtils {
     #if TESTABLE_BUILD
+    public static func logCurl(for task: URLSessionTask) {
+        guard let request = task.originalRequest else {
+            Logger.debug("attempted to log curl on a task with no original request")
+            return
+        }
+        logCurl(for: request)
+    }
+
     public static func logCurl(for request: URLRequest) {
         guard let httpMethod = request.httpMethod else {
             Logger.debug("attempted to log curl on a request with no http method")
@@ -158,7 +166,7 @@ class HTTPUtils {
 
         switch responseStatus {
         case 0:
-            return .networkFailure
+            return .networkFailure(requestUrl: requestUrl)
         case 429:
             let description = OWSLocalizedString("REGISTER_RATE_LIMITING_ERROR", comment: "")
             let recoverySuggestion = OWSLocalizedString("REGISTER_RATE_LIMITING_BODY", comment: "")
@@ -187,8 +195,15 @@ public extension Error {
         HTTPUtils.httpStatusCode(forError: self)
     }
 
+    var httpRequestUrl: URL? {
+        guard let error = self as? HTTPError else {
+            return nil
+        }
+        return error.requestUrl
+    }
+
     var httpResponseHeaders: OWSHttpHeaders? {
-        guard let error = self as? OWSHTTPError else {
+        guard let error = self as? HTTPError else {
             return nil
         }
         return error.responseHeaders
@@ -220,6 +235,26 @@ public extension Error {
             return false
         }
         return 400 <= statusCode && statusCode <= 499
+    }
+}
+
+// MARK: -
+
+public extension NSError {
+    @objc
+    @available(swift, obsoleted: 1.0)
+    var httpStatusCode: NSNumber? {
+        guard let statusCode = HTTPUtils.httpStatusCode(forError: self) else {
+            return nil
+        }
+        owsAssertDebug(statusCode > 0)
+        return NSNumber(value: statusCode)
+    }
+
+    @objc
+    @available(swift, obsoleted: 1.0)
+    var isNetworkFailureOrTimeout: Bool {
+        HTTPUtils.isNetworkFailureOrTimeout(forError: self)
     }
 }
 
@@ -306,7 +341,7 @@ public func owsFailDebugUnlessNetworkFailure(_ error: Error,
         // Log but otherwise ignore network failures.
         Logger.warn("Error: \(error)", file: file, function: function, line: line)
     } else {
-        owsFailDebug("Error: \(error)", file: file, function: function, line: line)
+        Logger.debug("Error: \(error)", file: file, function: function, line: line)
     }
 }
 

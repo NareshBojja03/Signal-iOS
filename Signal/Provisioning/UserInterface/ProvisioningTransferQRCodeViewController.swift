@@ -7,11 +7,11 @@ import MultipeerConnectivity
 import SignalServiceKit
 import SignalUI
 
-class ProvisioningTransferQRCodeViewController: ProvisioningBaseViewController {
+public class ProvisioningTransferQRCodeViewController: ProvisioningBaseViewController {
 
     private let qrCodeView = QRCodeView()
 
-    override func loadView() {
+    override public func loadView() {
         view = UIView()
         view.addSubview(primaryView)
         primaryView.autoPinEdgesToSuperviewEdges()
@@ -70,7 +70,7 @@ class ProvisioningTransferQRCodeViewController: ProvisioningBaseViewController {
         stackView.autoPinEdgesToSuperviewMargins()
     }
 
-    override func viewDidAppear(_ animated: Bool) {
+    override public func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
         AppEnvironment.shared.deviceTransferServiceRef.addObserver(self)
@@ -86,7 +86,7 @@ class ProvisioningTransferQRCodeViewController: ProvisioningBaseViewController {
         }
     }
 
-    override func viewWillDisappear(_ animated: Bool) {
+    public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
         AppEnvironment.shared.deviceTransferServiceRef.removeObserver(self)

@@ -62,7 +62,7 @@ public enum ImageQualityLevel: UInt, Comparable {
         }
     }
 
-    private static let keyValueStore = KeyValueStore(collection: "ImageQualityLevel")
+    private static let keyValueStore = SDSKeyValueStore(collection: "ImageQualityLevel")
     private static var userSelectedHighQualityKey: String { "defaultQuality" }
 
     public static func resolvedQuality(tx: SDSAnyReadTransaction) -> ImageQualityLevel {
@@ -77,7 +77,7 @@ public enum ImageQualityLevel: UInt, Comparable {
             // they didn't, we always fall back to the current server-provided value
             // for standard quality. In the past, we stored low/medium values
             // explicitly, but this was wrong.
-            guard let rawValue = keyValueStore.getUInt(userSelectedHighQualityKey, transaction: tx.asV2Read) else {
+            guard let rawValue = keyValueStore.getUInt(userSelectedHighQualityKey, transaction: tx) else {
                 return false
             }
             return ImageQualityLevel(rawValue: rawValue) == .high
@@ -92,9 +92,9 @@ public enum ImageQualityLevel: UInt, Comparable {
 
     public static func setUserSelectedHighQuality(_ isHighQuality: Bool, tx: SDSAnyWriteTransaction) {
         if isHighQuality {
-            keyValueStore.setUInt(ImageQualityLevel.three.rawValue, key: userSelectedHighQualityKey, transaction: tx.asV2Write)
+            keyValueStore.setUInt(ImageQualityLevel.three.rawValue, key: userSelectedHighQualityKey, transaction: tx)
         } else {
-            keyValueStore.removeValue(forKey: userSelectedHighQualityKey, transaction: tx.asV2Write)
+            keyValueStore.removeValue(forKey: userSelectedHighQualityKey, transaction: tx)
         }
     }
 

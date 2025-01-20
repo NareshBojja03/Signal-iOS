@@ -5015,16 +5015,6 @@ public struct GroupsProtoGroupChangeActions: Codable, CustomDebugStringConvertib
         return !proto.sourceUserID.isEmpty
     }
 
-    public var groupID: Data? {
-        guard hasGroupID else {
-            return nil
-        }
-        return proto.groupID
-    }
-    public var hasGroupID: Bool {
-        return !proto.groupID.isEmpty
-    }
-
     public var revision: UInt32 {
         return proto.revision
     }
@@ -5229,9 +5219,6 @@ extension GroupsProtoGroupChangeActions {
         if let _value = sourceUserID {
             builder.setSourceUserID(_value)
         }
-        if let _value = groupID {
-            builder.setGroupID(_value)
-        }
         builder.setRevision(revision)
         builder.setAddMembers(addMembers)
         builder.setDeleteMembers(deleteMembers)
@@ -5294,16 +5281,6 @@ public struct GroupsProtoGroupChangeActionsBuilder {
 
     public mutating func setSourceUserID(_ valueParam: Data) {
         proto.sourceUserID = valueParam
-    }
-
-    @available(swift, obsoleted: 1.0)
-    public mutating func setGroupID(_ valueParam: Data?) {
-        guard let valueParam = valueParam else { return }
-        proto.groupID = valueParam
-    }
-
-    public mutating func setGroupID(_ valueParam: Data) {
-        proto.groupID = valueParam
     }
 
     public mutating func setRevision(_ valueParam: UInt32) {
@@ -5683,267 +5660,6 @@ extension GroupsProtoGroupChangeBuilder {
 
 #endif
 
-// MARK: - GroupsProtoGroupExternalCredential
-
-public struct GroupsProtoGroupExternalCredential: Codable, CustomDebugStringConvertible {
-
-    fileprivate let proto: GroupsProtos_GroupExternalCredential
-
-    public var token: String? {
-        guard hasToken else {
-            return nil
-        }
-        return proto.token
-    }
-    public var hasToken: Bool {
-        return !proto.token.isEmpty
-    }
-
-    public var hasUnknownFields: Bool {
-        return !proto.unknownFields.data.isEmpty
-    }
-    public var unknownFields: SwiftProtobuf.UnknownStorage? {
-        guard hasUnknownFields else { return nil }
-        return proto.unknownFields
-    }
-
-    private init(proto: GroupsProtos_GroupExternalCredential) {
-        self.proto = proto
-    }
-
-    public func serializedData() throws -> Data {
-        return try self.proto.serializedData()
-    }
-
-    public init(serializedData: Data) throws {
-        let proto = try GroupsProtos_GroupExternalCredential(serializedBytes: serializedData)
-        self.init(proto)
-    }
-
-    fileprivate init(_ proto: GroupsProtos_GroupExternalCredential) {
-        self.init(proto: proto)
-    }
-
-    public init(from decoder: Swift.Decoder) throws {
-        let singleValueContainer = try decoder.singleValueContainer()
-        let serializedData = try singleValueContainer.decode(Data.self)
-        try self.init(serializedData: serializedData)
-    }
-    public func encode(to encoder: Swift.Encoder) throws {
-        var singleValueContainer = encoder.singleValueContainer()
-        try singleValueContainer.encode(try serializedData())
-    }
-
-    public var debugDescription: String {
-        return "\(proto)"
-    }
-}
-
-extension GroupsProtoGroupExternalCredential {
-    public static func builder() -> GroupsProtoGroupExternalCredentialBuilder {
-        return GroupsProtoGroupExternalCredentialBuilder()
-    }
-
-    // asBuilder() constructs a builder that reflects the proto's contents.
-    public func asBuilder() -> GroupsProtoGroupExternalCredentialBuilder {
-        var builder = GroupsProtoGroupExternalCredentialBuilder()
-        if let _value = token {
-            builder.setToken(_value)
-        }
-        if let _value = unknownFields {
-            builder.setUnknownFields(_value)
-        }
-        return builder
-    }
-}
-
-public struct GroupsProtoGroupExternalCredentialBuilder {
-
-    private var proto = GroupsProtos_GroupExternalCredential()
-
-    fileprivate init() {}
-
-    @available(swift, obsoleted: 1.0)
-    public mutating func setToken(_ valueParam: String?) {
-        guard let valueParam = valueParam else { return }
-        proto.token = valueParam
-    }
-
-    public mutating func setToken(_ valueParam: String) {
-        proto.token = valueParam
-    }
-
-    public mutating func setUnknownFields(_ unknownFields: SwiftProtobuf.UnknownStorage) {
-        proto.unknownFields = unknownFields
-    }
-
-    public func buildInfallibly() -> GroupsProtoGroupExternalCredential {
-        return GroupsProtoGroupExternalCredential(proto)
-    }
-
-    public func buildSerializedData() throws -> Data {
-        return try GroupsProtoGroupExternalCredential(proto).serializedData()
-    }
-}
-
-#if TESTABLE_BUILD
-
-extension GroupsProtoGroupExternalCredential {
-    public func serializedDataIgnoringErrors() -> Data? {
-        return try! self.serializedData()
-    }
-}
-
-extension GroupsProtoGroupExternalCredentialBuilder {
-    public func buildIgnoringErrors() -> GroupsProtoGroupExternalCredential? {
-        return self.buildInfallibly()
-    }
-}
-
-#endif
-
-// MARK: - GroupsProtoGroupResponse
-
-public struct GroupsProtoGroupResponse: Codable, CustomDebugStringConvertible {
-
-    fileprivate let proto: GroupsProtos_GroupResponse
-
-    public let group: GroupsProtoGroup?
-
-    public var groupSendEndorsementsResponse: Data? {
-        guard hasGroupSendEndorsementsResponse else {
-            return nil
-        }
-        return proto.groupSendEndorsementsResponse
-    }
-    public var hasGroupSendEndorsementsResponse: Bool {
-        return !proto.groupSendEndorsementsResponse.isEmpty
-    }
-
-    public var hasUnknownFields: Bool {
-        return !proto.unknownFields.data.isEmpty
-    }
-    public var unknownFields: SwiftProtobuf.UnknownStorage? {
-        guard hasUnknownFields else { return nil }
-        return proto.unknownFields
-    }
-
-    private init(proto: GroupsProtos_GroupResponse,
-                 group: GroupsProtoGroup?) {
-        self.proto = proto
-        self.group = group
-    }
-
-    public func serializedData() throws -> Data {
-        return try self.proto.serializedData()
-    }
-
-    public init(serializedData: Data) throws {
-        let proto = try GroupsProtos_GroupResponse(serializedBytes: serializedData)
-        self.init(proto)
-    }
-
-    fileprivate init(_ proto: GroupsProtos_GroupResponse) {
-        var group: GroupsProtoGroup?
-        if proto.hasGroup {
-            group = GroupsProtoGroup(proto.group)
-        }
-
-        self.init(proto: proto,
-                  group: group)
-    }
-
-    public init(from decoder: Swift.Decoder) throws {
-        let singleValueContainer = try decoder.singleValueContainer()
-        let serializedData = try singleValueContainer.decode(Data.self)
-        try self.init(serializedData: serializedData)
-    }
-    public func encode(to encoder: Swift.Encoder) throws {
-        var singleValueContainer = encoder.singleValueContainer()
-        try singleValueContainer.encode(try serializedData())
-    }
-
-    public var debugDescription: String {
-        return "\(proto)"
-    }
-}
-
-extension GroupsProtoGroupResponse {
-    public static func builder() -> GroupsProtoGroupResponseBuilder {
-        return GroupsProtoGroupResponseBuilder()
-    }
-
-    // asBuilder() constructs a builder that reflects the proto's contents.
-    public func asBuilder() -> GroupsProtoGroupResponseBuilder {
-        var builder = GroupsProtoGroupResponseBuilder()
-        if let _value = group {
-            builder.setGroup(_value)
-        }
-        if let _value = groupSendEndorsementsResponse {
-            builder.setGroupSendEndorsementsResponse(_value)
-        }
-        if let _value = unknownFields {
-            builder.setUnknownFields(_value)
-        }
-        return builder
-    }
-}
-
-public struct GroupsProtoGroupResponseBuilder {
-
-    private var proto = GroupsProtos_GroupResponse()
-
-    fileprivate init() {}
-
-    @available(swift, obsoleted: 1.0)
-    public mutating func setGroup(_ valueParam: GroupsProtoGroup?) {
-        guard let valueParam = valueParam else { return }
-        proto.group = valueParam.proto
-    }
-
-    public mutating func setGroup(_ valueParam: GroupsProtoGroup) {
-        proto.group = valueParam.proto
-    }
-
-    @available(swift, obsoleted: 1.0)
-    public mutating func setGroupSendEndorsementsResponse(_ valueParam: Data?) {
-        guard let valueParam = valueParam else { return }
-        proto.groupSendEndorsementsResponse = valueParam
-    }
-
-    public mutating func setGroupSendEndorsementsResponse(_ valueParam: Data) {
-        proto.groupSendEndorsementsResponse = valueParam
-    }
-
-    public mutating func setUnknownFields(_ unknownFields: SwiftProtobuf.UnknownStorage) {
-        proto.unknownFields = unknownFields
-    }
-
-    public func buildInfallibly() -> GroupsProtoGroupResponse {
-        return GroupsProtoGroupResponse(proto)
-    }
-
-    public func buildSerializedData() throws -> Data {
-        return try GroupsProtoGroupResponse(proto).serializedData()
-    }
-}
-
-#if TESTABLE_BUILD
-
-extension GroupsProtoGroupResponse {
-    public func serializedDataIgnoringErrors() -> Data? {
-        return try! self.serializedData()
-    }
-}
-
-extension GroupsProtoGroupResponseBuilder {
-    public func buildIgnoringErrors() -> GroupsProtoGroupResponse? {
-        return self.buildInfallibly()
-    }
-}
-
-#endif
-
 // MARK: - GroupsProtoGroupChangesGroupChangeState
 
 public struct GroupsProtoGroupChangesGroupChangeState: Codable, CustomDebugStringConvertible {
@@ -6096,16 +5812,6 @@ public struct GroupsProtoGroupChanges: Codable, CustomDebugStringConvertible {
         return proto.groupChanges
     }
 
-    public var groupSendEndorsementsResponse: Data? {
-        guard hasGroupSendEndorsementsResponse else {
-            return nil
-        }
-        return proto.groupSendEndorsementsResponse
-    }
-    public var hasGroupSendEndorsementsResponse: Bool {
-        return !proto.groupSendEndorsementsResponse.isEmpty
-    }
-
     public var hasUnknownFields: Bool {
         return !proto.unknownFields.data.isEmpty
     }
@@ -6155,9 +5861,6 @@ extension GroupsProtoGroupChanges {
     public func asBuilder() -> GroupsProtoGroupChangesBuilder {
         var builder = GroupsProtoGroupChangesBuilder()
         builder.setGroupChanges(groupChanges)
-        if let _value = groupSendEndorsementsResponse {
-            builder.setGroupSendEndorsementsResponse(_value)
-        }
         if let _value = unknownFields {
             builder.setUnknownFields(_value)
         }
@@ -6177,16 +5880,6 @@ public struct GroupsProtoGroupChangesBuilder {
 
     public mutating func setGroupChanges(_ wrappedItems: [Data]) {
         proto.groupChanges = wrappedItems
-    }
-
-    @available(swift, obsoleted: 1.0)
-    public mutating func setGroupSendEndorsementsResponse(_ valueParam: Data?) {
-        guard let valueParam = valueParam else { return }
-        proto.groupSendEndorsementsResponse = valueParam
-    }
-
-    public mutating func setGroupSendEndorsementsResponse(_ valueParam: Data) {
-        proto.groupSendEndorsementsResponse = valueParam
     }
 
     public mutating func setUnknownFields(_ unknownFields: SwiftProtobuf.UnknownStorage) {
@@ -6218,22 +5911,20 @@ extension GroupsProtoGroupChangesBuilder {
 
 #endif
 
-// MARK: - GroupsProtoGroupChangeResponse
+// MARK: - GroupsProtoGroupExternalCredential
 
-public struct GroupsProtoGroupChangeResponse: Codable, CustomDebugStringConvertible {
+public struct GroupsProtoGroupExternalCredential: Codable, CustomDebugStringConvertible {
 
-    fileprivate let proto: GroupsProtos_GroupChangeResponse
+    fileprivate let proto: GroupsProtos_GroupExternalCredential
 
-    public let groupChange: GroupsProtoGroupChange?
-
-    public var groupSendEndorsementsResponse: Data? {
-        guard hasGroupSendEndorsementsResponse else {
+    public var token: String? {
+        guard hasToken else {
             return nil
         }
-        return proto.groupSendEndorsementsResponse
+        return proto.token
     }
-    public var hasGroupSendEndorsementsResponse: Bool {
-        return !proto.groupSendEndorsementsResponse.isEmpty
+    public var hasToken: Bool {
+        return !proto.token.isEmpty
     }
 
     public var hasUnknownFields: Bool {
@@ -6244,10 +5935,8 @@ public struct GroupsProtoGroupChangeResponse: Codable, CustomDebugStringConverti
         return proto.unknownFields
     }
 
-    private init(proto: GroupsProtos_GroupChangeResponse,
-                 groupChange: GroupsProtoGroupChange?) {
+    private init(proto: GroupsProtos_GroupExternalCredential) {
         self.proto = proto
-        self.groupChange = groupChange
     }
 
     public func serializedData() throws -> Data {
@@ -6255,18 +5944,12 @@ public struct GroupsProtoGroupChangeResponse: Codable, CustomDebugStringConverti
     }
 
     public init(serializedData: Data) throws {
-        let proto = try GroupsProtos_GroupChangeResponse(serializedBytes: serializedData)
+        let proto = try GroupsProtos_GroupExternalCredential(serializedBytes: serializedData)
         self.init(proto)
     }
 
-    fileprivate init(_ proto: GroupsProtos_GroupChangeResponse) {
-        var groupChange: GroupsProtoGroupChange?
-        if proto.hasGroupChange {
-            groupChange = GroupsProtoGroupChange(proto.groupChange)
-        }
-
-        self.init(proto: proto,
-                  groupChange: groupChange)
+    fileprivate init(_ proto: GroupsProtos_GroupExternalCredential) {
+        self.init(proto: proto)
     }
 
     public init(from decoder: Swift.Decoder) throws {
@@ -6284,19 +5967,16 @@ public struct GroupsProtoGroupChangeResponse: Codable, CustomDebugStringConverti
     }
 }
 
-extension GroupsProtoGroupChangeResponse {
-    public static func builder() -> GroupsProtoGroupChangeResponseBuilder {
-        return GroupsProtoGroupChangeResponseBuilder()
+extension GroupsProtoGroupExternalCredential {
+    public static func builder() -> GroupsProtoGroupExternalCredentialBuilder {
+        return GroupsProtoGroupExternalCredentialBuilder()
     }
 
     // asBuilder() constructs a builder that reflects the proto's contents.
-    public func asBuilder() -> GroupsProtoGroupChangeResponseBuilder {
-        var builder = GroupsProtoGroupChangeResponseBuilder()
-        if let _value = groupChange {
-            builder.setGroupChange(_value)
-        }
-        if let _value = groupSendEndorsementsResponse {
-            builder.setGroupSendEndorsementsResponse(_value)
+    public func asBuilder() -> GroupsProtoGroupExternalCredentialBuilder {
+        var builder = GroupsProtoGroupExternalCredentialBuilder()
+        if let _value = token {
+            builder.setToken(_value)
         }
         if let _value = unknownFields {
             builder.setUnknownFields(_value)
@@ -6305,55 +5985,45 @@ extension GroupsProtoGroupChangeResponse {
     }
 }
 
-public struct GroupsProtoGroupChangeResponseBuilder {
+public struct GroupsProtoGroupExternalCredentialBuilder {
 
-    private var proto = GroupsProtos_GroupChangeResponse()
+    private var proto = GroupsProtos_GroupExternalCredential()
 
     fileprivate init() {}
 
     @available(swift, obsoleted: 1.0)
-    public mutating func setGroupChange(_ valueParam: GroupsProtoGroupChange?) {
+    public mutating func setToken(_ valueParam: String?) {
         guard let valueParam = valueParam else { return }
-        proto.groupChange = valueParam.proto
+        proto.token = valueParam
     }
 
-    public mutating func setGroupChange(_ valueParam: GroupsProtoGroupChange) {
-        proto.groupChange = valueParam.proto
-    }
-
-    @available(swift, obsoleted: 1.0)
-    public mutating func setGroupSendEndorsementsResponse(_ valueParam: Data?) {
-        guard let valueParam = valueParam else { return }
-        proto.groupSendEndorsementsResponse = valueParam
-    }
-
-    public mutating func setGroupSendEndorsementsResponse(_ valueParam: Data) {
-        proto.groupSendEndorsementsResponse = valueParam
+    public mutating func setToken(_ valueParam: String) {
+        proto.token = valueParam
     }
 
     public mutating func setUnknownFields(_ unknownFields: SwiftProtobuf.UnknownStorage) {
         proto.unknownFields = unknownFields
     }
 
-    public func buildInfallibly() -> GroupsProtoGroupChangeResponse {
-        return GroupsProtoGroupChangeResponse(proto)
+    public func buildInfallibly() -> GroupsProtoGroupExternalCredential {
+        return GroupsProtoGroupExternalCredential(proto)
     }
 
     public func buildSerializedData() throws -> Data {
-        return try GroupsProtoGroupChangeResponse(proto).serializedData()
+        return try GroupsProtoGroupExternalCredential(proto).serializedData()
     }
 }
 
 #if TESTABLE_BUILD
 
-extension GroupsProtoGroupChangeResponse {
+extension GroupsProtoGroupExternalCredential {
     public func serializedDataIgnoringErrors() -> Data? {
         return try! self.serializedData()
     }
 }
 
-extension GroupsProtoGroupChangeResponseBuilder {
-    public func buildIgnoringErrors() -> GroupsProtoGroupChangeResponse? {
+extension GroupsProtoGroupExternalCredentialBuilder {
+    public func buildIgnoringErrors() -> GroupsProtoGroupExternalCredential? {
         return self.buildInfallibly()
     }
 }

@@ -36,6 +36,8 @@ public enum QuotedMessageAttachmentReference {
         }
 
         public init?(_ info: OWSAttachmentInfo) {
+            owsAssertDebug(info.attachmentType == .unset)
+
             self.init(
                 mimeType: info.originalAttachmentMimeType,
                 sourceFilename: info.originalAttachmentSourceFilename

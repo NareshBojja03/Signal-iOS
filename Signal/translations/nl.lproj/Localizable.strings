@@ -110,7 +110,7 @@
 "ADD_TO_GROUP_ALREADY_MEMBER_TOAST_FORMAT" = "%1$@ is al lid van de groep ‘%2$@’";
 
 /* A toast on the 'add to group' view indicating the user was added. Embeds {contact name} and {group name} */
-"ADD_TO_GROUP_SUCCESS_TOAST_FORMAT" = "%1$@ is toegevoegd aan de groep ‘%2$@’";
+"ADD_TO_GROUP_SUCCESS_TOAST_FORMAT" = "%1$@ is toegevoegd aan de groep ‘%2$@’ ";
 
 /* Title of the 'add to group' view. */
 "ADD_TO_GROUP_TITLE" = "Aan een groep toevoegen";
@@ -263,43 +263,43 @@
 "APPEARANCE_SETTINGS_SYSTEM_THEME_NAME" = "Systeemstandaard";
 
 /* Apple Pay donation error for decline failures where authentication is required. */
-"APPLE_PAY_DONATION_ERROR_AUTHENTICATION_REQUIRED" = "Probeer het via een andere betaalmethode of neem contact op met je bank voor meer informatie.";
+"APPLE_PAY_DONATION_ERROR_AUTHENTICATION_REQUIRED" = "Probeer het via een andere betalingsmethode of neem contact op met je bank voor meer informatie.";
 
 /* Apple Pay donation error for decline failures where the user may need to contact their card or bank. */
-"APPLE_PAY_DONATION_ERROR_CALL_ISSUER" = "Controleer of je betaalmethode nog steeds juist is. Werk je betaalgegevens bij in Apple Pay als dat nodig is. Probeer het daarna opnieuw. Neem contact op met je bank als dit probleem aanhoudt.";
+"APPLE_PAY_DONATION_ERROR_CALL_ISSUER" = "Controleer of je betalingsmethode nog steeds juist is. Werk je betalingsinformatie bij in Apple Pay als dat nodig is. Probeer het daarna opnieuw. Neem contact op met je bank als dit probleem aanhoudt.";
 
 /* Apple Pay donation error for decline failures where the card is not supported. */
-"APPLE_PAY_DONATION_ERROR_CARD_NOT_SUPPORTED" = "Je betaalkaart ondersteunt dit type betaling niet. Probeer het via een andere betaalmethode of neem contact op met je bank voor meer informatie.";
+"APPLE_PAY_DONATION_ERROR_CARD_NOT_SUPPORTED" = "Je betaalkaart ondersteunt dit type betaling niet. Probeer het via een andere betalingsmethode of neem contact op met je bank voor meer informatie.";
 
 /* Apple Pay donation error for decline failures where the card has expired. */
-"APPLE_PAY_DONATION_ERROR_EXPIRED_CARD" = "Je betaalkaart is verlopen. Werk je betaalgegevens bij in Apple Pay. Probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_EXPIRED_CARD" = "Je betaalkaart is verlopen. Werk je betalingsinformatie bij in Apple Pay. Probeer het daarna opnieuw.";
 
 /* Apple Pay donation error for decline failures where the card number is incorrect. */
-"APPLE_PAY_DONATION_ERROR_INCORRECT_CARD_NUMBER" = "Het nummer van je betaalkaart is onjuist. Werk je betaalgegevens bij in Apple Pay. Probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_INCORRECT_CARD_NUMBER" = "Het nummer van je betaalkaart is onjuist. Werk je betalingsinformatie bij in Apple Pay. Probeer het daarna opnieuw.";
 
 /* Apple Pay donation error for decline failures where the card verification code (often called CVV or CVC) is incorrect. */
-"APPLE_PAY_DONATION_ERROR_INCORRECT_CARD_VERIFICATION_CODE" = "Het CVC-nummer van je betaalkaart is onjuist. Werk eerst je betaalgegevens bij in Apple Pay en probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_INCORRECT_CARD_VERIFICATION_CODE" = "Het CVC-nummer van je betaalkaart is onjuist. Werk eerst je betalingsinformatie bij in Apple Pay en probeer het daarna opnieuw.";
 
 /* Apple Pay donation error for decline failures where the card has insufficient funds. */
-"APPLE_PAY_DONATION_ERROR_INSUFFICIENT_FUNDS" = "Er staat onvoldoende krediet op je betaalkaart om deze betaling te doen. Probeer het via een andere betaalmethode of neem contact op met je bank voor meer informatie.";
+"APPLE_PAY_DONATION_ERROR_INSUFFICIENT_FUNDS" = "Er staat onvoldoende krediet op je betaalkaart om deze betaling te doen. Probeer het via een andere betalingsmethode of neem contact op met je bank voor meer informatie.";
 
 /* Apple Pay donation error for decline failures where the expiration month on the payment method is incorrect. */
-"APPLE_PAY_DONATION_ERROR_INVALID_EXPIRY_MONTH" = "De maand waarop je betaalkaart verloopt is onjuist. Werk je betaalgegevens bij in Apple Pay. Probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_INVALID_EXPIRY_MONTH" = "De maand waarop je betaalkaart verloopt is onjuist. Werk je betalingsinformatie bij in Apple Pay. Probeer het daarna opnieuw.";
 
 /* Apple Pay donation error for decline failures where the expiration year on the payment method is incorrect. */
-"APPLE_PAY_DONATION_ERROR_INVALID_EXPIRY_YEAR" = "Het jaar waarop je betaalkaart verloopt is onjuist. Werk je betaalgegevens bij in Apple Pay. Probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_INVALID_EXPIRY_YEAR" = "Het jaar waarop je betaalkaart verloopt is onjuist. Werk je betalingsinformatie bij in Apple Pay. Probeer het daarna opnieuw.";
 
 /* Apple Pay donation error for decline failures where the card number is incorrect. */
-"APPLE_PAY_DONATION_ERROR_INVALID_NUMBER" = "Het nummer van je betaalkaart is onjuist. Werk je betaalgegevens bij in Apple Pay. Probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_INVALID_NUMBER" = "Het nummer van je betaalkaart is onjuist. Werk je betalingsinformatie bij in Apple Pay. Probeer het daarna opnieuw.";
 
 /* Apple Pay donation error for \"issuer not available\" decline failures. The user should try again or contact their card/bank. */
 "APPLE_PAY_DONATION_ERROR_ISSUER_NOT_AVAILABLE" = "Probeer de betaling opnieuw te voltooien of neem contact op met je bank voor meer informatie.";
 
 /* Apple Pay donation error for unspecified decline failures. */
-"APPLE_PAY_DONATION_ERROR_OTHER" = "Probeer het via een andere betaalmethode of neem contact op met je bank voor meer informatie.";
+"APPLE_PAY_DONATION_ERROR_OTHER" = "Probeer het via een andere betalingsmethode of neem contact op met je bank voor meer informatie.";
 
 /* Apple Pay donation error for decline failures where the payment cannot be authorized. */
-"APPLE_PAY_DONATION_ERROR_PAYMENT_CANNOT_BE_AUTHORIZED" = "Controleer of je betaalmethode nog steeds juist is in Apple Pay. Zo niet, pas het aan en probeer het daarna opnieuw.";
+"APPLE_PAY_DONATION_ERROR_PAYMENT_CANNOT_BE_AUTHORIZED" = "Controleer of je betalingsmethode nog steeds juist is in Apple Pay. Zo niet, pas het aan en probeer het daarna opnieuw.";
 
 /* On the iOS home screen, if you tap and hold the Signal icon, this shortcut will appear. Tapping it will let users send a new message. You may want to refer to similar behavior in other iOS apps, such as Messages, for equivalent strings. */
 "APPLICATION_SHORTCUT_NEW_MESSAGE" = "Nieuw bericht";
@@ -710,7 +710,7 @@
 "CALL_AUDIO_MISSED_WEEK_NOTIFICATION_BODY_FORMAT" = "📞 Gemiste spraakoproep op %1$@";
 
 /* Alert message when calling and permissions for microphone are missing */
-"CALL_AUDIO_PERMISSION_MESSAGE" = "Je kunt toegang tot de microfoon inschakelen in de iOS-Instellingen-app om te kunnen bellen en spraakberichten te kunnen opnemen met Signal.";
+"CALL_AUDIO_PERMISSION_MESSAGE" = "Je kunt toegang tot de microfoon inschakelen in de iOS-instellingenapp om te kunnen bellen en spraakberichten te kunnen opnemen met Signal.";
 
 /* Alert title when calling and permissions for microphone are missing */
 "CALL_AUDIO_PERMISSION_TITLE" = "Toegang vereist tot microfoon";
@@ -794,7 +794,7 @@
 "CALL_LINK_REQUEST_SHEET_DENY_ALL_BUTTON" = "Alle weigeren";
 
 /* Header for the sheet displaying a list of requests to join a call. */
-"CALL_LINK_REQUEST_SHEET_HEADER" = "Deelnameverzoeken";
+"CALL_LINK_REQUEST_SHEET_HEADER" = "Verzoeken om deel te nemen aan deze oproep";
 
 /* Name of a toggle switch to enable/disable admin approval for joining a Call Link. */
 "CALL_LINK_REQUIRE_APPROVAL" = "Nieuwe deelnemers goedkeuren";
@@ -983,7 +983,7 @@
 "CALLS_TAB_VIEW_CALL_INFO_ACTION_TITLE" = "Oproepdetails";
 
 /* Accessibility hint describing what you can do with the camera button */
-"CAMERA_BUTTON_HINT" = "Neem een foto en verstuur deze";
+"CAMERA_BUTTON_HINT" = "Neem een foto en verzend deze";
 
 /* Accessibility label for camera button. */
 "CAMERA_BUTTON_LABEL" = "Camera";
@@ -1196,7 +1196,7 @@
 "COMPOSE_SCREEN_MISSING_CONTACTS_CTA" = "Instellingen openen";
 
 /* Multi-line label explaining why compose-screen contact picker is empty. */
-"COMPOSE_SCREEN_MISSING_CONTACTS_PERMISSION" = "Je kunt toegang tot contacten inschakelen in de iOS-Instellingen-app om te zien wie van je contacten Signal gebruikt.";
+"COMPOSE_SCREEN_MISSING_CONTACTS_PERMISSION" = "Je kunt toegang tot contacten inschakelen in de iOS-instellingen-app om te zien wie van je contacten Signal gebruikt.";
 
 /* Configure reactions title text */
 "CONFIGURE_REACTIONS" = "Reactiebalk personaliseren";
@@ -1235,7 +1235,7 @@
 "CONTACT_ABOUT_SHEET_PENDING_REQUEST" = "Openstaand gespreksverzoek";
 
 /* Message for a tooltip that appears above a parenthesized name for another user, indicating that that name is the name the other user set for themself. Embeds {{name}} */
-"CONTACT_ABOUT_SHEET_SECONDARY_NAME_TOOLTIP_MESSAGE" = "‘%1$@’ is de profielnaam die deze persoon voor zichzelf heeft ingesteld.";
+"CONTACT_ABOUT_SHEET_SECONDARY_NAME_TOOLTIP_MESSAGE" = "‘%1$@’ is de profielnaam die deze persoon voor zichzelf heeft ingesteld in Signal.";
 
 /* A label indicating a user is a signal connection. */
 "CONTACT_ABOUT_SHEET_SIGNAL_CONNECTION_LABEL" = "Signal-contact";
@@ -1984,9 +1984,6 @@
 /* Alert title that can occur when viewing device manager. */
 "DEVICE_LIST_UPDATE_FAILED_TITLE" = "Het bijwerken van de lijst met apparaten is mislukt.";
 
-/* Message appearing on a toast indicating a new device was successfully linked and synced. */
-"DEVICE_LIST_UPDATE_NEW_DEVICE_SYNCED_TOAST" = "Message sync complete";
-
 /* Message appearing on a toast indicating a new device was successfully linked. Embeds {{ device name }} */
 "DEVICE_LIST_UPDATE_NEW_DEVICE_TOAST" = "‘%1$@’ gekoppeld";
 
@@ -2477,13 +2474,13 @@
 "DONATION_SETTINGS_MY_SUPPORT_DONATION_UNCONFIMRED_ALERT_TITLE" = "Kan donatie niet bevestigen";
 
 /* Message shown in a sheet explaining that the user's iDEAL one-time donation coultn't be processed. */
-"DONATION_SETTINGS_MY_SUPPORT_IDEAL_ONE_TIME_DONATION_FAILED_MESSAGE" = "Je eenmalige donatie via iDEAL kan niet worden verwerkt. Probeer het via een andere betaalmethode of neem contact op met je bank voor meer informatie.";
+"DONATION_SETTINGS_MY_SUPPORT_IDEAL_ONE_TIME_DONATION_FAILED_MESSAGE" = "Je eenmalige donatie via iDEAL kan niet worden verwerkt. Probeer het via een andere betalingsmethode of neem contact op met je bank voor meer informatie.";
 
 /* Title for a sheet explaining that a payment needs confirmation. */
 "DONATION_SETTINGS_MY_SUPPORT_IDEAL_ONE_TIME_DONATION_NOT_CONFIRMED_MESSAGE_FORMAT" = "Je eenmalige donatie van %1$@ via iDEAL kan niet worden bevestigd. Ga naar je bankapp om je donatie via iDEAL goed te keuren.";
 
 /* Message shown in a sheet explaining that the user's iDEAL recurring monthly donation coultn't be processed. */
-"DONATION_SETTINGS_MY_SUPPORT_IDEAL_RECURRING_SUBSCRIPTION_FAILED_MESSAGE" = "Je maandelijkse donatie via iDEAL kan niet worden verwerkt. Probeer het via een andere betaalmethode of neem contact op met je bank voor meer informatie.";
+"DONATION_SETTINGS_MY_SUPPORT_IDEAL_RECURRING_SUBSCRIPTION_FAILED_MESSAGE" = "Je maandelijkse donatie via iDEAL kan niet worden verwerkt. Probeer het via een andere betalingsmethode of neem contact op met je bank voor meer informatie.";
 
 /* Message shown in a sheet explaining that the user's iDEAL recurring monthly donation hasn't been confirmed. Embeds {{ formatted current amount }}. */
 "DONATION_SETTINGS_MY_SUPPORT_IDEAL_RECURRING_SUBSCRIPTION_NOT_CONFIRMED_MESSAGE_FORMAT" = "Je maandelijkse donatie van %1$@ via iDEAL kan niet worden bevestigd. Ga naar je bankapp om je donatie via iDEAL goed te keuren.";
@@ -2498,7 +2495,7 @@
 "DONATION_SETTINGS_MY_SUPPORT_TABLE_CELL_SUBTITLE_BANK_PAYMENT_PROCESSING" = "Donatie is in behandeling";
 
 /* A label describing a donation payment that was made by a method other than bank transfer (such as by credit card), which is still processing and has not completed. */
-"DONATION_SETTINGS_MY_SUPPORT_TABLE_CELL_SUBTITLE_NON_BANK_PAYMENT_PROCESSING" = "Donatie wordt verwerkt...";
+"DONATION_SETTINGS_MY_SUPPORT_TABLE_CELL_SUBTITLE_NON_BANK_PAYMENT_PROCESSING" = "Aan het verwerken…";
 
 /* A label describing a donation payment that has failed to process. */
 "DONATION_SETTINGS_MY_SUPPORT_TABLE_CELL_SUBTITLE_PAYMENT_FAILED" = "Fout bij het verwerken van donatie";
@@ -2552,7 +2549,7 @@
 "DOUBLE_TAP_TO_EDIT_ALERT_TITLE" = "Dubbeltik om te bewerken";
 
 /* Alert body for when the user has just tried to edit a contacts after declining to give Signal contacts permissions */
-"EDIT_CONTACT_WITHOUT_CONTACTS_PERMISSION_ALERT_BODY" = "Je kunt toegang inschakelen via de iOS-Instellingen-app.";
+"EDIT_CONTACT_WITHOUT_CONTACTS_PERMISSION_ALERT_BODY" = "Je kunt toegang inschakelen via de iOS-instellingenapp.";
 
 /* Alert title for when the user has just tried to edit a contacts after declining to give Signal contacts permissions */
 "EDIT_CONTACT_WITHOUT_CONTACTS_PERMISSION_ALERT_TITLE" = "Signal heeft toegang tot je contacten nodig om contactinformatie te bewerken";
@@ -2697,6 +2694,9 @@
 
 /* Error message when attempting to send message */
 "ERROR_DESCRIPTION_UNREGISTERED_RECIPIENT" = "Contact is geen Signal-gebruiker.";
+
+/* Error message indicating that attachment download(s) failed. */
+"ERROR_MESSAGE_ATTACHMENT_DOWNLOAD_FAILED" = "Downloaden van bijlage is mislukt.";
 
 /* Error message indicating that attachment upload(s) failed. */
 "ERROR_MESSAGE_ATTACHMENT_UPLOAD_FAILED" = "Het uploaden van bijlagen is mislukt.";
@@ -2978,10 +2978,10 @@
 "GROUP_CALL_IS_FULL" = "De oproep is vol";
 
 /* Text shown before the user starts a group call if the user has enabled ringing and there is one other person in the group. Embeds {member name} */
-"GROUP_CALL_IS_RINGING_ONE_PERSON_FORMAT" = "Belt naar %1$@…";
+"GROUP_CALL_IS_RINGING_ONE_PERSON_FORMAT" = "Bellen naar %1$@…";
 
 /* Text shown before the user starts a group call if the user has enabled ringing and there are two other people in the group. Embeds {{ %1$@ participant1, %2$@ participant2 }} */
-"GROUP_CALL_IS_RINGING_TWO_PEOPLE_FORMAT" = "Belt naar %1$@ en %2$@…";
+"GROUP_CALL_IS_RINGING_TWO_PEOPLE_FORMAT" = "Bellen naar %1$@ en %2$@…";
 
 /* Button to join an ongoing group call */
 "GROUP_CALL_JOIN_BUTTON" = "Aan oproep deelnemen";
@@ -3005,7 +3005,7 @@
 "GROUP_CALL_MEMBER_LIST_SINGLE_UNKNOWN_MEMBER_ROW" = "1 persoon";
 
 /* Title for the sheet showing the group call members list */
-"GROUP_CALL_MEMBER_LIST_TITLE" = "Oproepinfo";
+"GROUP_CALL_MEMBER_LIST_TITLE" = "Oproep-info";
 
 /* Message on an action sheet when tapping an info button next to unknown members in the group call member list. */
 "GROUP_CALL_MEMBER_LIST_UNKNOWN_MEMBERS_INFO_SHEET" = "Voordat je deelneemt aan een oproep, kun je alleen de namen zien van telefooncontacten, mensen met wie je in een groep zit of mensen met wie je een-op-een hebt gechat. Je ziet alle namen en profielfoto's zodra je deelneemt aan de oproep.";
@@ -3911,7 +3911,7 @@
 "INVALID_PROXY_HOST_ERROR" = "Het door jou ingevoerde proxy-adres is ongeldig. Controleer het adres en probeer het opnieuw.";
 
 /* Alert body when contacts disabled while trying to invite contacts to signal */
-"INVITE_FLOW_REQUIRES_CONTACT_ACCESS_BODY" = "Je kunt toegang geven tot je contacten in de iOS-Instellingen-app om je vrienden uit te nodigen voor Signal.";
+"INVITE_FLOW_REQUIRES_CONTACT_ACCESS_BODY" = "Je kunt toegang geven tot je contacten in de iOS-instellingenapp om je vrienden uit te nodigen voor Signal.";
 
 /* Alert title when contacts disabled while trying to invite contacts to signal */
 "INVITE_FLOW_REQUIRES_CONTACT_ACCESS_TITLE" = "Toegang tot contacten toestaan";
@@ -4006,21 +4006,6 @@
 /* Title for a sheet explaining details about 'New Groups'. */
 "LEGACY_GROUP_WHAT_ARE_NEW_GROUPS_TITLE" = "Wat zijn ‘nieuwe-stijl’ groepen?";
 
-/* subtitle for declining to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_DONT_TRANSFER_SUBTITLE" = "Oude berichten en media worden niet overgezet naar je gekoppelde apparaat";
-
-/* title for declining to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_DONT_TRANSFER_TITLE" = "Niet overzetten";
-
-/* confirm the users intent to link a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TITLE" = "Koppelen voltooien";
-
-/* subtitle for choosing to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TRANSFER_SUBTITLE" = "Zet je tekstberichten en recente media over naar je gekoppelde apparaat";
-
-/* title for choosing to send message history when linking a new device */
-"LINK_DEVICE_CONFIRMATION_ALERT_TRANSFER_TITLE" = "Chatgeschiedenis overzetten";
-
 /* report an invalid linking code */
 "LINK_DEVICE_INVALID_CODE_BODY" = "Deze QR-code is ongeldig. Zorg dat je de QR-code scant die wordt weergeven op het apparaat dat je wilt koppelen.";
 
@@ -4035,6 +4020,9 @@
 
 /* attempt another linking */
 "LINK_DEVICE_RESTART" = "Opnieuw proberen";
+
+/* QR Scanning screen instructions, placed alongside a camera view for scanning QR Codes */
+"LINK_DEVICE_SCANNING_INSTRUCTIONS" = "Scan de QR-code die wordt weergegeven op het apparaat dat je wilt koppelen.";
 
 /* Title for QR Scanning screen instructions sheet */
 "LINK_DEVICE_SCANNING_INSTRUCTIONS_SHEET_BODY" = "Gebruik dit apparaat om de QR-code te scannen die wordt weergegeven op het apparaat dat je wilt koppelen";
@@ -4057,17 +4045,8 @@
 /* Title for a sheet when a user has started linking a device informing them to finish the process on that other device */
 "LINK_NEW_DEVICE_FINISH_ON_OTHER_DEVICE_SHEET_TITLE" = "Voltooi het koppelen op je andere apparaat";
 
-/* Message for a sheet indicating that a newly linked device failed to sync messages. */
-"LINK_NEW_DEVICE_SYNC_FAILED_MESSAGE" = "Your device was successfully linked, but your messages could not be transferred.";
-
-/* Title for a sheet indicating that a newly linked device failed to sync messages. */
-"LINK_NEW_DEVICE_SYNC_FAILED_TITLE" = "Message Sync Failed";
-
-/* On a progress modal indicating the percent complete the sync process is. Embeds {{ formatted percentage }} */
-"LINK_NEW_DEVICE_SYNC_PROGRESS_PERCENT" = "%1$@ complete";
-
-/* Title for a progress modal indicating the sync progress */
-"LINK_NEW_DEVICE_SYNC_PROGRESS_TITLE" = "Syncing Messages…";
+/* Subheading for 'Link New Device' navigation */
+"LINK_NEW_DEVICE_SUBTITLE" = "Scan een QR-code om een nieuw apparaat te koppelen.";
 
 /* Navigation title when scanning QR code to add new device. */
 "LINK_NEW_DEVICE_TITLE" = "Een nieuw apparaat koppelen";
@@ -4084,65 +4063,11 @@
 /* A button shown in a banner when you tap the 'New Chat' icon at the top of the list of chats. Tapping it opens a website with more details. */
 "LINKED_DEVICE_MANAGE_CONTACTS_LEARN_MORE" = "Meer informatie";
 
-/* Bullet point about downloads on the linked devices education sheet. Embeds {{ %1$@ iPad download link, %2$@ desktop download link }} */
-"LINKED_DEVICES_EDUCATION_POINT_DOWNLOADS" = "Ga op je andere apparaat naar %1$@ om de iPad-app te installeren of naar %2$@ om de desktop-app te installeren.";
-
-/* Bullet point about message sync on the linked devices education sheet */
-"LINKED_DEVICES_EDUCATION_POINT_MESSAGES" = "Signal-berichten worden na het koppelen gesynchroniseerd met Signal op je mobiele telefoon.";
-
-/* Bullet point about privacy on the linked devices education sheet */
-"LINKED_DEVICES_EDUCATION_POINT_PRIVACY" = "Alle berichten op gekoppelde apparaten zijn privé";
-
-/* Title for the linked device education sheet */
-"LINKED_DEVICES_EDUCATION_TITLE" = "Signal op een desktop of iPad";
-
-/* Text that appears where the linked device list would be indicating that there are no linked devices. */
-"LINKED_DEVICES_EMPTY_STATE" = "Geen gekoppelde apparaten";
-
-/* Description for header of the linked devices list */
-"LINKED_DEVICES_HEADER_DESCRIPTION" = "Gebruik Signal op een desktop of iPad. Je berichten worden gesynchroniseerd met je gekoppelde apparaten.";
-
-/* Description for header of the linked devices list when Link and Sync is disabled */
-"LINKED_DEVICES_HEADER_DESCRIPTION_LINK_AND_SYNC_DISABLED" = "Gebruik Signal op een desktop of iPad.";
-
-/* Footer text below the list of currently-linked devices */
-"LINKED_DEVICES_LIST_FOOTER" = "Berichten en chatgegevens worden beschermd door end-to-end-versleuteling op al je apparaten";
-
-/* Title above the list of currently-linked devices */
-"LINKED_DEVICES_LIST_TITLE" = "Gekoppelde apparaten";
-
-/* Button title for renaming a linked device */
-"LINKED_DEVICES_RENAME_BUTTON" = "Rename";
-
-/* Message on a sheet indicating the device rename attempt received an error. */
-"LINKED_DEVICES_RENAME_FAILURE_MESSAGE" = "Unable to change device name. Try again later.";
-
-/* Message on a toast indicating the device was renamed. */
-"LINKED_DEVICES_RENAME_SUCCESS_MESSAGE" = "Device name updated";
-
-/* Title for the screen for renaming a linked device */
-"LINKED_DEVICES_RENAME_TITLE" = "Edit Device Name";
-
 /* Menu item and navbar title for the device manager */
 "LINKED_DEVICES_TITLE" = "Gekoppelde apparaten";
 
 /* Alert Title */
 "LINKING_DEVICE_FAILED_TITLE" = "Koppelen van apparaat mislukt";
-
-/* Progress label when the message loading has nearly completed during the device linking process */
-"LINKING_SYNCING_FINALIZING" = "Finalizing message transfer…";
-
-/* Footer text when loading messages during linking process. */
-"LINKING_SYNCING_FOOTER" = "Messages and chat info are protected by end-to-end encryption, including the sync process.";
-
-/* Title shown when loading messages during linking process */
-"LINKING_SYNCING_MESSAGES_TITLE" = "Berichten synchroniseren";
-
-/* Progress label when the message loading has not yet started during the device linking process */
-"LINKING_SYNCING_PREPARING_TO_DOWNLOAD" = "Preparing to download…";
-
-/* Label below the progress bar when loading messages during linking process */
-"LINKING_SYNCING_TIMING_INFO" = "This may take a few minutes depending on the size of your message history";
 
 /* Body for local network permission action sheet */
 "LOCAL_NETWORK_PERMISSION_ACTION_SHEET_BODY" = "Om je Signal-account te kunnen overzetten, moet je op beide apparaten toegang tot het lokale netwerk inschakelen.";
@@ -4176,9 +4101,6 @@
 
 /* Title for the 'long text message' view. */
 "LONG_TEXT_VIEW_TITLE" = "Volledige bericht";
-
-/* Title for error sheet shown when the max video length is recorded with the in-app camera */
-"MAX_VIDEO_RECORDING_LENGTH_ALERT" = "Maximale videolengte bereikt";
 
 /* nav bar button item */
 "MEDIA_DETAIL_VIEW_ALL_MEDIA_BUTTON" = "Alle media";
@@ -4322,7 +4244,7 @@
 "MESSAGE_ACTION_PHONE_NUMBER_FACETIME_VIDEO" = "FaceTime video-oproep";
 
 /* Label for button to send a text message a phone number. */
-"MESSAGE_ACTION_PHONE_NUMBER_SMS" = "Tekstbericht versturen";
+"MESSAGE_ACTION_PHONE_NUMBER_SMS" = "Tekstbericht verzenden";
 
 /* Action sheet button title */
 "MESSAGE_ACTION_REPLY" = "Bericht beantwoorden";
@@ -4385,7 +4307,7 @@
 "MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SENDING" = "Wordt verzonden naar";
 
 /* Status label for messages which are sent. */
-"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SENT" = "Verstuurd naar";
+"MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SENT" = "Verzonden aan";
 
 /* Status label for messages which were skipped. */
 "MESSAGE_METADATA_VIEW_MESSAGE_STATUS_SKIPPED" = "Overgeslagen";
@@ -4622,19 +4544,19 @@
 "MISSED_VOICE_CALL" = "Gemiste spraakoproep";
 
 /* Alert body */
-"MISSING_CAMERA_PERMISSION_MESSAGE" = "Je kunt toegang tot de camera inschakelen in de iOS-Instellingen-app om video-oproepen te kunnen maken met Signal.";
+"MISSING_CAMERA_PERMISSION_MESSAGE" = "Je kunt toegang tot de camera inschakelen in de iOS-instellingenapp om video-oproepen te kunnen maken met Signal.";
 
 /* Alert title */
 "MISSING_CAMERA_PERMISSION_TITLE" = "Signal heeft toegang tot je camera nodig.";
 
 /* Alert body indicating the user has denied location permissions */
-"MISSING_LOCATION_PERMISSION_MESSAGE" = "Je kunt deze toestemming verlenen in de iOS-Instellingen-app.";
+"MISSING_LOCATION_PERMISSION_MESSAGE" = "Je kunt deze toestemming verlenen in de iOS-instellingenapp.";
 
 /* Alert title indicating the user has denied location permissions */
 "MISSING_LOCATION_PERMISSION_TITLE" = "Signal heeft voor deze functionaliteit toegang tot je locatie nodig.";
 
 /* Alert body when user has previously denied media library access */
-"MISSING_MEDIA_LIBRARY_PERMISSION_MESSAGE" = "Je kunt deze toestemming verlenen in de iOS-Instellingen-app.";
+"MISSING_MEDIA_LIBRARY_PERMISSION_MESSAGE" = "Je kunt deze toestemming verlenen in de iOS-instellingenapp.";
 
 /* Alert title when user has previously denied media library access */
 "MISSING_MEDIA_LIBRARY_PERMISSION_TITLE" = "Signal heeft voor deze functie toegang tot je foto’s nodig.";
@@ -5004,9 +4926,6 @@
 
 /* Explanation of the 'onboarding pin attempts exhausted' view when it is unknown if reglock is enabled. */
 "ONBOARDING_PIN_ATTEMPTS_EXHAUSTED_WITH_UNKNOWN_REGLOCK_EXPLANATION" = "Je hebt geen pogingen meer om je pincode te raden, maar je kunt nog steeds proberen toegang te krijgen tot je Signal-account door je telefoonnummer te verifiëren. Voor je privacy en veiligheid wordt je account hersteld zonder opgeslagen profielinformatie of instellingen.";
-
-/* Button for restoring or transferring account in the 'onboarding splash' view. */
-"ONBOARDING_SPLASH_RESTORE_OR_TRANSFER_BUTTON_TITLE" = "Account herstellen of overzetten";
 
 /* Link to the 'terms and privacy policy' in the 'onboarding splash' view. */
 "ONBOARDING_SPLASH_TERM_AND_PRIVACY_POLICY" = "Voorwaarden en privacybeleid";
@@ -5567,7 +5486,7 @@
 "PIN_CHANGE_ERROR_MESSAGE" = "Je nieuwe pincode kan niet worden aangemaakt. Je oude pincode is al wel ongeldig geworden. Controleer je internetverbinding en probeer het opnieuw.";
 
 /* Error title indicating that the attempt to change a PIN failed. */
-"PIN_CHANGE_ERROR_TITLE" = "Het wijzigen van je pincode is mislukt";
+"PIN_CHANGE_ERROR_TITLE" = " Het wijzigen van je pincode is mislukt";
 
 /* Label indicating the user must use at least 4 characters */
 "PIN_CREATION_ALPHANUMERIC_HINT" = "Je pincode moet uit ten minste 4 karakters bestaan";
@@ -5576,7 +5495,7 @@
 "PIN_CREATION_CHANGING_TITLE" = "Je pincode wijzigen";
 
 /* Title of the 'pin creation' confirmation view. */
-"PIN_CREATION_CONFIRM_TITLE" = "Bevestig je pincode";
+"PIN_CREATION_CONFIRM_TITLE" = "Je pincode bevestigen";
 
 /* The explanation of confirmation in the 'pin creation' view. */
 "PIN_CREATION_CONFIRMATION_EXPLANATION" = "Voer de pincode die je zojuist hebt aangemaakt opnieuw in.";
@@ -5717,10 +5636,10 @@
 "PINS_MEGAPHONE_ACTION" = "Pincode aanmaken";
 
 /* Body for PIN megaphone when user doesn't have a PIN */
-"PINS_MEGAPHONE_BODY" = "Je hebt nog geen Signal-pincode aangemaakt. Maak je pincode aan.";
+"PINS_MEGAPHONE_BODY" = "Je hebt nog geen Signal-pincode aangemaakt. Deze zul je nodig hebben als je ooit je apparaat kwijt raakt.";
 
 /* Title for PIN megaphone when user doesn't have a PIN */
-"PINS_MEGAPHONE_TITLE" = "Maak een pincode aan";
+"PINS_MEGAPHONE_TITLE" = "Pincode aanmaken";
 
 /* Toast indicating that a PIN has been created. */
 "PINS_MEGAPHONE_TOAST" = "Je pincode is aangemaakt. Je kunt deze wijzigen in de instellingen.";
@@ -6107,7 +6026,7 @@
 "REGISTRATION_PHONE_NUMBER_TITLE" = "Je telefoonnummer";
 
 /* Message for confirmation alert when requesting a voice code during phone number registration. */
-"REGISTRATION_PHONE_NUMBER_VOICE_CODE_ALERT_MESSAGE" = "Is your phone number above correct?";
+"REGISTRATION_PHONE_NUMBER_VOICE_CODE_ALERT_MESSAGE" = "Je zult gebeld worden om dit telefoonnummer te verifiëren. Klopt dit telefoonnummer?";
 
 /* Label for the phone number textfield */
 "REGISTRATION_PHONENUMBER_BUTTON" = "Telefoonnummer";
@@ -6152,25 +6071,13 @@
 "REGISTRATION_PROFILE_SETUP_TITLE" = "Stel je profiel in";
 
 /* Error shown if an SMS/call service provider is permanently unable to send a verification code to the provided number. */
-"REGISTRATION_PROVIDER_FAILURE_MESSAGE_PERMANENT" = "Signal kan geen sms-code verzenden vanwege problemen met de sms-provider.";
+"REGISTRATION_PROVIDER_FAILURE_MESSAGE_PERMANENT" = "Signal kan door een externe storing geen sms-code naar je nummer sturen.";
 
 /* Error shown if an SMS/call service provider is temporarily unable to send a verification code to the provided number. */
-"REGISTRATION_PROVIDER_FAILURE_MESSAGE_TRANSIENT" = "Signal kon geen sms-code verzenden vanwege problemen met de sms-provider. Probeer het over enkele uren opnieuw.";
+"REGISTRATION_PROVIDER_FAILURE_MESSAGE_TRANSIENT" = "Signal kon op dit moment geen sms-code versturen vanwege een externe storing. Probeer het later opnieuw.";
 
 /* No comment provided by engineer. */
 "REGISTRATION_RESTRICTED_MESSAGE" = "Je moet je registreren voordat je een bericht kunt verzenden.";
-
-/* Title for screen containing QR code that users scan with their old phone when they want to transfer/restore their message history to a new device. */
-"REGISTRATION_SCAN_QR_CODE_TITLE" = "Scan this code with your old phone";
-
-/* Tutorial text describing the first step to scanning the restore/transfer QR code with your old phone: opening Signal */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_OPEN_SIGNAL" = "Open Signal on your old device";
-
-/* Tutorial text describing the third step to scanning the restore/transfer QR code with your old phone: scan the code */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_SCAN" = "Scan this code with the camera";
-
-/* Tutorial text describing the second step to scanning the restore/transfer QR code with your old phone: tap the camera icon */
-"REGISTRATION_SCAN_QR_CODE_TUTORIAL_TAP_CAMERA" = "Tap the camera icon";
 
 /* Button when sending a verification code via sms failed, but resending via voice call might succeed. */
 "REGISTRATION_SMS_CODE_FAILED_TRY_VOICE_BUTTON" = "Spraakoproep";
@@ -6260,7 +6167,7 @@
 "SAFETY_NUMBER_CHANGED_CONFIRM_CALL_ACTION" = "Toch bellen";
 
 /* button title to confirm sending to a recipient whose safety number recently changed */
-"SAFETY_NUMBER_CHANGED_CONFIRM_SEND_ACTION" = "Toch versturen";
+"SAFETY_NUMBER_CHANGED_CONFIRM_SEND_ACTION" = "Toch verzenden";
 
 /* Message for the 'safety number confirmation' view */
 "SAFETY_NUMBER_CONFIRMATION_MESSAGE" = "De volgende personen hebben Signal mogelijk opnieuw geïnstalleerd of kunnen van toestel zijn veranderd. Verifieer jullie veiligheidsnummers om zeker te zijn dat je met de juiste personen communiceert.";
@@ -6382,8 +6289,11 @@
 /* section header for search results that match a message in a conversation */
 "SEARCH_SECTION_MESSAGES" = "Berichten";
 
+/* alert title */
+"SECONDARY_DEVICE_ERROR_FETCHING_LINKING_CODE" = "Kan de koppelcode niet ophalen";
+
 /* Message for error alert indicating that re-linking failed because the account did not match. */
-"SECONDARY_LINKING_ERROR_DIFFERENT_ACCOUNT_MESSAGE" = "Om dit apparaat te koppelen aan een ander account, moet je Signal eerst op dit apparaat resetten. Weet je zeker dat je al je geschiedenis (berichten, bijlagen, oproepgeschiedenis, etc.) wilt wissen? Deze actie kan niet worden teruggedraaid.";
+"SECONDARY_LINKING_ERROR_DIFFERENT_ACCOUNT_MESSAGE" = "Om dit apparaat te koppelen aan een ander account, moet je dit apparaat eerst resetten. Weet je zeker dat je al je geschiedenis (berichten, bijlagen, oproepgeschiedenis, etc.) wilt wissen? Deze actie kan niet worden teruggedraaid.";
 
 /* Label for the 'reset device' action in the 're-linking failed because the account did not match' alert. */
 "SECONDARY_LINKING_ERROR_DIFFERENT_ACCOUNT_RESET_DEVICE" = "Alles wissen";
@@ -6405,15 +6315,6 @@
 
 /* alert title */
 "SECONDARY_LINKING_ERROR_WAITING_FOR_SCAN" = "Koppelen van je apparaat is mislukt";
-
-/* Title for action sheet when secondary device fails to sync messages. */
-"SECONDARY_LINKING_SYNCING_ERROR_TITLE" = "Error transferring your messages";
-
-/* Message for action sheet when secondary device fails to sync messages due to network error. */
-"SECONDARY_LINKING_SYNCING_NETWORK_ERROR_MESSAGE" = "Your messages could not be transferred. Check your internet connection and try again.";
-
-/* Message for action sheet when secondary device fails to sync messages due to an unspecified error. */
-"SECONDARY_LINKING_SYNCING_OTHER_ERROR_MESSAGE" = "Your messages could not be transferred due to an error. Try again by re-linking this device.";
 
 /* header text when this device is being added as a secondary */
 "SECONDARY_ONBOARDING_CHOOSE_DEVICE_NAME" = "Kies een naam voor dit apparaat";
@@ -6444,9 +6345,6 @@
 
 /* Link text for page with troubleshooting info shown on the QR scanning screen */
 "SECONDARY_ONBOARDING_SCAN_CODE_HELP_TEXT" = "Vind hier hulp met het koppelen van je iPad";
-
-/* Text for a button offering to refresh the QR code to link an iPad. */
-"SECONDARY_ONBOARDING_SCAN_CODE_REFRESH_CODE_BUTTON" = "Refresh code";
 
 /* header text while displaying a QR code which, when scanned, will link this device. */
 "SECONDARY_ONBOARDING_SCAN_CODE_TITLE" = "Scan deze QR-code met je telefoon";
@@ -6586,6 +6484,9 @@
 /* Table footer for the 'censorship circumvention' section shown when the app is connected to the Signal service. */
 "SETTINGS_ADVANCED_CENSORSHIP_CIRCUMVENTION_FOOTER_WEBSOCKET_CONNECTED" = "Censuuromzeiling is voor jou op dit moment niet nodig, want je bent al verbonden met Signals servers.";
 
+/* No comment provided by engineer. */
+"SETTINGS_ADVANCED_DEBUGLOG" = "Foutopsporingslog inschakelen";
+
 /* Label for the 'advanced pin settings' button. */
 "SETTINGS_ADVANCED_PIN_SETTINGS" = "Geavanceerde pincode-instellingen";
 
@@ -6669,6 +6570,9 @@
 
 /* Format for the 'country code' in the 'change phone number' settings. Embeds: {{ %1$@ the numeric country code prefix, %2$@ the country code abbreviation }}. */
 "SETTINGS_CHANGE_PHONE_NUMBER_COUNTRY_CODE_FORMAT" = "%1$@ (%2$@)";
+
+/* Format for 'example phone numbers' in the 'change phone number' settings. Embeds: {{ the example phone number }} */
+"SETTINGS_CHANGE_PHONE_NUMBER_EXAMPLE_PHONE_NUMBER_FORMAT" = "Voorbeeld: %1$@";
 
 /* Title for the 'new phone number' section in the 'change phone number' settings. */
 "SETTINGS_CHANGE_PHONE_NUMBER_NEW_PHONE_NUMBER_SECTION_TITLE" = "Je nieuwe telefoonnummer";
@@ -6758,7 +6662,7 @@
 "SETTINGS_DISAPPEARING_MESSAGES" = "Verdwijnende berichten";
 
 /* Explanation for the 'disappearing messages' privacy settings. */
-"SETTINGS_DISAPPEARING_MESSAGES_FOOTER" = "Stel een standaardtimer voor verdwijnende berichten in voor alle nieuwe chats die jij zelf begint";
+"SETTINGS_DISAPPEARING_MESSAGES_FOOTER" = "Stel een standaardtimer voor verdwijnende berichten in voor alle nieuwe chats die jij zelf begint.";
 
 /* Title for the 'donate to signal' link in settings. */
 "SETTINGS_DONATE" = "Aan Signal doneren";
@@ -7460,7 +7364,7 @@
 "SETTINGS_TWO_FACTOR_AUTH_SWITCH_LABEL" = "Registratievergrendeling";
 
 /* Footer for the 'two factor auth' section of the privacy settings when Signal PINs are available. */
-"SETTINGS_TWO_FACTOR_PINS_AUTH_FOOTER" = "Vereis je Signal-pincode om je telefoonnummer opnieuw bij Signal te kunnen registreren";
+"SETTINGS_TWO_FACTOR_PINS_AUTH_FOOTER" = "Vereis je Signal-pincode om je telefoonnummer opnieuw bij Signal te kunnen registeren";
 
 /* Label for the 'typing indicators' setting. */
 "SETTINGS_TYPING_INDICATORS" = "Typindicatoren";
@@ -7667,7 +7571,7 @@
 "STORIES_HIDE_STORY_CONFIRMATION_TOAST" = "Verhaal verborgen";
 
 /* Context menu action to view metadata about the story */
-"STORIES_INFO_ACTION" = "Berichtdetails";
+"STORIES_INFO_ACTION" = "Info";
 
 /* Indicates that there are no recent stories to render */
 "STORIES_NO_RECENT_MESSAGES" = "Geen updates op dit moment.";
@@ -7733,7 +7637,7 @@
 "STORIES_SHARE_STORY_ACTION" = "Delen";
 
 /* Section title shown when sending to non-story conversations but failing to send the file to stories. */
-"STORIES_SHARESHEET_PARTIAL_SEND_REMAINING_SECTION_TITLE" = "Verstuurd naar";
+"STORIES_SHARESHEET_PARTIAL_SEND_REMAINING_SECTION_TITLE" = "Verzonden aan";
 
 /* Section title shown when failing to send an incompatible file to stories, but still sending to non-story conversations. */
 "STORIES_SHARESHEET_PARTIAL_SEND_STORIES_SECTION_TITLE" = "Niet verzonden naar";
@@ -7829,10 +7733,10 @@
 "STORY_REPLY_TO_PRIVATE_TEXT_FIELD_PLACEHOLDER" = "Reageren op %1$@";
 
 /* Title for the dialog asking user if they wish to resend a failed story message. */
-"STORY_RESEND_FAILED_MESSAGE_ACTION_SHEET" = "Je verhaal kan niet worden verzonden. Controleer je internetverbinding en probeer het opnieuw.";
+"STORY_RESEND_FAILED_MESSAGE_ACTION_SHEET" = "Je verhaal kan niet worden verstuurd. Controleer je internetverbinding en probeer het opnieuw.";
 
 /* Title for the dialog asking user if they wish to resend a partially failed story message. */
-"STORY_RESEND_PARTIALLY_FAILED_MESSAGE_ACTION_SHEET" = "Dit verhaal kon niet naar iedereen worden verzonden. Controleer je internetverbinding en probeer het opnieuw.";
+"STORY_RESEND_PARTIALLY_FAILED_MESSAGE_ACTION_SHEET" = "Dit verhaal kon niet naar iedereen worden verstuurd. Controleer je internetverbinding en probeer het opnieuw.";
 
 /* The title for the 'select connections for story' view. */
 "STORY_SELECT_ALLOWED_CONNECTIONS_VIEW_TITLE" = "Alleen delen met…";
@@ -7841,16 +7745,16 @@
 "STORY_SELECT_EXCLUDED_CONNECTIONS_VIEW_TITLE" = "Iedereen behalve…";
 
 /* Text indicating that the story send has failed */
-"STORY_SEND_FAILED" = "Verzenden mislukt";
+"STORY_SEND_FAILED" = "Verzenden is mislukt";
 
 /* Body for notification shown when a story fails to send. */
 "STORY_SEND_FAILED_NOTIFICATION_BODY" = "❗️Verhaal kan niet worden verzonden";
 
 /* Text indicating that you can tap to retry sending */
-"STORY_SEND_FAILED_RETRY" = "Tik om te verzenden";
+"STORY_SEND_FAILED_RETRY" = "Tik om opnieuw te proberen";
 
 /* Text indicating that the story send has failed */
-"STORY_SEND_FAILED_TAP_FOR_DETAILS" = "Verzenden mislukt. Tik en probeer opnieuw";
+"STORY_SEND_FAILED_TAP_FOR_DETAILS" = "Verzenden is mislukt.  Tik om opnieuw te proberen";
 
 /* Text indicating that the story send has partially failed */
 "STORY_SEND_PARTIALLY_FAILED" = "Gedeeltelijk verzonden";
@@ -7859,7 +7763,7 @@
 "STORY_SEND_PARTIALLY_FAILED_TAP_FOR_DETAILS" = "Gedeeltelijk verzonden. Tik voor details";
 
 /* Text indicating that the story is currently sending */
-"STORY_SENDING" = "Verzenden…";
+"STORY_SENDING" = "Versturen…";
 
 /* First bullet point for the explainer sheet for signal connections */
 "STORY_SETTINGS_LEARN_MORE_SHEET_BULLET_1" = "Een chat met ze te beginnen";
@@ -7952,7 +7856,7 @@
 "SUPPORT_EMAIL_SIGNAL_VERSION_LABEL_FORMAT" = "Signal-versie: %1$@";
 
 /* Localized subject for support request emails */
-"SUPPORT_EMAIL_SUBJECT" = "Signal iOS ondersteuningsverzoek";
+"SUPPORT_EMAIL_SUBJECT" = "Signal-iOS ondersteuningsverzoek";
 
 /* Header for emoji mood selection */
 "SUPPORT_EMOJI_PROMPT" = "Hoe voel je je? (Optioneel)";
@@ -8207,7 +8111,7 @@
 "UNLINK_ACTION" = "Ontkoppelen";
 
 /* Alert message to confirm unlinking a device */
-"UNLINK_CONFIRMATION_ALERT_BODY" = "Door dit apparaat te ontkoppelen kan het niet langer berichten verzenden en ontvangen.";
+"UNLINK_CONFIRMATION_ALERT_BODY" = "Door dit apparaat te ontkoppelen kan het niet langer berichten versturen en ontvangen.";
 
 /* Alert title for confirming device deletion */
 "UNLINK_CONFIRMATION_ALERT_TITLE" = "‘%1$@’ ontkoppelen?";
@@ -8469,6 +8373,9 @@
 
 /* Message for the tooltip indicating the 'voice message' needs to be held to be held down to record. */
 "VOICE_MESSAGE_TOO_SHORT_TOOLTIP" = "Tik en houd vast om audio op te nemen.";
+
+/* Activity indicator title, shown upon returning to the device manager, until you complete the provisioning process on desktop */
+"WAITING_TO_COMPLETE_DEVICE_LINK_TEXT" = "Voltooi de installatie op Signal Desktop.";
 
 /* Accessibility label for gradient wallpaper swatch, naming the two colors in the gradient. {{ Embeds the names of the two colors in the gradient }} */
 "WALLPAPER_GRADIENT_COLORS_ACCESSIBILITY_LABEL" = "Kleurverloop met %1$@ en %2$@";

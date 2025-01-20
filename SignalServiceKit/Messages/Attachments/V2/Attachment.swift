@@ -250,15 +250,11 @@ public class Attachment {
         return mediaTierInfo != nil
     }
 
-    public func asStream() -> AttachmentStream? {
+    func asStream() -> AttachmentStream? {
         return AttachmentStream(attachment: self)
     }
 
-    public func asTransitTierPointer() -> AttachmentTransitPointer? {
-        return AttachmentTransitPointer(attachment: self)
-    }
-
-    public func asBackupThumbnail() -> AttachmentBackupThumbnail? {
+    func asBackupThumbnail() -> AttachmentBackupThumbnail? {
         return AttachmentBackupThumbnail(attachment: self)
     }
 

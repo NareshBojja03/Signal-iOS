@@ -53,12 +53,6 @@ public protocol ThreadStore {
     )
 
     func update(
-        groupThread: TSGroupThread,
-        with groupModel: TSGroupModel,
-        tx: DBWriteTransaction
-    )
-
-    func update(
         _ thread: TSThread,
         withShouldThreadBeVisible shouldBeVisible: Bool,
         tx: DBWriteTransaction
@@ -229,14 +223,6 @@ public class ThreadStoreImpl: ThreadStore {
     }
 
     public func update(
-        groupThread: TSGroupThread,
-        with groupModel: TSGroupModel,
-        tx: DBWriteTransaction
-    ) {
-        groupThread.update(with: groupModel, transaction: SDSDB.shimOnlyBridge(tx))
-    }
-
-    public func update(
         _ thread: TSThread,
         withShouldThreadBeVisible shouldBeVisible: Bool,
         tx: DBWriteTransaction
@@ -401,14 +387,6 @@ public class MockThreadStore: ThreadStore {
         groupThread: TSGroupThread,
         withStorySendEnabled storySendEnabled: Bool,
         updateStorageService: Bool,
-        tx: DBWriteTransaction
-    ) {
-        // Unimplemented
-    }
-
-    public func update(
-        groupThread: TSGroupThread,
-        with groupModel: TSGroupModel,
         tx: DBWriteTransaction
     ) {
         // Unimplemented

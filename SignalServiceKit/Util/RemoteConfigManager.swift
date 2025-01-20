@@ -239,6 +239,10 @@ public class RemoteConfig {
         return false
     }
 
+    public var cdsiLookupWithLibsignal: Bool {
+        return isEnabled(.cdsiLookupWithLibsignal, defaultValue: false)
+    }
+
     public var messageQueueTime: TimeInterval {
         return interval(.messageQueueTimeInSeconds, defaultInterval: 45 * kDayInterval)
     }
@@ -334,13 +338,13 @@ public class RemoteConfig {
 
         guard
             let localPhoneNumber,
-            let localCallingCode = SSKEnvironment.shared.phoneNumberUtilRef.parseE164(localPhoneNumber)?.getCallingCode()
+            let localCallingCode = SSKEnvironment.shared.phoneNumberUtilRef.parseE164(localPhoneNumber)?.getCallingCode()?.stringValue
         else {
             owsFailDebug("Invalid local number")
             return nil
         }
 
-        return callingCodeToValueMap[String(localCallingCode)] ?? callingCodeToValueMap["*"]
+        return callingCodeToValueMap[localCallingCode] ?? callingCodeToValueMap["*"]
     }
 
     private static func isBucketEnabled(key: String, countEnabled: UInt64, bucketSize: UInt64, localAci: Aci) -> Bool {
@@ -421,6 +425,7 @@ private enum IsEnabledFlag: String, FlagType {
     case cardGiftDonationKillSwitch = "ios.cardGiftDonationKillSwitch"
     case cardMonthlyDonationKillSwitch = "ios.cardMonthlyDonationKillSwitch"
     case cardOneTimeDonationKillSwitch = "ios.cardOneTimeDonationKillSwitch"
+    case cdsiLookupWithLibsignal = "ios.cdsiLookup.libsignal"
     case deleteForMeSyncMessageSending = "ios.deleteForMeSyncMessage.sending"
     case enableAutoAPNSRotation = "ios.enableAutoAPNSRotation"
     case enableGifSearch = "global.gifSearch"
@@ -445,6 +450,7 @@ private enum IsEnabledFlag: String, FlagType {
         case .cardGiftDonationKillSwitch: false
         case .cardMonthlyDonationKillSwitch: false
         case .cardOneTimeDonationKillSwitch: false
+        case .cdsiLookupWithLibsignal: false
         case .deleteForMeSyncMessageSending: false
         case .enableAutoAPNSRotation: false
         case .enableGifSearch: false
@@ -470,6 +476,7 @@ private enum IsEnabledFlag: String, FlagType {
         case .cardGiftDonationKillSwitch: false
         case .cardMonthlyDonationKillSwitch: false
         case .cardOneTimeDonationKillSwitch: false
+        case .cdsiLookupWithLibsignal: true
         case .deleteForMeSyncMessageSending: false
         case .enableAutoAPNSRotation: false
         case .enableGifSearch: false
@@ -679,13 +686,14 @@ public class RemoteConfigManagerImpl: RemoteConfigManager {
         appExpiry: AppExpiry,
         appReadiness: AppReadiness,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         tsAccountManager: TSAccountManager,
         serviceClient: SignalServiceClient
     ) {
         self.appExpiry = appExpiry
         self.appReadiness = appReadiness
         self.db = db
-        self.keyValueStore = KeyValueStore(collection: "RemoteConfigManager")
+        self.keyValueStore = keyValueStoreFactory.keyValueStore(collection: "RemoteConfigManager")
         self.tsAccountManager = tsAccountManager
         self.serviceClient = serviceClient
 
@@ -786,6 +794,7 @@ public class RemoteConfigManagerImpl: RemoteConfigManager {
         if nextAttempt.isBeforeNow {
             refresh()
         } else {
+            Logger.info("Scheduling remote config refresh for \(nextAttempt).")
             refreshTimer = Timer.scheduledTimer(
                 withTimeInterval: nextAttempt.timeIntervalSinceNow,
                 repeats: false
@@ -995,17 +1004,23 @@ private extension KeyValueStore {
     private static var remoteConfigIsEnabledFlagsKey: String { "remoteConfigKey" }
 
     func getRemoteConfigIsEnabledFlags(transaction: DBReadTransaction) -> [String: Bool]? {
-        let decodedValue = getDictionary(
-            Self.remoteConfigIsEnabledFlagsKey,
-            keyClass: NSString.self,
-            objectClass: NSNumber.self,
-            transaction: transaction
-        ) as [String: NSNumber]?
-        return decodedValue?.mapValues { $0.boolValue }
+        guard let object = getObject(forKey: Self.remoteConfigIsEnabledFlagsKey,
+                                     transaction: transaction) else {
+            return nil
+        }
+
+        guard let remoteConfig = object as? [String: Bool] else {
+            owsFailDebug("unexpected object: \(object)")
+            return nil
+        }
+
+        return remoteConfig
     }
 
     func setRemoteConfigIsEnabledFlags(_ newValue: [String: Bool], transaction: DBWriteTransaction) {
-        return setObject(newValue, key: Self.remoteConfigIsEnabledFlagsKey, transaction: transaction)
+        return setObject(newValue,
+                         key: Self.remoteConfigIsEnabledFlagsKey,
+                         transaction: transaction)
     }
 
     // MARK: - Remote Config Value Flags
@@ -1013,12 +1028,16 @@ private extension KeyValueStore {
     private static var remoteConfigValueFlagsKey: String { "remoteConfigValueFlags" }
 
     func getRemoteConfigValueFlags(transaction: DBReadTransaction) -> [String: String]? {
-        return getDictionary(
-            Self.remoteConfigValueFlagsKey,
-            keyClass: NSString.self,
-            objectClass: NSString.self,
-            transaction: transaction
-        ) as [String: String]?
+        guard let object = getObject(forKey: Self.remoteConfigValueFlagsKey, transaction: transaction) else {
+            return nil
+        }
+
+        guard let remoteConfig = object as? [String: String] else {
+            owsFailDebug("unexpected object: \(object)")
+            return nil
+        }
+
+        return remoteConfig
     }
 
     func setRemoteConfigValueFlags(_ newValue: [String: String], transaction: DBWriteTransaction) {
@@ -1030,12 +1049,16 @@ private extension KeyValueStore {
     private static var remoteConfigTimeGatedFlagsKey: String { "remoteConfigTimeGatedFlags" }
 
     func getRemoteConfigTimeGatedFlags(transaction: DBReadTransaction) -> [String: Date]? {
-        return getDictionary(
-            Self.remoteConfigTimeGatedFlagsKey,
-            keyClass: NSString.self,
-            objectClass: NSDate.self,
-            transaction: transaction
-        ) as [String: Date]?
+        guard let object = getObject(forKey: Self.remoteConfigTimeGatedFlagsKey, transaction: transaction) else {
+            return nil
+        }
+
+        guard let remoteConfig = object as? [String: Date] else {
+            owsFailDebug("unexpected object: \(object)")
+            return nil
+        }
+
+        return remoteConfig
     }
 
     func setRemoteConfigTimeGatedFlags(_ newValue: [String: Date], transaction: DBWriteTransaction) {

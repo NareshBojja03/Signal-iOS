@@ -6,11 +6,13 @@
 import SafariServices
 import SignalServiceKit
 import SignalUI
-import UIKit
+public import UIKit
 
-class ProvisioningSplashViewController: ProvisioningBaseViewController {
+public class ProvisioningSplashViewController: ProvisioningBaseViewController {
 
-    override var primaryLayoutMargins: UIEdgeInsets {
+    let modeSwitchButton = UIButton()
+
+    public override var primaryLayoutMargins: UIEdgeInsets {
         var defaultMargins = super.primaryLayoutMargins
         // we want the hero image a bit closer to the top than most
         // onboarding content
@@ -18,12 +20,11 @@ class ProvisioningSplashViewController: ProvisioningBaseViewController {
         return defaultMargins
     }
 
-    override func loadView() {
+    override public func loadView() {
         view = UIView()
         view.addSubview(primaryView)
         primaryView.autoPinEdgesToSuperviewEdges()
 
-        let modeSwitchButton = UIButton()
         view.addSubview(modeSwitchButton)
         modeSwitchButton.setTemplateImageName(
             "link-slash",
@@ -32,10 +33,7 @@ class ProvisioningSplashViewController: ProvisioningBaseViewController {
         modeSwitchButton.autoSetDimensions(to: CGSize(square: 40))
         modeSwitchButton.autoPinEdge(toSuperviewMargin: .trailing)
         modeSwitchButton.autoPinEdge(toSuperviewMargin: .top)
-        modeSwitchButton.addAction(UIAction { [weak self] _ in
-            guard let self else { return }
-            self.provisioningController.provisioningSplashRequestedModeSwitch(viewController: self)
-        }, for: .touchUpInside)
+        modeSwitchButton.addTarget(self, action: #selector(didTapModeSwitch), for: .touchUpInside)
         modeSwitchButton.accessibilityIdentifier = "onboarding.splash.modeSwitch"
 
         view.backgroundColor = Theme.backgroundColor
@@ -69,12 +67,8 @@ class ProvisioningSplashViewController: ProvisioningBaseViewController {
         explanationLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(explanationLabelTapped)))
         explanationLabel.accessibilityIdentifier = "onboarding.splash." + "explanationLabel"
 
-        let continueButton = self.primaryButton(title: CommonStrings.continueButton, action: .init(handler: { [weak self] _ in
-            guard let self else { return }
-            Task { @MainActor in
-                await self.provisioningController.provisioningSplashDidComplete(viewController: self)
-            }
-        }))
+        let continueButton = self.primaryButton(title: CommonStrings.continueButton,
+                                                    selector: #selector(continuePressed))
         continueButton.accessibilityIdentifier = "onboarding.splash." + "continueButton"
         let primaryButtonView = ProvisioningBaseViewController.horizontallyWrap(primaryButton: continueButton)
 
@@ -101,6 +95,13 @@ class ProvisioningSplashViewController: ProvisioningBaseViewController {
     // MARK: - Events
 
     @objc
+   private func didTapModeSwitch() {
+       Logger.info("")
+
+       provisioningController.provisioningSplashRequestedModeSwitch(viewController: self)
+   }
+
+    @objc
     private func explanationLabelTapped(sender: UIGestureRecognizer) {
         guard sender.state == .recognized else {
             return
@@ -108,5 +109,12 @@ class ProvisioningSplashViewController: ProvisioningBaseViewController {
         let url = TSConstants.legalTermsUrl
         let safariVC = SFSafariViewController(url: url)
         present(safariVC, animated: true)
+    }
+
+    @objc
+    private func continuePressed() {
+        Logger.info("")
+
+        provisioningController.provisioningSplashDidComplete(viewController: self)
     }
 }

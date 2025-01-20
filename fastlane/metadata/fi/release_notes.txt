@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Esittelyssä puhelulinkit: kalenterikutsuille ja spontaaneille tapaamisille.
+• Nyt voit luoda nopeasti linkin, jonka avulla kuka tahansa Signalissa voi liittyä ryhmäpuheluun liittymättä ensin Signal-ryhmäkeskusteluun.
+• Puhelulinkkejä voi käyttää uudelleen, joten ne sopivat toistuviin puhelintreffeihin ystävien kanssa tai viikoittaisiin työkeskusteluihin.
+• Voit hallita puhelulinkkejä, hyväksymisasetuksia sekä kopioida nopeasti jaettavia linkkejä puhelut-välilehdeltä.

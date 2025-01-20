@@ -757,13 +757,6 @@ extension String.UnicodeScalarView {
         }
         return true
     }
-
-    public func containsOnlyEmojiIgnoringWhitespace() -> Bool {
-        if self.isEmpty {
-            return false
-        }
-        return self.allSatisfy { $0.isEmoji || $0.isZeroWidthJoiner || $0.properties.isWhitespace }
-    }
 }
 
 public extension String {
@@ -783,10 +776,6 @@ public extension String {
 
     var containsOnlyEmoji: Bool {
         return self.unicodeScalars.containsOnlyEmoji()
-    }
-
-    var containsOnlyEmojiIgnoringWhitespace: Bool {
-        self.unicodeScalars.containsOnlyEmojiIgnoringWhitespace()
     }
 
     func trimmedIfNeeded(maxGlyphCount: Int) -> String? {

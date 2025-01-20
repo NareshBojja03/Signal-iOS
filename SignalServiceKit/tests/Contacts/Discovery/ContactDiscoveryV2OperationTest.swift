@@ -12,29 +12,7 @@ final class ContactDiscoveryV2OperationTest: XCTestCase {
 
     // MARK: - Mocks
 
-    struct TokenResult: ContactDiscoveryTokenResult {
-        var token: Data
-    }
-
-    private class MockContactDiscoveryConnection: ContactDiscoveryConnection {
-        var onPerformRequest: ((ContactDiscoveryLookupRequest, Auth) throws -> TokenResult)!
-        func performRequest(_ request: ContactDiscoveryLookupRequest, auth: Auth) async throws -> TokenResult {
-            return try self.onPerformRequest(request, auth)
-        }
-
-        var onContinueRequest: ((TokenResult) -> [ContactDiscoveryResult])!
-        func continueRequest(afterAckingToken tokenResult: TokenResult) async throws -> [ContactDiscoveryResult] {
-            return self.onContinueRequest(tokenResult)
-        }
-    }
-
-    private class MockRemoteAttestation: ContactDiscoveryV2Operation<MockContactDiscoveryConnection>.Shims.RemoteAttestation {
-        func authForCDSI() -> Promise<RemoteAttestation.Auth> {
-            return .value(RemoteAttestation.Auth(username: "", password: ""))
-        }
-    }
-
-    private class MockUDManager: ContactDiscoveryV2Operation<MockContactDiscoveryConnection>.Shims.UDManager {
+    private class MockUDManager: ContactDiscoveryV2Operation.Shims.UDManager {
         func fetchAllAciUakPairsWithSneakyTransaction() -> [Aci: SMKUDAccessKey] { return [:] }
     }
 
@@ -42,9 +20,9 @@ final class ContactDiscoveryV2OperationTest: XCTestCase {
         var token: Data?
         var prevE164s = Set<E164>()
 
-        func load() -> (token: Data, e164s: Set<E164>)? {
+        func load() -> (token: Data, e164s: ContactDiscoveryE164Collection<Set<E164>>)? {
             if let token {
-                return (token, prevE164s)
+                return (token, ContactDiscoveryE164Collection(prevE164s))
             }
             return nil
         }
@@ -65,80 +43,104 @@ final class ContactDiscoveryV2OperationTest: XCTestCase {
     // MARK: - Tests
 
     private lazy var persistentState = MockContactDiscoveryV2PersistentState()
+    private lazy var connectionFactory = MockSgxWebsocketConnectionFactory()
 
     /// In .oneOffUserRequest mode, we should disregard tokens entirely.
-    func testOneOffRequest() async throws {
+    func testOneOffRequest() throws {
         let aci = Aci.randomForTesting()
         let pni = Pni.randomForTesting()
 
-        let connection = MockContactDiscoveryConnection()
-        let operation = ContactDiscoveryV2Operation(
-            e164sToLookup: [try XCTUnwrap(E164("+16505550100"))],
-            mode: .oneOffUserRequest,
-            udManager: MockUDManager(),
-            connectionImpl: connection,
-            remoteAttestation: MockRemoteAttestation()
-        )
-
-        // Prepare the server's responses to the client's request.
-        var newE164s: Set<E164>?
-        connection.onPerformRequest = { request, _ in
-            XCTAssertEqual(request.token, nil)
-            XCTAssertEqual(request.prevE164s, [])
-            XCTAssertEqual(request.newE164s.count, 1)
-            newE164s = request.newE164s
-
-            return TokenResult(token: Randomness.generateRandomBytes(65))
-        }
-        connection.onContinueRequest = { tokenResult in
-            XCTAssert(!tokenResult.token.isEmpty)
-            return [ContactDiscoveryResult(e164: newE164s!.first!, pni: pni, aci: aci)]
-        }
-
-        // Run the discovery operation.
-        let operationResults = try await operation.perform()
-
-        // Make sure we got back the result we expected.
-        XCTAssertEqual(operationResults.count, 1)
-        XCTAssertEqual(operationResults.first?.e164.stringValue, "+16505550100")
-        XCTAssertEqual(operationResults.first?.pni, pni)
-        XCTAssertEqual(operationResults.first?.aci, aci)
-    }
-
-    func testNotDiscoverable() async throws {
-        let connection = MockContactDiscoveryConnection()
         let operation = ContactDiscoveryV2Operation(
             e164sToLookup: [try XCTUnwrap(E164("+16505550100"))],
             persistentState: nil,
             udManager: MockUDManager(),
-            connectionImpl: connection,
-            remoteAttestation: MockRemoteAttestation()
+            connectionFactory: connectionFactory
         )
 
         // Prepare the server's responses to the client's request.
-        connection.onPerformRequest = { _, _ in
-            return TokenResult(token: Randomness.generateRandomBytes(65))
+        let connection = MockSgxWebsocketConnection<ContactDiscoveryV2WebsocketConfigurator>()
+        var newE164s: Data?
+        connection.onSendRequestAndReadResponse = { request in
+            XCTAssertEqual(request.token, Data())
+            XCTAssertEqual(request.prevE164S, Data())
+            XCTAssertEqual(request.newE164S.count, 8)
+            newE164s = request.newE164S
+
+            var response = CDSI_ClientResponse()
+            response.token = Randomness.generateRandomBytes(65)
+            return .value(response)
         }
-        connection.onContinueRequest = { _ in
-            return []
+        connection.onSendRequestAndReadAllResponses = { request in
+            XCTAssertTrue(request.tokenAck)
+
+            var response = CDSI_ClientResponse()
+            response.e164PniAciTriples = newE164s! + pni.rawUUID.data + aci.rawUUID.data
+            return .value([response])
         }
+        connectionFactory.setOnConnectAndPerformHandshake({ _ in
+            return .value(connection)
+        })
 
         // Run the discovery operation.
-        let operationResults = try await operation.perform()
+        var operationResults: [ContactDiscoveryV2Operation.DiscoveryResult]?
+        let operationExpectation = expectation(description: "Waiting for operation.")
+        operation.perform(on: DispatchQueue.main).done { results in
+            operationResults = results
+            operationExpectation.fulfill()
+        }.cauterize()
+        waitForExpectations(timeout: 10)
 
         // Make sure we got back the result we expected.
-        XCTAssertEqual(operationResults.count, 0)
+        XCTAssertEqual(operationResults?.count, 1)
+        XCTAssertEqual(operationResults?.first?.e164.stringValue, "+16505550100")
+        XCTAssertEqual(operationResults?.first?.pni, pni)
+        XCTAssertEqual(operationResults?.first?.aci, aci)
+    }
+
+    func testNotDiscoverable() throws {
+        let operation = ContactDiscoveryV2Operation(
+            e164sToLookup: [try XCTUnwrap(E164("+16505550100"))],
+            persistentState: nil,
+            udManager: MockUDManager(),
+            connectionFactory: connectionFactory
+        )
+
+        // Prepare the server's responses to the client's request.
+        let connection = MockSgxWebsocketConnection<ContactDiscoveryV2WebsocketConfigurator>()
+        connection.onSendRequestAndReadResponse = { _ in
+            var response = CDSI_ClientResponse()
+            response.token = Randomness.generateRandomBytes(65)
+            return .value(response)
+        }
+        connection.onSendRequestAndReadAllResponses = { _ in
+            var response = CDSI_ClientResponse()
+            response.e164PniAciTriples = Data(count: 40)
+            return .value([response])
+        }
+        connectionFactory.setOnConnectAndPerformHandshake({ _ in
+            return .value(connection)
+        })
+
+        // Run the discovery operation.
+        var operationResults: [ContactDiscoveryV2Operation.DiscoveryResult]?
+        let operationExpectation = expectation(description: "Waiting for operation.")
+        operation.perform(on: DispatchQueue.main).done { results in
+            operationResults = results
+            operationExpectation.fulfill()
+        }.cauterize()
+        waitForExpectations(timeout: 10)
+
+        // Make sure we got back the result we expected.
+        XCTAssertEqual(operationResults?.count, 0)
     }
 
     /// If the server reports a rate limit, we should parse "retry after".
-    func testRateLimitError() async throws {
-        let connection = MockContactDiscoveryConnection()
+    func testRateLimitError() throws {
         let operation = ContactDiscoveryV2Operation(
             e164sToLookup: [try XCTUnwrap(E164("+16505550100"))],
             persistentState: persistentState,
             udManager: MockUDManager(),
-            connectionImpl: connection,
-            remoteAttestation: MockRemoteAttestation()
+            connectionFactory: connectionFactory
         )
 
         // Establish the initial state.
@@ -148,56 +150,62 @@ final class ContactDiscoveryV2OperationTest: XCTestCase {
         persistentState.prevE164s = initialPrevE164s
 
         // Prepare the server's responses to the client's request.
-        connection.onPerformRequest = { request, _ in
-            throw LibSignalClient.SignalError.rateLimitedError(retryAfter: 1234, message: "")
+        let connection = MockSgxWebsocketConnection<ContactDiscoveryV2WebsocketConfigurator>()
+        connection.onSendRequestAndReadResponse = { requestData in
+            return Promise(error: WebSocketError.closeError(
+                statusCode: 4008,
+                closeReason: #"{"retry_after": 1234}"#.data(using: .utf8)!
+            ))
         }
+        connectionFactory.setOnConnectAndPerformHandshake({ _ in
+            return .value(connection)
+        })
 
         // Run the discovery operation.
         var operationError: Error?
-        do {
-            _ = try await operation.perform()
-        } catch {
+        let operationExpectation = expectation(description: "Waiting for operation.")
+        operation.perform(on: DispatchQueue.main).catch { error in
             operationError = error
-        }
+            operationExpectation.fulfill()
+        }.cauterize()
+        waitForExpectations(timeout: 10)
 
         // Make sure the local state wasn't modified.
         XCTAssertEqual(persistentState.token, initialToken)
         XCTAssertEqual(persistentState.prevE164s, initialPrevE164s)
 
-        switch try XCTUnwrap(operationError as? ContactDiscoveryError) {
-        case .invalidToken, .retryableError, .terminalError:
-            XCTFail("Wrong type of error.")
-        case .rateLimit(let retryAfter):
-            XCTAssertEqual(retryAfter.timeIntervalSinceNow, 1234, accuracy: 10)
-        }
+        let contactDiscoveryError = try XCTUnwrap(operationError as? ContactDiscoveryError)
+        XCTAssertEqual(contactDiscoveryError.kind, .rateLimit)
+        XCTAssertEqual(try XCTUnwrap(contactDiscoveryError.retryAfterDate?.timeIntervalSinceNow), 1234, accuracy: 10)
     }
 
     /// If the server reports an invalid token, we should clear the token.
-    func testInvalidTokenError() async throws {
-        let connection = MockContactDiscoveryConnection()
+    func testInvalidTokenError() throws {
         let operation = ContactDiscoveryV2Operation(
             e164sToLookup: [try XCTUnwrap(E164("+16505550100"))],
             persistentState: persistentState,
             udManager: MockUDManager(),
-            connectionImpl: connection,
-            remoteAttestation: MockRemoteAttestation()
+            connectionFactory: connectionFactory
         )
 
         // Establish the initial state.
         persistentState.token = Randomness.generateRandomBytes(65)
 
         // Prepare the server's responses to the client's request.
-        connection.onPerformRequest = { _, _ in
-            throw LibSignalClient.SignalError.cdsiInvalidToken("")
+        let connection = MockSgxWebsocketConnection<ContactDiscoveryV2WebsocketConfigurator>()
+        connection.onSendRequestAndReadResponse = { requestData in
+            return Promise(error: WebSocketError.closeError(statusCode: 4101, closeReason: nil))
         }
+        connectionFactory.setOnConnectAndPerformHandshake({ _ in
+            return .value(connection)
+        })
 
         // Run the discovery operation.
-        do {
-            _ = try await operation.perform()
-            XCTFail("Must throw error.")
-        } catch is ContactDiscoveryError {
-            // Ok.
-        }
+        let operationExpectation = expectation(description: "Waiting for operation.")
+        operation.perform(on: DispatchQueue.main).catch { error in
+            operationExpectation.fulfill()
+        }.cauterize()
+        waitForExpectations(timeout: 10)
 
         // Make sure the local state was cleared.
         XCTAssertNil(persistentState.token)

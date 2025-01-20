@@ -34,9 +34,12 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
 
     // MARK: View Lifecycle
 
-    public override func loadView() {
-        view = containerView
+    private lazy var filterControl: ChatListFilterControl? = if FeatureFlags.chatListFilter {
+        ChatListFilterControl()
+    } else {
+        nil
     }
+    private var filterControlNeedsSizeChange = true
 
     public override func viewDidLoad() {
         super.viewDidLoad()
@@ -55,6 +58,8 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
         }
 
         // Table View
+        view.addSubview(tableView)
+        tableView.autoPinEdgesToSuperviewEdges()
         tableView.accessibilityIdentifier = "ChatListViewController.tableView"
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 60
@@ -62,6 +67,7 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
         tableView.allowsMultipleSelectionDuringEditing = true
 
         if let filterControl {
+            tableView.tableHeaderView = filterControl
             filterControl.clearAction = .disableChatListFilter(target: self)
             filterControl.delegate = self
         }
@@ -147,7 +153,6 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
             ensureCellAnimations()
         }
 
-        let isCollapsed = splitViewController?.isCollapsed ?? true
         if let selectedIndexPath = tableView.indexPathForSelectedRow, let selectedThread = renderState.thread(forIndexPath: selectedIndexPath) {
             if viewState.lastSelectedThreadId != selectedThread.uniqueId {
                 owsFailDebug("viewState.lastSelectedThreadId out of sync with table view")
@@ -155,6 +160,7 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
                 updateShouldBeUpdatingView()
             }
 
+            let isCollapsed = splitViewController?.isCollapsed ?? true
             if isCollapsed {
                 if animated, let transitionCoordinator {
                     transitionCoordinator.animate { [self] _ in
@@ -174,15 +180,8 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
                     loadCoordinator.scheduleLoad(updatedThreadIds: [selectedThread.uniqueId], animated: false)
                 }
             }
-        } else if isCollapsed, let threadId = viewState.lastSelectedThreadId {
-            // If there is no currently selected table row, clean up the
-            // lastSelectedThreadId viewState and reload that item
-            viewState.lastSelectedThreadId = nil
-            loadCoordinator.scheduleLoad(updatedThreadIds: [threadId], animated: animated)
         }
     }
-
-    private var hasPresentedBackupErrors = false
 
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -193,11 +192,6 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
             hasEverPresentedExperienceUpgrade = true
         } else if !hasEverAppeared {
             presentGetStartedBannerIfNecessary()
-        }
-
-        if !hasPresentedBackupErrors {
-            hasPresentedBackupErrors = true
-            DependenciesBridge.shared.messageBackupErrorPresenter.presentOverTopmostViewController(completion: {})
         }
 
         // Whether or not the theme has changed, always ensure
@@ -249,7 +243,19 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
     public override func viewIsAppearing(_ animated: Bool) {
         super.viewIsAppearing(animated)
 
-        updateFilterControl(animated: false)
+        if FeatureFlags.chatListFilter {
+            updateFilterControl(animated: false)
+            updateFilterControlSize()
+        }
+    }
+
+    public override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+
+        if let filterControl {
+            tableView.bringSubviewToFront(filterControl)
+            updateFilterControlSize()
+        }
     }
 
     public override func viewDidLayoutSubviews() {
@@ -295,8 +301,6 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
 
         guard isViewLoaded else { return }
 
-        containerView.willTransition(to: size, with: coordinator)
-
         // There is a subtle difference in when the split view controller
         // transitions between collapsed and expanded state on iPad vs
         // when it does on iPhone. We reloadData here in order to ensure
@@ -326,6 +330,17 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
                     getStartedBanner.view.alpha = 1
                 }
             }
+        }
+    }
+
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+
+        if traitCollection.preferredContentSizeCategory != previousTraitCollection?.preferredContentSizeCategory {
+            // The filter control needs to match the size of the search bar, which
+            // changes depending on dynamic type. Set a flag so that we can
+            // calculate the new search bar size in `viewDidLayoutSubviews()`.
+            filterControlNeedsSizeChange = true
         }
     }
 
@@ -411,12 +426,14 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
             buildActions: { settingsAction -> [UIAction] in
                 var contextMenuActions: [UIAction] = []
 
-                // FIXME: combine viewState.inboxFilter and renderState.viewInfo.inboxFilter to avoid bugs with them getting out of sync
-                switch viewState.inboxFilter {
-                case .unread:
-                    contextMenuActions.append(.disableChatListFilter(target: self))
-                case .none?, nil:
-                    contextMenuActions.append(.enableChatListFilter(target: self))
+                if FeatureFlags.chatListFilter {
+                    // FIXME: combine viewState.inboxFilter and renderState.viewInfo.inboxFilter to avoid bugs with them getting out of sync
+                    switch viewState.inboxFilter {
+                    case .unread:
+                        contextMenuActions.append(.disableChatListFilter(target: self))
+                    case .none?, nil:
+                        contextMenuActions.append(.enableChatListFilter(target: self))
+                    }
                 }
 
                 if viewState.settingsButtonCreator.hasInboxChats {
@@ -902,8 +919,8 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
 
         let logger = PrefixedLogger(prefix: "[Donations]", suffix: "\(errorMode)")
 
-        Promise.wrapAsync {
-            try await SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(badge)
+        firstly(on: DispatchQueue.global()) { () -> Promise<Void> in
+            SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(badge)
         }.done(on: DispatchQueue.main) {
             guard self.isChatListTopmostViewController() else {
                 logger.info("Not presenting error – no longer the top view controller.")
@@ -959,8 +976,8 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
             firstly {
                 DonationSubscriptionManager.getBoostBadge()
             }.done(on: DispatchQueue.global()) { boostBadge in
-                Promise.wrapAsync {
-                    try await SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(boostBadge)
+                firstly {
+                    SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(boostBadge)
                 }.done(on: DispatchQueue.main) {
                     // Make sure we're still the active VC
                     guard UIApplication.shared.frontmostViewController == self.conversationSplitViewController,
@@ -1269,13 +1286,13 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
             return
         }
 
-        let keyValueStore = KeyValueStore(collection: "FailedNSELaunches")
+        let keyValueStore = SDSKeyValueStore(collection: "FailedNSELaunches")
         let mostRecentDateKey = "mostRecentPromptDate"
         let promptCountKey = "promptCount"
 
         let shouldShowPrompt = SSKEnvironment.shared.databaseStorageRef.read { tx in
             // If we've shown the prompt recently, don't show it again.
-            let promptCount = keyValueStore.getInt(promptCountKey, defaultValue: 0, transaction: tx.asV2Read)
+            let promptCount = keyValueStore.getInt(promptCountKey, defaultValue: 0, transaction: tx)
             let promptBackoff: TimeInterval = {
                 switch promptCount {
                 case 0:
@@ -1290,7 +1307,7 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
                     return 96*kHourInterval
                 }
             }()
-            let mostRecentDate = keyValueStore.getDate(mostRecentDateKey, transaction: tx.asV2Read)
+            let mostRecentDate = keyValueStore.getDate(mostRecentDateKey, transaction: tx)
             if let mostRecentDate, -mostRecentDate.timeIntervalSinceNow < promptBackoff {
                 return false
             }
@@ -1339,11 +1356,11 @@ public class ChatListViewController: OWSViewController, HomeTabViewController {
         self.present(actionSheet, animated: true)
 
         await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
-            keyValueStore.setDate(promptDate, key: mostRecentDateKey, transaction: tx.asV2Write)
+            keyValueStore.setDate(promptDate, key: mostRecentDateKey, transaction: tx)
             keyValueStore.setInt(
-                keyValueStore.getInt(promptCountKey, defaultValue: 0, transaction: tx.asV2Read) + 1,
+                keyValueStore.getInt(promptCountKey, defaultValue: 0, transaction: tx) + 1,
                 key: promptCountKey,
-                transaction: tx.asV2Write
+                transaction: tx
             )
         }
     }
@@ -1361,9 +1378,11 @@ extension ChatListViewController {
             // filtering state.
             loadCoordinator.loadIfNecessary()
         } else {
-            tableView.performBatchUpdates {
-                filterControl?.startFiltering(animated: true)
-                loadCoordinator.loadIfNecessary()
+            UIView.animate(withDuration: CATransaction.animationDuration()) { [filterControl, loadCoordinator, tableView] in
+                tableView.performBatchUpdates { [loadCoordinator] in
+                    filterControl?.startFiltering(animated: true)
+                    loadCoordinator.loadIfNecessary()
+                }
             }
         }
     }
@@ -1371,8 +1390,7 @@ extension ChatListViewController {
     func disableChatListFilter(_ sender: AnyObject?) {
         updateChatListFilter(.none)
         updateBarButtonItems()
-
-        tableView.performBatchUpdates {
+        tableView.performBatchUpdates { [self] in
             filterControl?.stopFiltering(animated: true)
             loadCoordinator.loadIfNecessary()
         }
@@ -1391,6 +1409,24 @@ extension ChatListViewController {
         viewState.inboxFilter = inboxFilter
         loadCoordinator.saveInboxFilter(inboxFilter)
         updateBarButtonItems()
+    }
+
+    private func updateFilterControlSize() {
+        guard let filterControl, filterControlNeedsSizeChange else { return }
+        filterControlNeedsSizeChange = false
+
+        let searchBarHeight = searchBar.systemLayoutSizeFitting(UIView.layoutFittingExpandedSize).height
+
+        // Performed without animation so it can't interact with a view controller
+        // transition or some other animation.
+        UIView.performWithoutAnimation {
+            filterControl.preferredContentHeight = searchBarHeight
+
+            // This tells UITableView to perform a layout pass, which allows it
+            // to adjust to the new filterControl height even when there are no
+            // datasource-driven layout changes.
+            tableView.performBatchUpdates(nil)
+        }
     }
 }
 
@@ -1423,7 +1459,6 @@ extension ChatListViewController {
         case corruptedUsernameResolution
         case corruptedUsernameLinkResolution
         case donate(donateMode: DonateViewController.DonateMode)
-        case linkNewDevice(provisioningUrl: DeviceProvisioningURL)
         case proxy
     }
 
@@ -1526,12 +1561,6 @@ extension ChatListViewController {
                 }
             }
             viewControllers += [donate]
-        case .linkNewDevice(let provisioningUrl):
-            let linkDeviceViewController = LinkedDevicesHostingController(
-                presentationOnFirstAppear: .linkNewDevice(preknownProvisioningUrl: provisioningUrl)
-            )
-
-            viewControllers += [ linkDeviceViewController ]
         case .proxy:
             viewControllers += [ PrivacySettingsViewController(), AdvancedPrivacySettingsViewController(), ProxySettingsViewController() ]
         }
@@ -1674,10 +1703,22 @@ extension ChatListViewController {
     }
 }
 
-extension ChatListViewController: UIScrollViewDelegate {
+extension ChatListViewController: UIScrollViewExtendedDelegate {
     public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         filterControl?.draggingWillBegin(in: scrollView)
         cancelSearch()
+    }
+
+    public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        filterControl?.updateScrollPosition(in: scrollView)
+    }
+
+    public func scrollViewDidChangeAdjustedContentInset(_ scrollView: UIScrollView) {
+        filterControl?.updateScrollPosition(in: scrollView)
+    }
+
+    public func scrollViewDidChangeContentSize(_ scrollView: UIScrollView) {
+        filterControl?.updateScrollPosition(in: scrollView)
     }
 
     public func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
@@ -1698,13 +1739,8 @@ extension ChatListViewController: UIScrollViewDelegate {
 }
 
 extension ChatListViewController: ChatListFilterControlDelegate {
-    func filterControlWillChangeState(to state: ChatListFilterControl.FilterState) {
-        switch state {
-        case .on:
-            updateChatListFilter(.unread)
-        case .off:
-            updateChatListFilter(.none)
-        }
+    func filterControlWillStartFiltering() {
+        updateChatListFilter(.unread)
 
         // Because this happens in response to an interactive gesture, it feels
         // better to go a little slower than the default animation duration (0.25 sec).

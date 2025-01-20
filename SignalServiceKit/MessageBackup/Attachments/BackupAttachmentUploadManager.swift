@@ -66,7 +66,6 @@ public class BackupAttachmentUploadManagerImpl: BackupAttachmentUploadManager {
         )
         self.taskQueue = TaskQueueLoader(
             maxConcurrentTasks: Constants.numParallelUploads,
-            dateProvider: dateProvider,
             db: db,
             runner: taskRunner
         )
@@ -77,12 +76,6 @@ public class BackupAttachmentUploadManagerImpl: BackupAttachmentUploadManager {
         currentUploadEra: String,
         tx: DBWriteTransaction
     ) throws {
-        guard FeatureFlags.messageBackupFileAlpha else {
-            return
-        }
-        if MessageBackupMessageAttachmentArchiver.isFreeTierBackup() {
-            return
-        }
         guard let referencedStream = referencedAttachment.asReferencedStream else {
             // We only upload streams
             return
@@ -102,9 +95,6 @@ public class BackupAttachmentUploadManagerImpl: BackupAttachmentUploadManager {
     }
 
     public func backUpAllAttachments() async throws {
-        if MessageBackupMessageAttachmentArchiver.isFreeTierBackup() {
-            return
-        }
         try await taskQueue.loadAndRunTasks()
     }
 
@@ -162,9 +152,6 @@ public class BackupAttachmentUploadManagerImpl: BackupAttachmentUploadManager {
         private let errorCounts = ErrorCounts()
 
         func runTask(record: Store.Record, loader: TaskQueueLoader<TaskRunner>) async -> TaskRecordResult {
-            guard FeatureFlags.messageBackupFileAlpha else {
-                return .cancelled
-            }
             let attachment = db.read { tx in
                 return self.attachmentStore.fetch(id: record.record.attachmentRowId, tx: tx)
             }
@@ -210,7 +197,6 @@ public class BackupAttachmentUploadManagerImpl: BackupAttachmentUploadManager {
             let messageBackupAuth: MessageBackupServiceAuth
             do {
                 messageBackupAuth = try await messageBackupRequestManager.fetchBackupServiceAuth(
-                    for: .media,
                     localAci: localAci,
                     auth: .implicit()
                 )

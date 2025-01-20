@@ -1,1 +1,4 @@
-• This update includes support for the new telephone number format in Benin.
+Presentem els enllaços de trucada: la peça que faltava a les invitacions de calendari i reunions improvisades.
+• Ara pots crear ràpidament un enllaç perquè qualsevol persona a Signal pugui unir-se a una trucada grupal, sense necessitat d'unir-se prèviament a un xat grupal de Signal.
+• Els enllaços de trucada són reutilitzables i ideals tant per a quedades telefòniques recurrents amb la teva colla com per a les reunions setmanals amb els teus companys de feina.
+• Pots administrar els teus enllaços de trucada, controlar els ajustos per aprovar sol·licituds i copiar enllaços des de la pestanya de trucades per compartir-los ràpidament.

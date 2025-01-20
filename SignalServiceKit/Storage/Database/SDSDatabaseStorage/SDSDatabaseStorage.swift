@@ -122,6 +122,16 @@ public class SDSDatabaseStorage: NSObject {
         }
     }
 
+    public func resetAllStorage() {
+        YDBStorage.deleteYDBStorage()
+        do {
+            try keyFetcher.clear()
+        } catch {
+            owsFailDebug("Could not clear keychain: \(error)")
+        }
+        grdbStorage.resetAllStorage()
+    }
+
     // MARK: - Id Mapping
 
     public func updateIdMapping(thread: TSThread, transaction: SDSAnyWriteTransaction) {
@@ -152,11 +162,7 @@ public class SDSDatabaseStorage: NSObject {
             }
         }
         if shouldReindex, let message = interaction as? TSMessage {
-            do {
-                try FullTextSearchIndexer.update(message, tx: transaction)
-            } catch {
-                owsFail("Error: \(error)")
-            }
+            FullTextSearchIndexer.update(message, tx: transaction)
         }
     }
 
@@ -581,6 +587,20 @@ public class SDSDatabaseStorage: NSObject {
                 } catch {
                     future.reject(error)
                 }
+            }
+        }
+    }
+
+    public func writeWithTxCompletion<T>(
+        _: PromiseNamespace,
+        file: String = #file,
+        function: String = #function,
+        line: Int = #line,
+        _ block: @escaping (SDSAnyWriteTransaction) -> TransactionCompletion<T>
+    ) -> Guarantee<T> {
+        return Guarantee { future in
+            self.asyncWriteQueue.async {
+                future(self.writeWithTxCompletion(file: file, function: function, line: line, block: block))
             }
         }
     }

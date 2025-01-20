@@ -14,12 +14,6 @@ public class OWSMockSyncManager: NSObject, SyncManagerProtocol {
         Logger.info("")
     }
 
-    public func sendInitialSyncRequestsAwaitingCreatedThreadOrdering(timeoutSeconds: TimeInterval) -> Promise<[String]> {
-        Logger.info("")
-
-        return Promise.value([])
-    }
-
     public func sendAllSyncRequestMessagesIfNecessary() -> Promise<Void> {
         Logger.info("")
 

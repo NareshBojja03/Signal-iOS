@@ -17,7 +17,7 @@ class MediaPageViewController: UIPageViewController {
     private let initialGalleryItem: MediaGalleryItem
 
     convenience init?(
-        initialMediaAttachment: ReferencedAttachment,
+        initialMediaAttachment: ReferencedTSResource,
         thread: TSThread,
         spoilerState: SpoilerRenderState,
         showingSingleMessage: Bool = false
@@ -31,7 +31,7 @@ class MediaPageViewController: UIPageViewController {
     }
 
     init?(
-        initialMediaAttachment: ReferencedAttachment,
+        initialMediaAttachment: ReferencedTSResource,
         mediaGallery: MediaGallery,
         spoilerState: SpoilerRenderState,
         showingSingleMessage: Bool = false
@@ -416,13 +416,12 @@ class MediaPageViewController: UIPageViewController {
     private func forwardCurrentMedia() {
         let messageForCurrentItem = currentItem.message
 
-        let mediaAttachments: [ReferencedAttachment] = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-            guard let rowId = messageForCurrentItem.sqliteRowId else { return [] }
-            return DependenciesBridge.shared.attachmentStore
-                .fetchReferencedAttachments(for: .messageBodyAttachment(messageRowId: rowId), tx: transaction.asV2Read)
+        let mediaAttachments: [ReferencedTSResource] = SSKEnvironment.shared.databaseStorageRef.read { transaction in
+            return DependenciesBridge.shared.tsResourceStore
+                .referencedBodyAttachments(for: messageForCurrentItem, tx: transaction.asV2Read)
         }
 
-        let mediaAttachmentStreams: [ReferencedAttachmentStream] = mediaAttachments.compactMap { attachment in
+        let mediaAttachmentStreams: [ReferencedTSResourceStream] = mediaAttachments.compactMap { attachment in
             guard let attachmentStream = attachment.asReferencedStream else {
                 // Our current media item should always be an attachment
                 // stream (downloaded). However, we can't guarantee that the
@@ -486,7 +485,7 @@ class MediaPageViewController: UIPageViewController {
     private func shareCurrentMedia(fromNavigationBar: Bool) {
         guard let currentViewController else { return }
         guard
-            let attachmentStream = try? currentViewController.galleryItem.attachmentStream.asShareableAttachment()
+            let attachmentStream = try? currentViewController.galleryItem.attachmentStream.asShareableResource()
         else {
             return
         }

@@ -741,20 +741,18 @@ internal class GroupsMessageProcessor: MessageProcessingPipelineStage {
             // one revision.
             return .failureShouldFailoverToService
         }
-        guard let changeProtoData = groupContext.groupChange else {
+        guard let changeActionsProtoData = groupContext.groupChange else {
             // No embedded group change.
             return .failureShouldFailoverToService
         }
 
         do {
-            let changeProto = try GroupsProtoGroupChange(serializedData: changeProtoData)
-            guard changeProto.changeEpoch <= GroupManager.changeProtoEpoch else {
-                throw OWSAssertionError("Invalid embedded change proto epoch: \(changeProto.changeEpoch).")
-            }
-
             // We need to verify the signatures because these protos came from
             // another client, not the service.
-            let changeActionsProto = try GroupsV2Protos.parseGroupChangeProto(changeProto, verificationOperation: .verifySignature(groupId: groupId))
+            let changeActionsProto = try SSKEnvironment.shared.groupsV2Ref.parseAndVerifyChangeActionsProto(
+                changeActionsProtoData,
+                ignoreSignature: false
+            )
 
             guard changeActionsProto.revision == contextRevision else {
                 throw OWSAssertionError("Embedded change proto revision doesn't match context revision.")
@@ -768,6 +766,7 @@ internal class GroupsMessageProcessor: MessageProcessingPipelineStage {
                 groupId: oldGroupModel.groupId,
                 spamReportingMetadata: spamReportingMetadata,
                 changeActionsProto: changeActionsProto,
+                ignoreSignature: false,
                 groupSecretParams: try oldGroupModel.secretParams()
             )
 
@@ -821,7 +820,7 @@ internal class GroupsMessageProcessor: MessageProcessingPipelineStage {
         }()
         let groupUpdateMode = GroupUpdateMode.upToSpecificRevisionImmediately(upToRevision: groupContext.revision)
         do {
-            try await SSKEnvironment.shared.groupV2UpdatesRef.tryToRefreshV2GroupThread(
+            _ = try await SSKEnvironment.shared.groupV2UpdatesRef.tryToRefreshV2GroupThread(
                 groupId: groupContextInfo.groupId,
                 spamReportingMetadata: spamReportingMetadata,
                 groupSecretParams: groupContextInfo.groupSecretParams,

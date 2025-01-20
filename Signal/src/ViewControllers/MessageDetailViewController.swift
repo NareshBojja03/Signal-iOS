@@ -41,8 +41,8 @@ class MessageDetailViewController: OWSTableViewController2 {
 
     private let cellView = CVCellView()
 
-    private var bodyMediaAttachments: [ReferencedAttachment]?
-    private var bodyMediaAttachmentStreams: [ReferencedAttachmentStream]? {
+    private var bodyMediaAttachments: [ReferencedTSResource]?
+    private var bodyMediaAttachmentStreams: [ReferencedTSResourceStream]? {
         return bodyMediaAttachments?.compactMap { $0.asReferencedStream }
     }
 
@@ -304,7 +304,7 @@ class MessageDetailViewController: OWSTableViewController2 {
                 ))
             }
 
-            if let formattedByteCount = byteCountFormatter.string(for: attachment.attachment.asStream()?.unencryptedByteCount ?? 0) {
+            if let formattedByteCount = byteCountFormatter.string(for: attachment.attachment.unencryptedResourceByteCount ?? 0) {
                 messageStack.addArrangedSubview(Self.buildValueLabel(
                     name: OWSLocalizedString("MESSAGE_METADATA_VIEW_ATTACHMENT_FILE_SIZE",
                                             comment: "Label for file size of attachments in the 'message metadata' view."),
@@ -401,7 +401,7 @@ class MessageDetailViewController: OWSTableViewController2 {
     }
 
     private func buildStatusSections() -> [OWSTableSection] {
-        guard message is TSOutgoingMessage else {
+        guard nil != message as? TSOutgoingMessage else {
             owsFailDebug("Unexpected message type")
             return []
         }
@@ -886,11 +886,8 @@ extension MessageDetailViewController: DatabaseChangeDelegate {
                 return false
             }
             self.message = newMessage
-            self.bodyMediaAttachments = DependenciesBridge.shared.attachmentStore
-                .fetchReferencedAttachments(
-                    for: .messageBodyAttachment(messageRowId: newMessage.sqliteRowId!),
-                    tx: transaction.asV2Read
-                )
+            self.bodyMediaAttachments = DependenciesBridge.shared.tsResourceStore
+                .referencedBodyMediaAttachments(for: newMessage, tx: transaction.asV2Read)
             guard let renderItem = buildRenderItem(
                 message: newMessage,
                 spoilerState: spoilerState,
@@ -1072,7 +1069,7 @@ extension MessageDetailViewController: CVComponentDelegate {
 
     func didTapBodyMedia(
         itemViewModel: CVItemViewModelImpl,
-        attachmentStream: ReferencedAttachmentStream,
+        attachmentStream: ReferencedTSResourceStream,
         imageView: UIView
     ) {
         guard let thread = thread else {

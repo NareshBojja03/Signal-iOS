@@ -926,18 +926,18 @@ extension RecipientPickerViewController {
         })
     }
 
-    private static let keyValueStore = KeyValueStore(collection: "RecipientPicker.contactAccess")
+    private static let keyValueStore = SDSKeyValueStore(collection: "RecipientPicker.contactAccess")
     private static let showNotAllowedReminderKey = "shouldShowNotAllowedReminder"
 
     private func shouldShowContactAccessNotAllowedReminderItemWithSneakyTransaction() -> Bool {
         SSKEnvironment.shared.databaseStorageRef.read {
-            Self.keyValueStore.getBool(Self.showNotAllowedReminderKey, defaultValue: true, transaction: $0.asV2Read)
+            Self.keyValueStore.getBool(Self.showNotAllowedReminderKey, defaultValue: true, transaction: $0)
         }
     }
 
     private func hideShowContactAccessNotAllowedReminderItem() {
         SSKEnvironment.shared.databaseStorageRef.write {
-            Self.keyValueStore.setBool(false, key: Self.showNotAllowedReminderKey, transaction: $0.asV2Write)
+            Self.keyValueStore.setBool(false, key: Self.showNotAllowedReminderKey, transaction: $0)
         }
         reloadContent()
     }
@@ -1231,7 +1231,7 @@ struct PhoneNumberFinder {
             potentialE164 = filteredValue
         } else if
             let localNumber,
-            let callingCode = phoneNumberUtil.parseE164(localNumber)?.getCallingCode()
+            let callingCode = phoneNumberUtil.parseE164(localNumber)?.getCallingCode()?.intValue
         {
             potentialE164 = "+\(callingCode)\(filteredValue)"
         } else {
@@ -1292,8 +1292,9 @@ struct PhoneNumberFinder {
             }
             validE164ToLookUp = validE164
         }
-        return Promise.wrapAsync { [contactDiscoveryManager] in
-            let signalRecipients = try await contactDiscoveryManager.lookUp(phoneNumbers: [validE164ToLookUp], mode: .oneOffUserRequest)
+        return firstly {
+            contactDiscoveryManager.lookUp(phoneNumbers: [validE164ToLookUp], mode: .oneOffUserRequest)
+        }.map { signalRecipients in
             if let signalRecipient = signalRecipients.first {
                 return .success(signalRecipient)
             } else {

@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "signal-logo-ultramarine.pdf",
+      "filename" : "471955755_2210166969402791_2878073887772657240_n 1.png",
       "idiom" : "universal"
     },
     {
@@ -11,15 +11,12 @@
           "value" : "dark"
         }
       ],
-      "filename" : "signal-logo-white.pdf",
+      "filename" : "471955755_2210166969402791_2878073887772657240_n.png",
       "idiom" : "universal"
     }
   ],
   "info" : {
     "author" : "xcode",
     "version" : 1
-  },
-  "properties" : {
-    "preserves-vector-representation" : true
   }
 }

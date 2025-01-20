@@ -222,7 +222,7 @@ class RegistrationRestoreFromBackupViewController: OWSViewController {
 
     private func showMessageBackupPicker() {
         let vc = UIApplication.shared.frontmostViewController!
-        let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: !Platform.isSimulator)
+        let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: false)
         documentPicker.delegate = self
         documentPicker.allowsMultipleSelection = false
         vc.present(documentPicker, animated: true)

@@ -39,7 +39,7 @@ public class AttachmentMultisend {
                     approvedMessageBody,
                     to: conversations,
                     db: deps.databaseStorage,
-                    attachmentValidator: deps.attachmentValidator
+                    attachmentValidator: deps.tsResourceValidator
                 )
 
                 var hasNonStoryDestination = false
@@ -175,6 +175,7 @@ public class AttachmentMultisend {
         let imageQualityLevel: ImageQualityLevel.Type
         let messageSenderJobQueue: MessageSenderJobQueue
         let tsAccountManager: TSAccountManager
+        let tsResourceValidator: TSResourceContentValidator
     }
 
     private static var deps = Dependencies(
@@ -184,7 +185,8 @@ public class AttachmentMultisend {
         databaseStorage: SSKEnvironment.shared.databaseStorageRef,
         imageQualityLevel: ImageQualityLevel.self,
         messageSenderJobQueue: SSKEnvironment.shared.messageSenderJobQueueRef,
-        tsAccountManager: DependenciesBridge.shared.tsAccountManager
+        tsAccountManager: DependenciesBridge.shared.tsAccountManager,
+        tsResourceValidator: DependenciesBridge.shared.tsResourceContentValidator
     )
 
     // MARK: - Segmenting Attachments
@@ -328,7 +330,7 @@ public class AttachmentMultisend {
                 return nil
             }
             return SignalAttachment.ForSending(
-                dataSource: original,
+                dataSource: original.tsDataSource,
                 isViewOnce: attachment.isViewOnce,
                 renderingFlag: attachment.renderingFlag
             )
@@ -462,7 +464,7 @@ public class AttachmentMultisend {
     }
 
     private class func prepareNonStoryMessage(
-        messageBody: ValidatedMessageBody?,
+        messageBody: ValidatedTSMessageBody?,
         attachments: [SignalAttachment.ForSending],
         thread: TSThread,
         tx: SDSAnyWriteTransaction
@@ -670,7 +672,7 @@ public class AttachmentMultisend {
         return segmentedAttachments.map { attachmentDataSource, isLoopingVideo in
             let attachmentManager = deps.attachmentManager
             let attachmentBuilder = OwnedAttachmentBuilder<StoryMessageAttachment>(
-                info: .media,
+                info: .foreignReferenceAttachment,
                 finalize: { owner, tx in
                     try attachmentManager.createAttachmentStream(
                         consuming: .init(dataSource: attachmentDataSource, owner: owner),

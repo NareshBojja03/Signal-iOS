@@ -93,7 +93,7 @@ extension ConversationViewController: MessageActionsDelegate {
 
             inputToolbar?.editThumbnail = nil
             let imageStream = itemViewModel.bodyMediaAttachmentStreams.first(where: {
-                $0.contentType.isImage
+                $0.computeContentType().isImage
             })
             if let imageStream {
                 Task {

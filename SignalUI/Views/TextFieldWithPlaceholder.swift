@@ -105,6 +105,8 @@ public class TextFieldWithPlaceholder: UIView {
 
     @objc
     private func textFieldDidChange(sender: UITextField) {
+        Logger.info("")
+
         updatePlaceholderVisibility()
     }
 

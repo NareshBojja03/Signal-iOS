@@ -15,16 +15,16 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
     let buttonText: String?
     let requiresRegisteredNumber: Bool
 
-    private var country: PhoneNumberCountry!
+    var callingCode: String = "+1"
     let countryCodeLabel = UILabel()
-    private lazy var nationalNumberTextField = OWSTextField(
+    private lazy var phoneNumberTextField = OWSTextField(
         keyboardType: .numberPad,
         returnKeyType: .done,
         autocorrectionType: .no,
         delegate: self
     )
     let countryRowTitleLabel = UILabel()
-    let nationalNumberRowTitleLabel = UILabel()
+    let phoneNumberRowTitleLabel = UILabel()
 
     public init(delegate: FindByPhoneNumberDelegate, buttonText: String?, requiresRegisteredNumber: Bool) {
         self.findByPhoneNumberDelegate = delegate
@@ -50,7 +50,7 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
         )
     }
 
-    private var nationalNumberTitle: NSAttributedString {
+    private var phoneNumberTitle: NSAttributedString {
         NSAttributedString(
             string: OWSLocalizedString(
                 "REGISTRATION_PHONENUMBER_BUTTON",
@@ -74,7 +74,6 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
 
     override public func viewDidLoad() {
         super.viewDidLoad()
-        populateDefaultCountryCode()
         loadTableContents()
     }
 
@@ -91,7 +90,7 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
 
         let titleWidth: CGFloat = 138
         let useInlineTitles: Bool = {
-            [countryTitle, nationalNumberTitle].allSatisfy { string in
+            [countryTitle, phoneNumberTitle].allSatisfy { string in
                 string.size().width <= titleWidth
             }
         }()
@@ -137,21 +136,25 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
         phoneNumberStack.axis = useInlineTitles ? .horizontal : .vertical
         phoneNumberStack.spacing = useInlineTitles ? 10 : 0
 
-        nationalNumberRowTitleLabel.attributedText = nationalNumberTitle
+        phoneNumberRowTitleLabel.attributedText = phoneNumberTitle
+        phoneNumberRowTitleLabel.accessibilityIdentifier =
+            UIView.accessibilityIdentifier(in: self, name: "phoneNumberRowTitleLabel")
 
-        phoneNumberStack.addArrangedSubview(nationalNumberRowTitleLabel)
+        phoneNumberStack.addArrangedSubview(phoneNumberRowTitleLabel)
 
         if useInlineTitles {
-            nationalNumberRowTitleLabel.autoSetDimension(.width, toSize: titleWidth)
+            phoneNumberRowTitleLabel.autoSetDimension(.width, toSize: titleWidth)
         }
 
-        nationalNumberTextField.becomeFirstResponder()
+        phoneNumberTextField.becomeFirstResponder()
 
-        phoneNumberStack.addArrangedSubview(nationalNumberTextField)
+        phoneNumberStack.addArrangedSubview(phoneNumberTextField)
 
         section.add(.init(customCellBlock: { phoneNumberCell }))
 
         self.contents = content
+
+        populateDefaultCountryCode()
 
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             title: CommonStrings.nextButton,
@@ -184,9 +187,9 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
     private func applyTheme() {
         countryRowTitleLabel.attributedText = countryTitle
         countryCodeLabel.textColor = .placeholderText
-        nationalNumberRowTitleLabel.attributedText = nationalNumberTitle
-        nationalNumberTextField.attributedPlaceholder = phoneNumberPlaceholder
-        nationalNumberTextField.textColor = Theme.primaryTextColor
+        phoneNumberRowTitleLabel.attributedText = phoneNumberTitle
+        phoneNumberTextField.attributedPlaceholder = phoneNumberPlaceholder
+        phoneNumberTextField.textColor = Theme.primaryTextColor
     }
 
     func updateButtonState() {
@@ -194,14 +197,24 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
     }
 
     func validPhoneNumber() -> String? {
-        guard let nationalNumber = nationalNumberTextField.text else {
+        guard let localNumber = DependenciesBridge.shared.tsAccountManager.localIdentifiersWithMaybeSneakyTransaction?.phoneNumber else {
+            owsFailDebug("local number unexpectedly nil")
             return nil
         }
-        let phoneNumberUtil = SSKEnvironment.shared.phoneNumberUtilRef
-        return phoneNumberUtil.parsePhoneNumber(
-            countryCode: country.countryCode,
-            nationalNumber: nationalNumber
-        )?.e164.nilIfEmpty
+        guard let userSpecifiedText = phoneNumberTextField.text else {
+            return nil
+        }
+        let possiblePhoneNumbers = SSKEnvironment.shared.phoneNumberUtilRef.parsePhoneNumbers(
+            userSpecifiedText: callingCode + userSpecifiedText,
+            localPhoneNumber: localNumber
+        )
+        let possibleValidPhoneNumbers = possiblePhoneNumbers.map { $0.e164 }.filter { !$0.isEmpty }
+
+        // There should only be one phone number, since we're explicitly specifying
+        // a country code and therefore parsing a number in e164 format.
+        owsAssertDebug(possibleValidPhoneNumbers.count <= 1)
+
+        return possibleValidPhoneNumbers.first
     }
 
     func hasValidPhoneNumber() -> Bool {
@@ -220,34 +233,32 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
             return
         }
 
-        nationalNumberTextField.resignFirstResponder()
+        phoneNumberTextField.resignFirstResponder()
 
         if requiresRegisteredNumber {
-            ModalActivityIndicatorViewController.present(
-                fromViewController: self,
-                canCancel: true,
-                asyncBlock: { modal in
-                    do {
-                        let recipients = try await SSKEnvironment.shared.contactDiscoveryManagerRef.lookUp(phoneNumbers: [phoneNumber], mode: .oneOffUserRequest)
-                        modal.dismissIfNotCanceled {
-                            guard let recipient = recipients.first else {
-                                return OWSActionSheets.showErrorAlert(
-                                    message: MessageSenderNoSuchSignalRecipientError().userErrorDescription,
-                                    dismissalDelegate: self
-                                )
-                            }
-                            self.findByPhoneNumberDelegate?.findByPhoneNumber(self, didSelectAddress: recipient.address)
-                        }
-                    } catch {
-                        modal.dismissIfNotCanceled {
-                            OWSActionSheets.showErrorAlert(
-                                message: error.userErrorDescription,
+            ModalActivityIndicatorViewController.present(fromViewController: self, canCancel: true) { modal in
+                firstly { () -> Promise<Set<SignalRecipient>> in
+                    SSKEnvironment.shared.contactDiscoveryManagerRef.lookUp(phoneNumbers: [phoneNumber], mode: .oneOffUserRequest)
+                }.done(on: DispatchQueue.main) { [weak self] recipients in
+                    modal.dismissIfNotCanceled {
+                        guard let self = self else { return }
+                        guard let recipient = recipients.first else {
+                            return OWSActionSheets.showErrorAlert(
+                                message: MessageSenderNoSuchSignalRecipientError().userErrorDescription,
                                 dismissalDelegate: self
                             )
                         }
+                        self.findByPhoneNumberDelegate?.findByPhoneNumber(self, didSelectAddress: recipient.address)
+                    }
+                }.catch(on: DispatchQueue.main) { error in
+                    modal.dismissIfNotCanceled {
+                        OWSActionSheets.showErrorAlert(
+                            message: error.userErrorDescription,
+                            dismissalDelegate: self
+                        )
                     }
                 }
-            )
+            }
         } else {
             findByPhoneNumberDelegate?.findByPhoneNumber(self, didSelectAddress: SignalServiceAddress(phoneNumber: phoneNumber))
         }
@@ -258,15 +269,17 @@ public class FindByPhoneNumberViewController: OWSTableViewController2 {
 
 extension FindByPhoneNumberViewController: SheetDismissalDelegate {
     public func didDismissPresentedSheet() {
-        nationalNumberTextField.becomeFirstResponder()
+        phoneNumberTextField.becomeFirstResponder()
     }
 }
 
 // MARK: - Country
 
 extension FindByPhoneNumberViewController: CountryCodeViewControllerDelegate {
-    public func countryCodeViewController(_ vc: CountryCodeViewController, didSelectCountry country: PhoneNumberCountry) {
-        updateCountry(country)
+    public func countryCodeViewController(_ vc: CountryCodeViewController,
+                                          didSelectCountry countryState: RegistrationCountryState) {
+        updateCountry(callingCode: countryState.callingCode,
+                      countryCode: countryState.countryCode)
     }
 
     private func didTapCountryRow() {
@@ -275,32 +288,43 @@ extension FindByPhoneNumberViewController: CountryCodeViewControllerDelegate {
         presentFormSheet(OWSNavigationController(rootViewController: countryCodeController), animated: true)
     }
 
-    private func populateDefaultCountryCode() {
-        let tsAccountManager = DependenciesBridge.shared.tsAccountManager
-        let phoneNumberUtil = SSKEnvironment.shared.phoneNumberUtilRef
-        let defaultCountry: PhoneNumberCountry
-        if
-            let localNumber = tsAccountManager.localIdentifiersWithMaybeSneakyTransaction?.phoneNumber,
-            let localCountry = PhoneNumberCountry.buildCountry(forCountryCode: phoneNumberUtil.preferredCountryCode(forLocalNumber: localNumber))
-        {
-            defaultCountry = localCountry
-        } else {
-            owsFailDebug("Couldn't determine local country.")
-            defaultCountry = .defaultValue
+    func populateDefaultCountryCode() {
+        guard let localNumber = DependenciesBridge.shared.tsAccountManager.localIdentifiersWithMaybeSneakyTransaction?.phoneNumber else {
+            return owsFailDebug("Local number unexpectedly nil")
         }
-        updateCountry(defaultCountry)
+
+        var callingCodeInt: Int?
+        var countryCode: String?
+
+        if let localE164 = SSKEnvironment.shared.phoneNumberUtilRef.parseE164(localNumber), let localCallingCode = localE164.getCallingCode()?.intValue {
+            callingCodeInt = localCallingCode
+        } else {
+            callingCodeInt = SSKEnvironment.shared.phoneNumberUtilRef.getCallingCode(forRegion: PhoneNumberUtil.defaultCountryCode()).intValue
+        }
+
+        var callingCode: String?
+        if let callingCodeInt = callingCodeInt {
+            callingCode = PhoneNumber.countryCodePrefix + "\(callingCodeInt)"
+            countryCode = SSKEnvironment.shared.phoneNumberUtilRef.probableCountryCode(forCallingCode: callingCode!)
+        }
+
+        updateCountry(callingCode: callingCode, countryCode: countryCode)
     }
 
-    private func updateCountry(_ country: PhoneNumberCountry) {
-        self.country = country
+    func updateCountry(callingCode: String?, countryCode: String?) {
+        guard let callingCode = callingCode, !callingCode.isEmpty, let countryCode = countryCode, !countryCode.isEmpty else {
+            return owsFailDebug("missing calling code for selected country")
+        }
+
+        self.callingCode = callingCode
         let labelFormat = CurrentAppContext().isRTL ? "(%2$@) %1$@" : "%1$@ (%2$@)"
-        countryCodeLabel.text = String(format: labelFormat, country.plusPrefixedCallingCode, country.countryCode.localizedUppercase)
+        countryCodeLabel.text = String(format: labelFormat, callingCode, countryCode.localizedUppercase)
     }
 }
 
 extension FindByPhoneNumberViewController: UITextFieldDelegate {
     public func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        TextFieldFormatting.phoneNumberTextField(textField, changeCharactersIn: range, replacementString: string, plusPrefixedCallingCode: country.plusPrefixedCallingCode)
+        TextFieldFormatting.phoneNumberTextField(textField, changeCharactersIn: range, replacementString: string, callingCode: callingCode)
         updateButtonState()
         return false
     }

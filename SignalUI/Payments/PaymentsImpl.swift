@@ -44,8 +44,8 @@ public class PaymentsImpl: NSObject, PaymentsSwift {
     }
 
     // NOTE: This k-v store is shared by PaymentsHelperImpl and PaymentsImpl.
-    fileprivate static var keyValueStore: KeyValueStore { SSKEnvironment.shared.paymentsHelperRef.keyValueStore}
-    fileprivate var keyValueStore: KeyValueStore { SSKEnvironment.shared.paymentsHelperRef.keyValueStore}
+    fileprivate static var keyValueStore: SDSKeyValueStore { SSKEnvironment.shared.paymentsHelperRef.keyValueStore}
+    fileprivate var keyValueStore: SDSKeyValueStore { SSKEnvironment.shared.paymentsHelperRef.keyValueStore}
 
     private func updateLastKnownLocalPaymentAddressProtoDataIfNecessary() {
         guard DependenciesBridge.shared.tsAccountManager.registrationStateWithMaybeSneakyTransaction.isRegistered else {
@@ -60,7 +60,7 @@ public class PaymentsImpl: NSObject, PaymentsSwift {
 
         let shouldUpdate = SSKEnvironment.shared.databaseStorageRef.read { (transaction: SDSAnyReadTransaction) -> Bool in
             // Check if the app version has changed.
-            let lastAppVersion = self.keyValueStore.getString(appVersionKey, transaction: transaction.asV2Read)
+            let lastAppVersion = self.keyValueStore.getString(appVersionKey, transaction: transaction)
             guard lastAppVersion == currentAppVersion else {
                 return true
             }
@@ -74,7 +74,7 @@ public class PaymentsImpl: NSObject, PaymentsSwift {
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
             self.updateLastKnownLocalPaymentAddressProtoData(transaction: transaction)
 
-            self.keyValueStore.setString(currentAppVersion, key: appVersionKey, transaction: transaction.asV2Write)
+            self.keyValueStore.setString(currentAppVersion, key: appVersionKey, transaction: transaction)
         }
     }
 

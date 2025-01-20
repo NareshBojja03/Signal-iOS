@@ -11,17 +11,11 @@ open class AttachmentDownloadManagerMock: AttachmentDownloadManager {
 
     public init() {}
 
-    public func downloadBackup(
-        metadata: BackupReadCredential,
-        progress: OWSProgressSink?
-    ) -> Promise<URL> {
+    public func downloadBackup(metadata: BackupReadCredential) -> Promise<URL> {
         return .pending().0
     }
 
-    public func downloadTransientAttachment(
-        metadata: AttachmentDownloads.DownloadMetadata,
-        progress: OWSProgressSink?
-    ) -> Promise<URL> {
+    public func downloadTransientAttachment(metadata: AttachmentDownloads.DownloadMetadata) -> Promise<URL> {
         return .pending().0
     }
 
@@ -53,8 +47,7 @@ open class AttachmentDownloadManagerMock: AttachmentDownloadManager {
     open func downloadAttachment(
         id: Attachment.IDType,
         priority: AttachmentDownloadPriority,
-        source: QueuedAttachmentDownloadRecord.SourceType,
-        progress: OWSProgressSink?
+        source: QueuedAttachmentDownloadRecord.SourceType
     ) async throws {
         // Do nothing
     }

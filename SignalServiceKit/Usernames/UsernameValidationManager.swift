@@ -42,6 +42,7 @@ public class UsernameValidationManagerImpl: UsernameValidationManager {
     internal struct Context {
         let accountServiceClient: Usernames.Validation.Shims.AccountServiceClient
         let database: any DB
+        let keyValueStoreFactory: KeyValueStoreFactory
         let localUsernameManager: LocalUsernameManager
         let messageProcessor: Usernames.Validation.Shims.MessageProcessor
         let schedulers: Schedulers
@@ -58,7 +59,7 @@ public class UsernameValidationManagerImpl: UsernameValidationManager {
 
     init(context: Context) {
         self.context = context
-        keyValueStore = KeyValueStore(collection: Constants.collectionName)
+        keyValueStore = context.keyValueStoreFactory.keyValueStore(collection: Constants.collectionName)
     }
 
     // MARK: Username Validation
@@ -175,7 +176,7 @@ public class UsernameValidationManagerImpl: UsernameValidationManager {
         }
         .done(on: context.schedulers.global()) { whoamiResponse throws in
             let validationSucceeded: Bool = {
-                self.logger.info("Comparing usernames; local: \(localUsername != nil), remote: \(whoamiResponse.usernameHash != nil)")
+                self.logger.info("Comparing usernames: \(localUsername == nil), \(whoamiResponse.usernameHash == nil)")
 
                 switch (localUsername, whoamiResponse.usernameHash) {
                 case (nil, nil):

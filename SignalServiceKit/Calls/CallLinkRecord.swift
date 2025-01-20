@@ -117,44 +117,6 @@ public struct CallLinkRecord: Codable, PersistableRecord, FetchableRecord {
         }
     }
 
-    static func insertFromBackup(
-        rootKey: CallLinkRootKey,
-        adminPasskey: Data?,
-        name: String,
-        restrictions: CallLinkRecord.Restrictions,
-        expiration: UInt64,
-        isUpcoming: Bool,
-        tx: DBWriteTransaction
-    ) throws -> CallLinkRecord {
-        do {
-            return try CallLinkRecord.fetchOne(
-                tx.databaseConnection,
-                sql: """
-                INSERT INTO \(CallLinkRecord.databaseTableName) (
-                    \(CallLinkRecord.CodingKeys.roomId.rawValue),
-                    \(CallLinkRecord.CodingKeys.rootKey.rawValue),
-                    \(CallLinkRecord.CodingKeys.adminPasskey.rawValue),
-                    \(CallLinkRecord.CodingKeys.name.rawValue),
-                    \(CallLinkRecord.CodingKeys.restrictions.rawValue),
-                    \(CallLinkRecord.CodingKeys.expiration.rawValue),
-                    \(CallLinkRecord.CodingKeys.isUpcoming.rawValue)
-                ) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *
-                """,
-                arguments: [
-                    rootKey.deriveRoomId(),
-                    rootKey.bytes,
-                    adminPasskey,
-                    name,
-                    restrictions.rawValue,
-                    expiration,
-                    isUpcoming
-                ]
-            )!
-        } catch {
-            throw error.grdbErrorForLogging
-        }
-    }
-
     public mutating func clearNeedsFetch() {
         self.pendingFetchCounter = 0
     }
@@ -163,26 +125,13 @@ public struct CallLinkRecord: Codable, PersistableRecord, FetchableRecord {
         self.pendingFetchCounter += 1
     }
 
+    // This is currently an enum, but depending on what restrictions are added
+    // in the future, it seems like it may need to become an OptionSet. By
+    // using `1` here, this could be trivially switched to being interpreted as
+    // an OptionSet in the future.
     public enum Restrictions: Int {
         case none = 0
         case adminApproval = 1
-        case unknown = -1
-
-        init(_ ringRtcValue: SignalRingRTC.CallLinkState.Restrictions) {
-            switch ringRtcValue {
-            case .none: self = .none
-            case .adminApproval: self = .adminApproval
-            case .unknown: self = .unknown
-            }
-        }
-
-        var asRingRtcValue: SignalRingRTC.CallLinkState.Restrictions {
-            switch self {
-            case .none: .none
-            case .adminApproval: .adminApproval
-            case .unknown: .unknown
-            }
-        }
     }
 
     public mutating func updateState(_ callLinkState: CallLinkState) {
@@ -197,7 +146,7 @@ public struct CallLinkRecord: Codable, PersistableRecord, FetchableRecord {
         if let restrictions, let revoked, let expiration {
             return CallLinkState(
                 name: self.name,
-                restrictions: restrictions.asRingRtcValue,
+                requiresAdminApproval: restrictions == .adminApproval,
                 revoked: revoked,
                 expiration: Date(timeIntervalSince1970: TimeInterval(expiration))
             )

@@ -6,32 +6,69 @@
 import MultipeerConnectivity
 import SignalServiceKit
 
-// Use the main thread for all MCSession related operations.
-// There shouldn't be anything else going on in the app, anyway.
-@MainActor
-class DeviceTransferOperation: NSObject {
+class DeviceTransferOperation: OWSOperation, @unchecked Sendable {
+    public struct CancelError: Error {}
+
     let file: DeviceTransferProtoFile
 
-    init(file: DeviceTransferProtoFile) {
+    let promise: Promise<Void>
+    private let future: Future<Void>
+
+    class func scheduleTransfer(file: DeviceTransferProtoFile, priority: Operation.QueuePriority = .normal) -> Promise<Void> {
+        let operation = DeviceTransferOperation(file: file)
+        operationQueue.addOperation(operation)
+        return operation.promise
+    }
+
+    class func cancelAllOperations() { operationQueue.cancelAllOperations() }
+
+    private static let operationQueue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.name = logTag()
+        queue.maxConcurrentOperationCount = 10
+        return queue
+    }()
+
+    private init(file: DeviceTransferProtoFile) {
         self.file = file
+        (self.promise, self.future) = Promise<Void>.pending()
+        super.init()
     }
 
     // MARK: - Run
 
-    func run() async throws {
-        Logger.info("Transferring file: \(file.identifier), estimatedSize: \(file.estimatedSize)")
-        try Task.checkCancellation()
-        try await self.prepareForSending()
+    override func reportSuccess() {
+        super.reportSuccess()
+        future.resolve()
     }
 
-    private func prepareForSending() async throws {
+    override func didReportError(_ error: Error) {
+        super.didReportError(error)
+        future.reject(error)
+    }
+
+    override func reportCancelled() {
+        super.reportCancelled()
+        future.reject(CancelError())
+    }
+
+    override public func run() {
+        Logger.info("Transferring file: \(file.identifier), estimatedSize: \(file.estimatedSize)")
+
+        // Use the main thread for all MCSession related operations.
+        // There shouldn't be anything else going on in the app, anyway.
+        DispatchQueue.main.async { self.prepareForSending() }
+    }
+
+    private var progress: Progress?
+    private func prepareForSending() {
         guard case .outgoing(let newDevicePeerId, _, _, let transferredFiles, let progress) = AppEnvironment.shared.deviceTransferServiceRef.transferState else {
-            throw OWSAssertionError("Tried to transfer file while in unexpected state: \(AppEnvironment.shared.deviceTransferServiceRef.transferState)")
+            return reportError(OWSAssertionError("Tried to transfer file while in unexpected state: \(AppEnvironment.shared.deviceTransferServiceRef.transferState)"))
         }
 
-        if transferredFiles.contains(file.identifier) {
+        guard !transferredFiles.contains(file.identifier) else {
             Logger.info("File was already transferred, skipping")
-            return
+            return reportSuccess()
         }
 
         var url = URL(fileURLWithPath: file.relativePath, relativeTo: DeviceTransferService.appSharedDataDirectory)
@@ -41,7 +78,7 @@ class DeviceTransferOperation: NSObject {
                 DeviceTransferService.databaseWALIdentifier,
                 DeviceTransferService.databaseIdentifier
             ].contains(file.identifier) else {
-                throw OWSAssertionError("Mandatory database file is missing for transfer")
+                return reportError(OWSAssertionError("Mandatory database file is missing for transfer"))
             }
 
             Logger.warn("Missing file for transfer, it probably disappeared or was otherwise deleted. Sending missing file placeholder.")
@@ -55,42 +92,42 @@ class DeviceTransferOperation: NSObject {
                 contents: DeviceTransferService.missingFileData,
                 attributes: nil
             ) else {
-                throw OWSAssertionError("Failed to create temp file for missing file \(url)")
+                return reportError(OWSAssertionError("Failed to create temp file for missing file \(url)"))
             }
         }
 
         guard let sha256Digest = try? Cryptography.computeSHA256DigestOfFile(at: url) else {
-            throw OWSAssertionError("Failed to calculate sha256 for file")
+            return reportError(OWSAssertionError("Failed to calculate sha256 for file"))
         }
 
         guard let session = AppEnvironment.shared.deviceTransferServiceRef.session else {
-            throw OWSAssertionError("Tried to transfer file with no active session")
+            return reportError(OWSAssertionError("Tried to transfer file with no active session"))
         }
-        let fileProgress = AtomicValue<Progress?>(nil, lock: .init())
-        defer {
-            fileProgress.update { $0?.removeObserver(self, forKeyPath: "fractionCompleted") }
-        }
-        try await withCheckedThrowingContinuation { continuation in
-            fileProgress.update {
-                let _fileProgress = session.sendResource(
-                    at: url,
-                    withName: file.identifier + " " + sha256Digest.hexadecimalString,
-                    toPeer: newDevicePeerId,
-                    withCompletionHandler: { error in
-                        continuation.resume(with: error.map({ .failure(OWSGenericError("Transferring file \(self.file.identifier) failed \($0)")) }) ?? .success(()))
-                    }
-                )
-                if let _fileProgress {
-                    progress.addChild(_fileProgress, withPendingUnitCount: Int64(file.estimatedSize))
-                    _fileProgress.addObserver(self, forKeyPath: "fractionCompleted", options: .initial, context: nil)
-                    $0 = _fileProgress
-                }
-            }
-        }
-        try Task.checkCancellation()
 
-        Logger.info("Transferring file \(self.file.identifier) complete")
-        AppEnvironment.shared.deviceTransferServiceRef.transferState = AppEnvironment.shared.deviceTransferServiceRef.transferState.appendingFileId(self.file.identifier)
+        guard let fileProgress = session.sendResource(
+            at: url,
+            withName: file.identifier + " " + sha256Digest.hexadecimalString,
+            toPeer: newDevicePeerId,
+            withCompletionHandler: { [weak self] error in
+                guard let self = self else { return }
+
+                if let error = error {
+                    self.reportError(OWSAssertionError("Transferring file \(self.file.identifier) failed \(error)"))
+                } else {
+                    Logger.info("Transferring file \(self.file.identifier) complete")
+                    AppEnvironment.shared.deviceTransferServiceRef.transferState = AppEnvironment.shared.deviceTransferServiceRef.transferState.appendingFileId(self.file.identifier)
+                    self.reportSuccess()
+                }
+
+                self.progress?.removeObserver(self, forKeyPath: "fractionCompleted")
+            }
+        ) else {
+            return reportError(OWSAssertionError("Transfer of file failed \(file.identifier)"))
+        }
+
+        progress.addChild(fileProgress, withPendingUnitCount: Int64(file.estimatedSize))
+        self.progress = fileProgress
+        fileProgress.addObserver(self, forKeyPath: "fractionCompleted", options: .initial, context: nil)
     }
 
     private var lastWholeNumberProgress = 0

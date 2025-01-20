@@ -188,7 +188,6 @@ extension ShareAppExtensionContext: AppContext {
 
     var debugLogsDirPath: String { DebugLogger.shareExtensionDebugLogsDirPath }
 
-    @MainActor
     func resetAppDataAndExit() -> Never {
         owsFail("Not main app.")
     }

@@ -387,14 +387,12 @@ fileprivate extension Stripe {
                 headers["Idempotency-Key"] = idempotencyKey
             }
 
-            return Promise.wrapAsync {
-                return try await urlSession.performRequest(
-                    endpoint,
-                    method: .post,
-                    headers: headers,
-                    body: formData
-                )
-            }
+            return urlSession.dataTaskPromise(
+                endpoint,
+                method: .post,
+                headers: headers,
+                body: formData
+            )
         }
     }
 }
@@ -491,30 +489,13 @@ public extension Stripe {
 
 public extension Stripe {
 
-    private static func isStripeIDEALCallback(_ url: URL) -> Bool {
-        if
-            url.scheme == "https" &&
-            url.host == "signaldonations.org" &&
-            url.path == "/ideal" &&
-            url.user == nil &&
-            url.password == nil &&
-            url.port == nil
-        {
-            return true
-        }
-
-        if
-            url.scheme == "sgnl" &&
-            url.host == "ideal" &&
-            url.path.isEmpty &&
-            url.user == nil &&
-            url.password == nil &&
-            url.port == nil
-        {
-            return true
-        }
-
-        return false
+    static func isStripeIDEALCallback(_ url: URL) -> Bool {
+        url.scheme == "https" &&
+        url.host == "signaldonations.org" &&
+        url.path == "/ideal" &&
+        url.user == nil &&
+        url.password == nil &&
+        url.port == nil
     }
 
     enum IDEALCallbackType {

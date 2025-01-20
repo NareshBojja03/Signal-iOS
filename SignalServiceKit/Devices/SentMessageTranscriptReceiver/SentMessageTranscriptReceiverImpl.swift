@@ -8,8 +8,7 @@ import LibSignalClient
 
 public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
 
-    private let attachmentDownloads: AttachmentDownloadManager
-    private let attachmentManager: AttachmentManager
+    private let attachmentDownloads: TSResourceDownloadManager
     private let disappearingMessagesJob: Shims.DisappearingMessagesJob
     private let earlyMessageManager: Shims.EarlyMessageManager
     private let groupManager: Shims.GroupManager
@@ -19,11 +18,11 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
     private let paymentsHelper: Shims.PaymentsHelper
     private let signalProtocolStoreManager: SignalProtocolStoreManager
     private let tsAccountManager: TSAccountManager
+    private let tsResourceManager: TSResourceManager
     private let viewOnceMessages: Shims.ViewOnceMessages
 
     public init(
-        attachmentDownloads: AttachmentDownloadManager,
-        attachmentManager: AttachmentManager,
+        attachmentDownloads: TSResourceDownloadManager,
         disappearingMessagesJob: Shims.DisappearingMessagesJob,
         earlyMessageManager: Shims.EarlyMessageManager,
         groupManager: Shims.GroupManager,
@@ -33,10 +32,10 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
         paymentsHelper: Shims.PaymentsHelper,
         signalProtocolStoreManager: SignalProtocolStoreManager,
         tsAccountManager: TSAccountManager,
+        tsResourceManager: TSResourceManager,
         viewOnceMessages: Shims.ViewOnceMessages
     ) {
         self.attachmentDownloads = attachmentDownloads
-        self.attachmentManager = attachmentManager
         self.disappearingMessagesJob = disappearingMessagesJob
         self.earlyMessageManager = earlyMessageManager
         self.groupManager = groupManager
@@ -46,6 +45,7 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
         self.paymentsHelper = paymentsHelper
         self.signalProtocolStoreManager = signalProtocolStoreManager
         self.tsAccountManager = tsAccountManager
+        self.tsResourceManager = tsResourceManager
         self.viewOnceMessages = viewOnceMessages
     }
 
@@ -210,7 +210,7 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
             isViewOnceMessage: messageParams.isViewOnceMessage,
             isViewOnceComplete: false,
             wasRemotelyDeleted: false,
-            groupChangeProtoData: nil,
+            changeActionsProtoData: nil,
             storyAuthorAci: messageParams.storyAuthorAci,
             storyTimestamp: messageParams.storyTimestamp,
             storyReactionEmoji: nil,
@@ -267,19 +267,9 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
             interactionStore.insertOrReplacePlaceholder(for: outgoingMessage, from: localIdentifiers.aciAddress, tx: tx)
 
             do {
-                try attachmentManager.createAttachmentPointers(
-                    from: messageParams.attachmentPointerProtos.map { proto in
-                        return .init(
-                            proto: proto,
-                            owner: .messageBodyAttachment(.init(
-                                messageRowId: outgoingMessage.sqliteRowId!,
-                                receivedAtTimestamp: outgoingMessage.receivedAtTimestamp,
-                                threadRowId: threadRowId,
-                                isViewOnce: outgoingMessage.isViewOnceMessage,
-                                isPastEditRevision: outgoingMessage.isPastEditRevision()
-                            ))
-                        )
-                    },
+                try tsResourceManager.createBodyAttachmentPointers(
+                    from: messageParams.attachmentPointerProtos,
+                    message: outgoingMessage,
                     tx: tx
                 )
 
@@ -287,8 +277,7 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
                     owner: .quotedReplyAttachment(.init(
                         messageRowId: outgoingMessage.sqliteRowId!,
                         receivedAtTimestamp: outgoingMessage.receivedAtTimestamp,
-                        threadRowId: threadRowId,
-                        isPastEditRevision: outgoingMessage.isPastEditRevision()
+                        threadRowId: threadRowId
                     )),
                     tx: tx
                 )
@@ -297,8 +286,7 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
                     owner: .messageLinkPreview(.init(
                         messageRowId: outgoingMessage.sqliteRowId!,
                         receivedAtTimestamp: outgoingMessage.receivedAtTimestamp,
-                        threadRowId: threadRowId,
-                        isPastEditRevision: outgoingMessage.isPastEditRevision()
+                        threadRowId: threadRowId
                     )),
                     tx: tx
                 )
@@ -309,7 +297,6 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
                             messageRowId: outgoingMessage.sqliteRowId!,
                             receivedAtTimestamp: outgoingMessage.receivedAtTimestamp,
                             threadRowId: threadRowId,
-                            isPastEditRevision: outgoingMessage.isPastEditRevision(),
                             stickerPackId: $0.info.packId,
                             stickerId: $0.info.stickerId
                         )),
@@ -320,8 +307,7 @@ public class SentMessageTranscriptReceiverImpl: SentMessageTranscriptReceiver {
                     owner: .messageContactAvatar(.init(
                         messageRowId: outgoingMessage.sqliteRowId!,
                         receivedAtTimestamp: outgoingMessage.receivedAtTimestamp,
-                        threadRowId: threadRowId,
-                        isPastEditRevision: outgoingMessage.isPastEditRevision()
+                        threadRowId: threadRowId
                     )),
                     tx: tx
                 )

@@ -128,17 +128,12 @@ public class LinkPreviewFetcherImpl: LinkPreviewFetcher {
             }
             return request
         }
+        urlSession.failOnError = false
         return urlSession
     }
 
     func fetchStringResource(from url: URL) async throws -> (URL, String) {
-        let response: any HTTPResponse
-        do {
-            response = try await self.buildOWSURLSession().performRequest(url.absoluteString, method: .get, ignoreAppExpiry: true)
-        } catch {
-            Logger.warn("Invalid response: \(error.shortDescription).")
-            throw LinkPreviewError.fetchFailure
-        }
+        let response = try await self.buildOWSURLSession().dataTaskPromise(url.absoluteString, method: .get, ignoreAppExpiry: true).awaitable()
         let statusCode = response.responseStatusCode
         guard statusCode >= 200 && statusCode < 300 else {
             Logger.warn("Invalid response: \(statusCode).")
@@ -152,19 +147,13 @@ public class LinkPreviewFetcherImpl: LinkPreviewFetcher {
     }
 
     private func fetchImageResource(from url: URL) async throws -> Data {
-        let response: any HTTPResponse
-        do {
-            response = try await self.buildOWSURLSession().performRequest(url.absoluteString, method: .get, ignoreAppExpiry: true)
-        } catch {
-            Logger.warn("Invalid response: \(error.shortDescription).")
-            throw LinkPreviewError.fetchFailure
-        }
-        let statusCode = response.responseStatusCode
+        let httpResponse = try await self.buildOWSURLSession().dataTaskPromise(url.absoluteString, method: .get, ignoreAppExpiry: true).awaitable()
+        let statusCode = httpResponse.responseStatusCode
         guard statusCode >= 200 && statusCode < 300 else {
             Logger.warn("Invalid response: \(statusCode).")
             throw LinkPreviewError.fetchFailure
         }
-        guard let rawData = response.responseBodyData, rawData.count < Self.maxFetchedContentSize else {
+        guard let rawData = httpResponse.responseBodyData, rawData.count < Self.maxFetchedContentSize else {
             Logger.warn("Response object could not be parsed")
             throw LinkPreviewError.invalidPreview
         }

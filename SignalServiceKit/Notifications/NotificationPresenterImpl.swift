@@ -5,7 +5,7 @@
 
 import Foundation
 import Intents
-import LibSignalClient
+public import LibSignalClient
 
 /// There are two primary components in our system notification integration:
 ///
@@ -30,6 +30,7 @@ public enum AppNotificationCategory: CaseIterable {
     case missedCallWithoutActions
     case missedCallFromNoLongerVerifiedIdentity
     case internalError
+    case incomingMessageGeneric
     case incomingGroupStoryReply
     case failedStorySend
     case transferRelaunch
@@ -87,6 +88,8 @@ extension AppNotificationCategory {
             return "Signal.AppNotificationCategory.missedCallFromNoLongerVerifiedIdentity"
         case .internalError:
             return "Signal.AppNotificationCategory.internalError"
+        case .incomingMessageGeneric:
+            return "Signal.AppNotificationCategory.incomingMessageGeneric"
         case .incomingGroupStoryReply:
             return "Signal.AppNotificationCategory.incomingGroupStoryReply"
         case .failedStorySend:
@@ -120,6 +123,8 @@ extension AppNotificationCategory {
         case .missedCallFromNoLongerVerifiedIdentity:
             return []
         case .internalError:
+            return []
+        case .incomingMessageGeneric:
             return []
         case .incomingGroupStoryReply:
             return [.reply]
@@ -225,6 +230,25 @@ public class NotificationPresenterImpl: NotificationPresenter {
 
     // MARK: - Calls
 
+    public struct CallNotificationInfo {
+        /// Basically a per-call unique identifier. When posting multiple
+        /// notifications with the same `groupingId`, only the latest notification
+        /// will be shown.
+        let groupingId: UUID
+
+        /// The thread that was called.
+        let thread: TSContactThread
+
+        /// The user who called the thread.
+        let caller: Aci
+
+        public init(groupingId: UUID, thread: TSContactThread, caller: Aci) {
+            self.groupingId = groupingId
+            self.thread = thread
+            self.caller = caller
+        }
+    }
+
     private struct CallPreview {
         let notificationTitle: String
         let threadIdentifier: String
@@ -273,7 +297,7 @@ public class NotificationPresenterImpl: NotificationPresenter {
         }
     }
 
-    public func notifyUserOfMissedCall(
+    public func presentMissedCall(
         notificationInfo: CallNotificationInfo,
         offerMediaType: TSRecentCallOfferType,
         sentAt timestamp: Date,
@@ -365,7 +389,7 @@ public class NotificationPresenterImpl: NotificationPresenter {
         }
     }
 
-    public func notifyUserOfMissedCallBecauseOfNoLongerVerifiedIdentity(
+    public func presentMissedCallBecauseOfNoLongerVerifiedIdentity(
         notificationInfo: CallNotificationInfo,
         tx: SDSAnyReadTransaction
     ) {
@@ -392,7 +416,7 @@ public class NotificationPresenterImpl: NotificationPresenter {
         }
     }
 
-    public func notifyUserOfMissedCallBecauseOfNewIdentity(
+    public func presentMissedCallBecauseOfNewIdentity(
         notificationInfo: CallNotificationInfo,
         tx: SDSAnyReadTransaction
     ) {
@@ -690,12 +714,8 @@ public class NotificationPresenterImpl: NotificationPresenter {
         } else if message.contactShare != nil {
             notificationBody = String(format: NotificationStrings.incomingReactionContactShareMessageFormat, reaction.emoji)
         } else if
-            let messageRowId = message.sqliteRowId,
-            let mediaAttachments = DependenciesBridge.shared.attachmentStore
-                .fetchReferencedAttachments(
-                    for: .messageBodyAttachment(messageRowId: messageRowId),
-                    tx: transaction.asV2Read
-                )
+            let mediaAttachments = DependenciesBridge.shared.tsResourceStore
+                .referencedBodyMediaAttachments(for: message, tx: transaction.asV2Read)
                 .nilIfEmpty,
             let firstAttachment = mediaAttachments.first
         {
@@ -775,7 +795,7 @@ public class NotificationPresenterImpl: NotificationPresenter {
         }
     }
 
-    public func notifyUserOfFailedSend(inThread thread: TSThread) {
+    public func notifyForFailedSend(inThread thread: TSThread) {
         let notificationTitle: String? = databaseStorage.read { tx in
             switch self.previewType(tx: tx) {
             case .noNameNoPreview:
@@ -1147,13 +1167,15 @@ public class NotificationPresenterImpl: NotificationPresenter {
     }
 
     public func notifyUserOfDeregistration(tx: DBWriteTransaction) {
-        let sdsTx = SDSDB.shimOnlyBridge(tx)
+        notifyUserOfDeregistration(transaction: SDSDB.shimOnlyBridge(tx))
+    }
 
+    public func notifyUserOfDeregistration(transaction: SDSAnyWriteTransaction) {
         let notificationBody = OWSLocalizedString(
             "DEREGISTRATION_NOTIFICATION",
             comment: "Notification warning the user that they have been de-registered."
         )
-        enqueueNotificationAction(afterCommitting: sdsTx) {
+        enqueueNotificationAction(afterCommitting: transaction) {
             await self.notifyViaPresenter(
                 category: .deregistration,
                 title: nil,
@@ -1166,6 +1188,12 @@ public class NotificationPresenterImpl: NotificationPresenter {
                 soundQuery: .global
             )
         }
+    }
+
+    /// Note that this method is not serialized with other notifications
+    /// actions.
+    public func postGenericIncomingMessageNotification() async {
+        await presenter.postGenericIncomingMessageNotification()
     }
 
     private enum SoundQuery {
@@ -1265,7 +1293,6 @@ public class NotificationPresenterImpl: NotificationPresenter {
     private let mostRecentTask = AtomicValue<Task<Void, Never>?>(nil, lock: .init())
 
     private func enqueueNotificationAction(afterCommitting tx: SDSAnyWriteTransaction? = nil, _ block: @escaping () async -> Void) {
-        let startTime = CACurrentMediaTime()
         let pendingTask = Self.pendingTasks.buildPendingTask(label: "NotificationAction")
         let commitGuarantee = tx.map {
             let (guarantee, future) = Guarantee<Void>.pending()
@@ -1278,16 +1305,7 @@ public class NotificationPresenterImpl: NotificationPresenter {
                 defer { pendingTask.complete() }
                 await oldTask?.value
                 await commitGuarantee?.awaitable()
-                let queueTime = CACurrentMediaTime()
                 await block()
-                let endTime = CACurrentMediaTime()
-
-                let tooLargeThreshold: TimeInterval = 2
-                if endTime - startTime >= tooLargeThreshold {
-                    let formattedQueueDuration = String(format: "%.2f", queueTime - startTime)
-                    let formattedNotifyDuration = String(format: "%.2f", endTime - queueTime)
-                    Logger.warn("Couldn't post notification within \(tooLargeThreshold) seconds; \(formattedQueueDuration)s + \(formattedNotifyDuration)s")
-                }
             }
         }
     }

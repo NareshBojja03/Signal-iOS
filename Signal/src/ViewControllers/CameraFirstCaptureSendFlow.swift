@@ -150,7 +150,7 @@ extension CameraFirstCaptureSendFlow: ConversationPickerDelegate {
             }
 
             firstly {
-                AttachmentMultisend.sendTextAttachment(
+                TSResourceMultisend.sendTextAttachment(
                     textAttachment,
                     to: selectedStoryItems
                 ).enqueuedPromise
@@ -171,9 +171,9 @@ extension CameraFirstCaptureSendFlow: ConversationPickerDelegate {
 
         let conversations = selectedConversations
         firstly {
-            AttachmentMultisend.sendApprovedMedia(
+            TSResourceMultisend.sendApprovedMedia(
                 conversations: conversations,
-                approvedMessageBody: self.approvalMessageBody,
+                approvalMessageBody: self.approvalMessageBody,
                 approvedAttachments: approvedAttachments
             ).enqueuedPromise
         }.done { _ in

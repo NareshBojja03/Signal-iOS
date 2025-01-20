@@ -24,8 +24,6 @@ internal protocol FetchableAttachmentReferenceRecord: Codable, PersistableRecord
 
     static var ownerRowIdColumn: Column { get }
 
-    static var idInOwnerColumn: Column? { get }
-
     static var attachmentRowIdColumn: Column { get }
 
     static var orderInOwnerKey: KeyPath<Self, UInt32?>? { get }
@@ -70,7 +68,6 @@ extension AttachmentReference {
         let stickerPackId: Data?
         let stickerId: UInt32?
         let isViewOnce: Bool
-        var ownerIsPastEditRevision: Bool
 
         // MARK: - Coding Keys
 
@@ -92,7 +89,6 @@ extension AttachmentReference {
             case stickerPackId
             case stickerId
             case isViewOnce
-            case ownerIsPastEditRevision
         }
 
         // MARK: - PersistableRecord
@@ -108,8 +104,6 @@ extension AttachmentReference {
         // MARK: FetchableAttachmentReferenceRecord
 
         static var ownerRowIdColumn: Column { Column(CodingKeys.ownerRowId) }
-
-        static var idInOwnerColumn: Column? { Column(CodingKeys.idInMessage) }
 
         static var attachmentRowIdColumn: Column { Column(CodingKeys.attachmentRowId) }
 
@@ -165,8 +159,7 @@ extension AttachmentReference {
             sourceMediaWidthPixels: UInt32?,
             stickerPackId: Data?,
             stickerId: UInt32?,
-            isViewOnce: Bool,
-            ownerIsPastEditRevision: Bool
+            isViewOnce: Bool
         ) {
             self.ownerType = ownerType
             self.ownerRowId = ownerRowId
@@ -185,7 +178,6 @@ extension AttachmentReference {
             self.stickerPackId = stickerPackId
             self.stickerId = stickerId
             self.isViewOnce = isViewOnce
-            self.ownerIsPastEditRevision = ownerIsPastEditRevision
         }
 
         internal init(
@@ -233,7 +225,6 @@ extension AttachmentReference {
                 self.stickerPackId = nil
                 self.stickerId = nil
                 self.isViewOnce = metadata.isViewOnce
-                self.ownerIsPastEditRevision = metadata.isPastEditRevision
             case .oversizeText(let metadata):
                 self.ownerRowId = metadata.messageRowId
                 self.receivedAtTimestamp = metadata.receivedAtTimestamp
@@ -247,7 +238,6 @@ extension AttachmentReference {
                 self.stickerId = nil
                 // Oversize text cannot be view once
                 self.isViewOnce = false
-                self.ownerIsPastEditRevision = metadata.isPastEditRevision
             case .linkPreview(let metadata):
                 self.ownerRowId = metadata.messageRowId
                 self.receivedAtTimestamp = metadata.receivedAtTimestamp
@@ -261,7 +251,6 @@ extension AttachmentReference {
                 self.stickerId = nil
                 // Link previews cannot be view once
                 self.isViewOnce = false
-                self.ownerIsPastEditRevision = metadata.isPastEditRevision
             case .quotedReply(let metadata):
                 self.ownerRowId = metadata.messageRowId
                 self.receivedAtTimestamp = metadata.receivedAtTimestamp
@@ -275,7 +264,6 @@ extension AttachmentReference {
                 self.stickerId = nil
                 // Quoted reply thumbnails cannot be view once
                 self.isViewOnce = false
-                self.ownerIsPastEditRevision = metadata.isPastEditRevision
             case .sticker(let metadata):
                 self.ownerRowId = metadata.messageRowId
                 self.receivedAtTimestamp = metadata.receivedAtTimestamp
@@ -289,7 +277,6 @@ extension AttachmentReference {
                 self.stickerId = metadata.stickerId
                 // Stickers cannot be view once
                 self.isViewOnce = false
-                self.ownerIsPastEditRevision = metadata.isPastEditRevision
             case .contactAvatar(let metadata):
                 self.ownerRowId = metadata.messageRowId
                 self.receivedAtTimestamp = metadata.receivedAtTimestamp
@@ -303,7 +290,6 @@ extension AttachmentReference {
                 self.stickerId = nil
                 // Contact avatars cannot be view once
                 self.isViewOnce = false
-                self.ownerIsPastEditRevision = metadata.isPastEditRevision
             }
         }
     }
@@ -349,8 +335,6 @@ extension AttachmentReference {
         // MARK: FetchableAttachmentReferenceRecord
 
         static var ownerRowIdColumn: Column { Column(CodingKeys.ownerRowId) }
-
-        static var idInOwnerColumn: Column? { nil }
 
         static var attachmentRowIdColumn: Column { Column(CodingKeys.attachmentRowId) }
 
@@ -488,8 +472,6 @@ extension AttachmentReference {
         // MARK: FetchableAttachmentReferenceRecord
 
         static var ownerRowIdColumn: Column { Column(CodingKeys.ownerRowId) }
-
-        static var idInOwnerColumn: Column? { nil }
 
         static var attachmentRowIdColumn: Column { Column(CodingKeys.attachmentRowId) }
 

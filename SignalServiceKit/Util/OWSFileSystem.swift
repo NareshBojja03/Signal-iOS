@@ -237,7 +237,7 @@ extension OWSFileSystem {
             try FileManager.default.createDirectory(atPath: dirPath, withIntermediateDirectories: true)
             return protectFileOrFolder(atPath: dirPath, fileProtectionType: fileProtectionType)
         } catch {
-            owsFailDebug("Failed to create directory: \(dirPath), error: \(error)")
+            //owsFailDebug("Failed to create directory: \(dirPath), error: \(error)")
             return false
         }
     }

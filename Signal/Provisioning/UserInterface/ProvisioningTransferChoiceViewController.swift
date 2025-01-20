@@ -5,11 +5,11 @@
 
 import SignalServiceKit
 import SignalUI
-import UIKit
+public import UIKit
 
-class ProvisioningTransferChoiceViewController: ProvisioningBaseViewController {
+public class ProvisioningTransferChoiceViewController: ProvisioningBaseViewController {
 
-    override var primaryLayoutMargins: UIEdgeInsets {
+    public override var primaryLayoutMargins: UIEdgeInsets {
         var defaultMargins = super.primaryLayoutMargins
 
         switch traitCollection.horizontalSizeClass {
@@ -28,7 +28,7 @@ class ProvisioningTransferChoiceViewController: ProvisioningBaseViewController {
         return defaultMargins
     }
 
-    override func loadView() {
+    override public func loadView() {
         view = UIView()
         view.addSubview(primaryView)
         primaryView.autoPinEdgesToSuperviewEdges()

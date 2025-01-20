@@ -4,7 +4,6 @@
 //
 
 import Foundation
-public import LibSignalClient
 
 extension Notification.Name {
     public static var isCensorshipCircumventionActiveDidChange: Self {
@@ -20,18 +19,13 @@ public class OWSSignalServiceObjC: NSObject {
 }
 
 public class OWSSignalService: OWSSignalServiceProtocol {
-    private let keyValueStore = KeyValueStore(collection: "kTSStorageManager_OWSSignalService")
-    private let libsignalNet: Net?
+    private let keyValueStore = SDSKeyValueStore(collection: "kTSStorageManager_OWSSignalService")
 
     @Atomic public private(set) var isCensorshipCircumventionActive: Bool = false {
         didSet {
             guard isCensorshipCircumventionActive != oldValue else {
                 return
             }
-
-            // Update libsignal's Net instance first, so that connections can be recreated by notification observers.
-            libsignalNet?.setCensorshipCircumventionEnabled(isCensorshipCircumventionActive)
-
             NotificationCenter.default.postNotificationNameAsync(
                 .isCensorshipCircumventionActiveDidChange,
                 object: nil,
@@ -144,6 +138,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             let baseUrl = frontingURLWithPathPrefix
             let securityPolicy = censorshipConfiguration.domainFrontSecurityPolicy
             let extraHeaders = ["Host": censorshipConfiguration.hostHeader(signalServiceInfo.type) ?? TSConstants.censorshipReflectorHost]
+            Logger.debug("baseUrl (fronting): \(baseUrl)")
             return OWSURLSessionEndpoint(
                 baseUrl: baseUrl,
                 frontingInfo: frontingInfo,
@@ -154,10 +149,11 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             let baseUrl = signalServiceInfo.baseUrl
             let securityPolicy: HttpSecurityPolicy
             if signalServiceInfo.shouldUseSignalCertificate {
-                securityPolicy = OWSURLSession.signalServiceSecurityPolicy
+                securityPolicy = OWSURLSession.defaultSecurityPolicy
             } else {
                 securityPolicy = OWSURLSession.defaultSecurityPolicy
             }
+            Logger.debug("baseUrl (no fronting): \(baseUrl)")
             return OWSURLSessionEndpoint(
                 baseUrl: baseUrl,
                 frontingInfo: nil,
@@ -185,8 +181,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
 
     // MARK: - Internal Implementation
 
-    public init(libsignalNet: Net?) {
-        self.libsignalNet = libsignalNet
+    public init() {
         observeNotifications()
     }
 
@@ -256,7 +251,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             return self.keyValueStore.getBool(
                 Constants.isCensorshipCircumventionManuallyActivatedKey,
                 defaultValue: false,
-                transaction: transaction.asV2Read
+                transaction: transaction
             )
         }
     }
@@ -266,7 +261,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             self.keyValueStore.setBool(
                 value,
                 key: Constants.isCensorshipCircumventionManuallyActivatedKey,
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
         }
     }
@@ -276,7 +271,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             return self.keyValueStore.getBool(
                 Constants.isCensorshipCircumventionManuallyDisabledKey,
                 defaultValue: false,
-                transaction: transaction.asV2Read
+                transaction: transaction
             )
         }
     }
@@ -286,7 +281,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             self.keyValueStore.setBool(
                 value,
                 key: Constants.isCensorshipCircumventionManuallyDisabledKey,
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
         }
     }
@@ -295,7 +290,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
         return SSKEnvironment.shared.databaseStorageRef.read { transaction in
             return self.keyValueStore.getString(
                 Constants.manualCensorshipCircumventionCountryCodeKey,
-                transaction: transaction.asV2Read
+                transaction: transaction
             )
         }
     }
@@ -305,7 +300,7 @@ public class OWSSignalService: OWSSignalServiceProtocol {
             self.keyValueStore.setString(
                 value,
                 key: Constants.manualCensorshipCircumventionCountryCodeKey,
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
         }
     }

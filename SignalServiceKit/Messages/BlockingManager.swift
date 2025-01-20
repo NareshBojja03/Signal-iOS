@@ -541,7 +541,7 @@ extension BlockingManager {
                 // old KVS keys as a hint that we may need to sync. If they don't exist this is
                 // probably a fresh install and we don't need to sync.
                 let hasOldKey = PersistenceKey.Legacy.allCases.contains { key in
-                    Self.keyValueStore.hasValue(key.rawValue, transaction: readTx.asV2Read)
+                    Self.keyValueStore.hasValue(forKey: key.rawValue, transaction: readTx)
                 }
                 return hasOldKey
             }
@@ -607,7 +607,7 @@ extension BlockingManager {
 
         // MARK: Persistence
 
-        static let keyValueStore = KeyValueStore(collection: "kOWSBlockingManager_BlockedPhoneNumbersCollection")
+        static let keyValueStore = SDSKeyValueStore(collection: "kOWSBlockingManager_BlockedPhoneNumbersCollection")
 
         enum PersistenceKey: String {
             case changeTokenKey = "kOWSBlockingManager_ChangeTokenKey"
@@ -628,24 +628,25 @@ extension BlockingManager {
             let databaseChangeToken: UInt64 = Self.keyValueStore.getUInt64(
                 PersistenceKey.changeTokenKey.rawValue,
                 defaultValue: Self.initialChangeToken,
-                transaction: transaction.asV2Read
+                transaction: transaction
             )
 
             if databaseChangeToken != changeToken {
+                func fetchObject<T>(of type: T.Type, key: String, defaultValue: T) -> T {
+                    if let storedObject = Self.keyValueStore.getObject(forKey: key, transaction: transaction) {
+                        owsAssertDebug(storedObject is T)
+                        return (storedObject as? T) ?? defaultValue
+                    } else {
+                        return defaultValue
+                    }
+                }
                 changeToken = Self.keyValueStore.getUInt64(
                     PersistenceKey.changeTokenKey.rawValue,
                     defaultValue: Self.initialChangeToken,
-                    transaction: transaction.asV2Read
+                    transaction: transaction
                 )
                 blockedRecipientIds = Set((try? blockedRecipientStore.blockedRecipientIds(tx: transaction.asV2Read)) ?? [])
-                blockedGroupMap = Self.keyValueStore.getData(PersistenceKey.blockedGroupMapKey.rawValue, transaction: transaction.asV2Read).flatMap {
-                    do {
-                        return try NSKeyedUnarchiver.unarchiveTopLevelObjectWithData($0)
-                    } catch {
-                        owsFailDebug("Couldn't decode blocked groups.")
-                        return nil
-                    }
-                } as? [Data: TSGroupModel] ?? [:]
+                blockedGroupMap = fetchObject(of: [Data: TSGroupModel].self, key: PersistenceKey.blockedGroupMapKey.rawValue, defaultValue: [:])
                 isDirty = false
             }
         }
@@ -660,13 +661,13 @@ extension BlockingManager {
                 let databaseChangeToken = Self.keyValueStore.getUInt64(
                     PersistenceKey.changeTokenKey.rawValue,
                     defaultValue: Self.initialChangeToken,
-                    transaction: transaction.asV2Read
+                    transaction: transaction
                 )
                 owsAssertDebug(databaseChangeToken == changeToken)
 
                 changeToken = databaseChangeToken + 1
-                Self.keyValueStore.setUInt64(changeToken, key: PersistenceKey.changeTokenKey.rawValue, transaction: transaction.asV2Write)
-                Self.keyValueStore.setObject(blockedGroupMap, key: PersistenceKey.blockedGroupMapKey.rawValue, transaction: transaction.asV2Write)
+                Self.keyValueStore.setUInt64(changeToken, key: PersistenceKey.changeTokenKey.rawValue, transaction: transaction)
+                Self.keyValueStore.setObject(blockedGroupMap, key: PersistenceKey.blockedGroupMapKey.rawValue, transaction: transaction)
                 do {
                     let oldBlockedRecipientIds = Set(try blockedRecipientStore.blockedRecipientIds(tx: transaction.asV2Read))
                     let newBlockedRecipientIds = self.blockedRecipientIds
@@ -689,11 +690,11 @@ extension BlockingManager {
         }
 
         static func fetchLastSyncedChangeToken(_ readTx: SDSAnyReadTransaction) -> UInt64? {
-            Self.keyValueStore.getUInt64(PersistenceKey.lastSyncedChangeTokenKey.rawValue, transaction: readTx.asV2Read)
+            Self.keyValueStore.getUInt64(PersistenceKey.lastSyncedChangeTokenKey.rawValue, transaction: readTx)
         }
 
         static func setLastSyncedChangeToken(_ newValue: UInt64, transaction writeTx: SDSAnyWriteTransaction) {
-            Self.keyValueStore.setUInt64(newValue, key: PersistenceKey.lastSyncedChangeTokenKey.rawValue, transaction: writeTx.asV2Write)
+            Self.keyValueStore.setUInt64(newValue, key: PersistenceKey.lastSyncedChangeTokenKey.rawValue, transaction: writeTx)
         }
     }
 }

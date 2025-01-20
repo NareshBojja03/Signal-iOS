@@ -26,6 +26,7 @@ public class AccountAttributesUpdaterImpl: AccountAttributesUpdater {
         dateProvider: @escaping DateProvider,
         db: any DB,
         profileManager: ProfileManager,
+        keyValueStoreFactory: KeyValueStoreFactory,
         serviceClient: SignalServiceClient,
         schedulers: Schedulers,
         svrLocalStorage: SVRLocalStorage,
@@ -43,7 +44,7 @@ public class AccountAttributesUpdaterImpl: AccountAttributesUpdater {
         self.syncManager = syncManager
         self.tsAccountManager = tsAccountManager
 
-        self.kvStore = KeyValueStore(collection: "AccountAttributesUpdater")
+        self.kvStore = keyValueStoreFactory.keyValueStore(collection: "AccountAttributesUpdater")
 
         appReadiness.runNowOrWhenAppDidBecomeReadyAsync {
             Task {
@@ -143,12 +144,10 @@ public class AccountAttributesUpdaterImpl: AccountAttributesUpdater {
             }
 
             // Check if device capabilities have changed.
-            let lastUpdateDeviceCapabilities = self.kvStore.getDictionary(
-                Keys.lastUpdateDeviceCapabilities,
-                keyClass: NSString.self,
-                objectClass: NSNumber.self,
+            let lastUpdateDeviceCapabilities = self.kvStore.getObject(
+                forKey: Keys.lastUpdateDeviceCapabilities,
                 transaction: tx
-            ) as [String: NSNumber]?
+            ) as? [String: NSNumber]
             if lastUpdateDeviceCapabilities != currentDeviceCapabilities.requestParameters {
                 return .yes(
                     currentDeviceCapabilities: currentDeviceCapabilities,

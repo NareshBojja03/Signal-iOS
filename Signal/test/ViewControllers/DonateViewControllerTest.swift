@@ -518,7 +518,7 @@ final class DonateViewControllerTest: SignalBaseTest {
         )
 
         XCTAssertEqual(
-            recurringProcessingViaSubscription.monthly!.paymentMethodIfPaymentProcessing,
+            recurringProcessingViaSubscription.monthly!.paymentProcessingWithPaymentMethod,
             .sepa
         )
 
@@ -530,7 +530,7 @@ final class DonateViewControllerTest: SignalBaseTest {
         )
 
         XCTAssertEqual(
-            recurringProcessingOnlyViaError.monthly!.paymentMethodIfPaymentProcessing,
+            recurringProcessingOnlyViaError.monthly!.paymentProcessingWithPaymentMethod,
             .sepa
         )
     }

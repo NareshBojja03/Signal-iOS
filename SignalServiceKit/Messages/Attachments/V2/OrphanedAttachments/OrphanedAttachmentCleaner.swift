@@ -173,6 +173,7 @@ public class OrphanedAttachmentCleanerImpl: OrphanedAttachmentCleaner {
             }
             isRunning = true
             guard let nextRecord = fetchNextOrphanRecord() else {
+                Logger.info("No orphaned attachments to clean up")
                 isRunning = false
                 return
             }

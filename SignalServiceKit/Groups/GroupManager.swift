@@ -231,14 +231,18 @@ public class GroupManager: NSObject {
             proposedGroupModel = try builder.buildAsV2()
         }
 
-        let snapshotResponse = try await SSKEnvironment.shared.groupsV2Ref.createNewGroupOnService(
+        try await SSKEnvironment.shared.groupsV2Ref.createNewGroupOnService(
             groupModel: proposedGroupModel,
             disappearingMessageToken: disappearingMessageToken
         )
 
+        let groupV2Snapshot = try await SSKEnvironment.shared.groupsV2Ref.fetchCurrentGroupV2Snapshot(
+            groupModel: proposedGroupModel
+        )
+
         let thread = try await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
             let builder = try TSGroupModelBuilder.builderForSnapshot(
-                groupV2Snapshot: snapshotResponse.groupSnapshot,
+                groupV2Snapshot: groupV2Snapshot,
                 transaction: tx
             )
             let groupModel = try builder.buildAsV2()
@@ -309,6 +313,21 @@ public class GroupManager: NSObject {
     // MARK: - Tests
 
     #if TESTABLE_BUILD
+
+    @objc
+    public static func createGroupForTestsObjc(members: [SignalServiceAddress],
+                                               name: String? = nil,
+                                               avatarData: Data? = nil,
+                                               transaction: SDSAnyWriteTransaction) -> TSGroupThread {
+        do {
+            return try createGroupForTests(members: members,
+                                           name: name,
+                                           avatarData: avatarData,
+                                           transaction: transaction)
+        } catch {
+            owsFail("Error: \(error)")
+        }
+    }
 
     /// Create a group for testing purposes.
     ///
@@ -506,7 +525,7 @@ public class GroupManager: NSObject {
     public static func localAcceptInviteToGroupV2(
         groupModel: TSGroupModelV2,
         waitForMessageProcessing: Bool = false
-    ) async throws {
+    ) async throws -> TSGroupThread {
         if waitForMessageProcessing {
             try await GroupManager.waitForMessageFetchingAndProcessingWithTimeout(description: "Accept invite")
         }
@@ -517,7 +536,7 @@ public class GroupManager: NSObject {
                 transaction: transaction
             )
         }
-        _ = try await updateGroupV2(
+        return try await updateGroupV2(
             groupModel: groupModel,
             description: "Accept invite"
         ) { groupChangeSet in
@@ -657,9 +676,9 @@ public class GroupManager: NSObject {
         inviteLinkPassword: Data,
         groupInviteLinkPreview: GroupInviteLinkPreview,
         avatarData: Data?
-    ) async throws {
+    ) async throws -> TSGroupThread {
         try await ensureLocalProfileHasCommitmentIfNecessary()
-        try await SSKEnvironment.shared.groupsV2Ref.joinGroupViaInviteLink(
+        let groupThread = try await SSKEnvironment.shared.groupsV2Ref.joinGroupViaInviteLink(
             groupId: groupId,
             groupSecretParams: groupSecretParams,
             inviteLinkPassword: inviteLinkPassword,
@@ -674,6 +693,7 @@ public class GroupManager: NSObject {
                 transaction: transaction
             )
         }
+        return groupThread
     }
 
     public static func acceptOrDenyMemberRequestsV2(
@@ -692,10 +712,10 @@ public class GroupManager: NSObject {
         }
     }
 
-    public static func cancelRequestToJoin(groupModel: TSGroupModelV2) async throws -> TSGroupThread {
-        let description = "Cancel Request to Join"
+    public static func cancelMemberRequestsV2(groupModel: TSGroupModelV2) async throws -> TSGroupThread {
+        let description = "Cancel Member Request"
         return try await Promise.wrapAsync {
-            try await SSKEnvironment.shared.groupsV2Ref.cancelRequestToJoin(groupModel: groupModel)
+            try await SSKEnvironment.shared.groupsV2Ref.cancelMemberRequests(groupModel: groupModel)
         }.timeout(seconds: Self.groupUpdateTimeoutDuration, description: description) {
             return GroupsV2Error.timeout
         }.awaitable()
@@ -795,7 +815,7 @@ public class GroupManager: NSObject {
 
     // MARK: - Messages
 
-    public static func sendGroupUpdateMessage(thread: TSGroupThread, groupChangeProtoData: Data? = nil) async {
+    public static func sendGroupUpdateMessage(thread: TSGroupThread, changeActionsProtoData: Data? = nil) async {
         guard thread.isGroupV2Thread else {
             owsFail("[GV1] Should be impossible to send V1 group messages!")
         }
@@ -807,7 +827,7 @@ public class GroupManager: NSObject {
                 in: thread,
                 groupMetaMessage: .update,
                 expiresInSeconds: dmConfigurationStore.durationSeconds(for: thread, tx: transaction.asV2Read),
-                groupChangeProtoData: groupChangeProtoData,
+                changeActionsProtoData: changeActionsProtoData,
                 additionalRecipients: Self.invitedMembers(in: thread),
                 transaction: transaction
             )

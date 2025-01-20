@@ -22,12 +22,15 @@ protocol EmojiPickerCollectionViewDelegate: AnyObject {
 class EmojiPickerCollectionView: UICollectionView {
     let layout: UICollectionViewFlowLayout
 
-    private static let keyValueStore = KeyValueStore(collection: "EmojiPickerCollectionView")
+    private static let keyValueStore = SDSKeyValueStore(collection: "EmojiPickerCollectionView")
     private static let recentEmojiKey = "recentEmoji"
 
     /// Reads the stored recent emoji and removes duplicates using `removingNonNormalizedDuplicates`.
     static func getRecentEmoji(tx: SDSAnyReadTransaction) -> [EmojiWithSkinTones] {
-        let recentEmojiStrings = keyValueStore.getStringArray(EmojiPickerCollectionView.recentEmojiKey, transaction: tx.asV2Read) ?? []
+        let recentEmojiStrings = keyValueStore.getObject(
+            forKey: EmojiPickerCollectionView.recentEmojiKey,
+            transaction: tx
+        ) as? [String] ?? []
 
         return recentEmojiStrings
             .compactMap(EmojiWithSkinTones.init(rawValue:))
@@ -282,7 +285,7 @@ class EmojiPickerCollectionView: UICollectionView {
         EmojiPickerCollectionView.keyValueStore.setObject(
             newRecentEmoji.map { $0.rawValue },
             key: EmojiPickerCollectionView.recentEmojiKey,
-            transaction: transaction.asV2Write
+            transaction: transaction
         )
     }
 
@@ -587,7 +590,7 @@ private class EmojiSearchIndex: NSObject {
     public static let EmojiSearchManifestFetchedNotification = Notification.Name("EmojiSearchManifestFetchedNotification")
     public static let EmojiSearchIndexFetchedNotification = Notification.Name("EmojiSearchIndexFetchedNotification")
 
-    private static let emojiSearchIndexKVS = KeyValueStore(collection: "EmojiSearchIndexKeyValueStore")
+    private static let emojiSearchIndexKVS = SDSKeyValueStore(collection: "EmojiSearchIndexKeyValueStore")
     private static let emojiSearchIndexVersionKey = "emojiSearchIndexVersionKey"
     private static let emojiSearchIndexAvailableLocalizationsKey = "emojiSearchIndexAvailableLocalizationsKey"
 
@@ -598,14 +601,14 @@ private class EmojiSearchIndex: NSObject {
         var searchIndexVersion: Int = 0
         var searchIndexLocalizations: [String] = []
         (searchIndexVersion, searchIndexLocalizations) = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-            let version = self.emojiSearchIndexKVS.getInt(emojiSearchIndexVersionKey, transaction: transaction.asV2Read) ?? 0
-            let locs = self.emojiSearchIndexKVS.getStringArray(emojiSearchIndexAvailableLocalizationsKey, transaction: transaction.asV2Read) ?? []
+            let version = self.emojiSearchIndexKVS.getInt(emojiSearchIndexVersionKey, transaction: transaction) ?? 0
+            let locs: [String] = self.emojiSearchIndexKVS.getObject(forKey: emojiSearchIndexAvailableLocalizationsKey, transaction: transaction) as? [String] ?? []
             return (version, locs)
         }
 
         let urlSession = SSKEnvironment.shared.signalServiceRef.urlSessionForUpdates()
-        Promise.wrapAsync {
-            return try await urlSession.performRequest(self.remoteManifestURL.absoluteString, method: .get)
+        firstly {
+            urlSession.dataTaskPromise(self.remoteManifestURL.absoluteString, method: .get)
         }.done { response in
             guard response.responseStatusCode == 200 else {
                 throw OWSAssertionError("Bad response code for emoji manifest fetch")
@@ -639,7 +642,7 @@ private class EmojiSearchIndex: NSObject {
         var manifest = searchIndexManifest
         if manifest == nil {
             manifest = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-                return self.emojiSearchIndexKVS.getStringArray(emojiSearchIndexAvailableLocalizationsKey, transaction: transaction.asV2Read) ?? []
+                return self.emojiSearchIndexKVS.getObject(forKey: emojiSearchIndexAvailableLocalizationsKey, transaction: transaction) as? [String] ?? []
             }
         }
 
@@ -664,12 +667,10 @@ private class EmojiSearchIndex: NSObject {
     }
 
     public static func emojiSearchIndex(for localization: String, shouldFetch: Bool) -> [String: [String]]? {
-        let index = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-            return self.emojiSearchIndexKVS.getObject(
-                localization,
-                ofClasses: [NSDictionary.self, NSArray.self, NSString.self],
-                transaction: transaction.asV2Read
-            ) as? [String: [String]]
+        var index: [String: [String]]?
+
+        SSKEnvironment.shared.databaseStorageRef.read { transaction in
+            index = self.emojiSearchIndexKVS.getObject(forKey: localization, transaction: transaction) as? [String: [String]]
         }
 
         if shouldFetch && index == nil {
@@ -683,11 +684,11 @@ private class EmojiSearchIndex: NSObject {
     private static func invalidateSearchIndex(newVersion: Int, localizationsToInvalidate: [String], newLocalizations: [String]) {
         SSKEnvironment.shared.databaseStorageRef.write { transaction in
             for localization in localizationsToInvalidate {
-                self.emojiSearchIndexKVS.removeValue(forKey: localization, transaction: transaction.asV2Write)
+                self.emojiSearchIndexKVS.removeValue(forKey: localization, transaction: transaction)
             }
 
-            self.emojiSearchIndexKVS.setObject(newLocalizations, key: emojiSearchIndexAvailableLocalizationsKey, transaction: transaction.asV2Write)
-            self.emojiSearchIndexKVS.setInt(newVersion, key: emojiSearchIndexVersionKey, transaction: transaction.asV2Write)
+            self.emojiSearchIndexKVS.setObject(newLocalizations, key: emojiSearchIndexAvailableLocalizationsKey, transaction: transaction)
+            self.emojiSearchIndexKVS.setInt(newVersion, key: emojiSearchIndexVersionKey, transaction: transaction)
         }
     }
 
@@ -696,7 +697,7 @@ private class EmojiSearchIndex: NSObject {
         var searchIndexVersion = version
         if searchIndexVersion == nil {
             searchIndexVersion = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-                return self.emojiSearchIndexKVS.getInt(emojiSearchIndexVersionKey, transaction: transaction.asV2Read) ?? 0
+                return self.emojiSearchIndexKVS.getInt(emojiSearchIndexVersionKey, transaction: transaction) ?? 0
             }
         }
 
@@ -707,8 +708,8 @@ private class EmojiSearchIndex: NSObject {
 
         let urlSession = SSKEnvironment.shared.signalServiceRef.urlSessionForUpdates()
         let request = String(format: remoteSearchFormat, searchIndexVersion, localization)
-        Promise.wrapAsync {
-            return try await urlSession.performRequest(request, method: .get)
+        firstly {
+            urlSession.dataTaskPromise(request, method: .get)
         }.done { response in
             guard response.responseStatusCode == 200 else {
                 throw OWSAssertionError("Bad response code for emoji index fetch")
@@ -720,7 +721,7 @@ private class EmojiSearchIndex: NSObject {
 
             let index = self.buildSearchIndexMap(for: json)
             SSKEnvironment.shared.databaseStorageRef.write { transaction in
-                self.emojiSearchIndexKVS.setObject(index, key: localization, transaction: transaction.asV2Write)
+                self.emojiSearchIndexKVS.setObject(index, key: localization, transaction: transaction)
             }
 
             NotificationCenter.default.postNotificationNameAsync(self.EmojiSearchIndexFetchedNotification, object: nil)

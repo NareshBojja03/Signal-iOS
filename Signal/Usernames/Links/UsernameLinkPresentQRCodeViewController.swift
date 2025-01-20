@@ -28,7 +28,7 @@ class UsernameLinkPresentQRCodeViewController: OWSTableViewController2 {
             usernameLink: Usernames.UsernameLink
         ) -> UsernameLinkState {
             if
-                let qrCodeImage = SignalBrandedQRCodeGenerator(
+                let qrCodeImage = UsernameLinkQRCodeGenerator(
                     foregroundColor: .ows_black,
                     backgroundColor: .clear
                 ).generateQRCode(url: usernameLink.url)
@@ -55,7 +55,7 @@ class UsernameLinkPresentQRCodeViewController: OWSTableViewController2 {
 
     private weak var usernameChangeDelegate: UsernameChangeDelegate?
 
-    private var qrCodeColor: SignalBrandedQRCodes.QRCodeColor!
+    private var qrCodeColor: Usernames.QRCodeColor!
     private var _usernameLinkState: UsernameLinkState!
 
     /// A layer of indirection to avoid needing to handle `nil` in switches,
@@ -312,7 +312,7 @@ class UsernameLinkPresentQRCodeViewController: OWSTableViewController2 {
 
         guard
             let (usernameLink, _) = self.usernameLinkState.linkParams,
-            let qrCode = SignalBrandedQRCodeGenerator(
+            let qrCode = UsernameLinkQRCodeGenerator(
                 foregroundColor: self.qrCodeColor.foreground,
                 backgroundColor: qrCodeBackgroundColor
             ).generateQRCode(url: usernameLink.url)
@@ -698,7 +698,7 @@ extension UsernameLinkPresentQRCodeViewController: SheetDismissalDelegate {
 }
 
 extension UsernameLinkPresentQRCodeViewController: UsernameLinkQRCodeColorPickerDelegate {
-    func didFinalizeSelectedColor(color: SignalBrandedQRCodes.QRCodeColor) {
+    func didFinalizeSelectedColor(color: Usernames.QRCodeColor) {
         db.write { tx in
             localUsernameManager.setUsernameLinkQRCodeColor(
                 color: color,

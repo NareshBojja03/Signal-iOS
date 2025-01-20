@@ -125,9 +125,7 @@ public struct AccountAttributes: Codable {
         public let pni = true
         public let paymentActivation = true
         public let deleteSyncSendSupport = true
-        // TODO: remove this once the server removes the capability.
-        public let versionedExpireTimer = true
-        public let storageServiceRecordIkm = FeatureFlags.storageServiceRecordIkmMigration
+        public let versionedExpireTimer = FeatureFlags.versionedExpireTimer
 
         public enum CodingKeys: String, CodingKey {
             case transfer
@@ -136,7 +134,6 @@ public struct AccountAttributes: Codable {
             case paymentActivation
             case deleteSyncSendSupport = "deleteSync"
             case versionedExpireTimer = "versionedExpirationTimer"
-            case storageServiceRecordIkm = "ssre2"
         }
 
         public init(hasSVRBackups: Bool) {

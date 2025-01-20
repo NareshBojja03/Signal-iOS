@@ -587,6 +587,15 @@ public final class OWSUserProfile: NSObject, NSCopying, SDSCodableModel, Decodab
 
     // TODO: We may want to clean up this directory in the "orphan cleanup" logic.
 
+    public static func resetProfileStorage() {
+        AssertIsOnMainThread()
+        do {
+            try FileManager.default.removeItem(atPath: profileAvatarsDirPath)
+        } catch {
+            Logger.error("Failed to delete database: \(error)")
+        }
+    }
+
     @objc
     public static func allProfileAvatarFilePaths(tx: SDSAnyReadTransaction) -> Set<String> {
         var result = Set<String>()
@@ -1418,6 +1427,21 @@ extension OWSUserProfile {
         self.givenName = givenName
         self.familyName = familyName
         self.avatarUrlPath = avatarUrlPath
+        self.profileKey = profileKey
+
+        anyUpsert(transaction: tx)
+    }
+
+    /// Updates the profile key for this model on disk with no other
+    /// side-effects, such as triggering profile fetches, updating storage
+    /// service, or posting local notifications.
+    ///
+    /// - Important
+    /// Only callers who are updating the profile in a vacuum should call this.
+    public func upsertProfileKeyWithNoSideEffects(
+        _ profileKey: Aes256Key,
+        tx: SDSAnyWriteTransaction
+    ) {
         self.profileKey = profileKey
 
         anyUpsert(transaction: tx)

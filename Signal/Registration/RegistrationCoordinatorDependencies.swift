@@ -15,8 +15,8 @@ public struct RegistrationCoordinatorDependencies {
     public let db: any DB
     public let experienceManager: RegistrationCoordinatorImpl.Shims.ExperienceManager
     public let featureFlags: RegistrationCoordinatorImpl.Shims.FeatureFlags
+    public let keyValueStoreFactory: KeyValueStoreFactory
     public let localUsernameManager: LocalUsernameManager
-    public let messageBackupKeyMaterial: MessageBackupKeyMaterial
     public let messageBackupErrorPresenter: MessageBackupErrorPresenter
     public let messageBackupManager: MessageBackupManager
     public let messagePipelineSupervisor: RegistrationCoordinatorImpl.Shims.MessagePipelineSupervisor
@@ -31,7 +31,6 @@ public struct RegistrationCoordinatorDependencies {
     public let schedulers: Schedulers
     public let sessionManager: RegistrationSessionManager
     public let signalService: OWSSignalServiceProtocol
-    public let storageServiceRecordIkmCapabilityStore: StorageServiceRecordIkmCapabilityStore
     public let storageServiceManager: StorageServiceManager
     public let svr: SecureValueRecovery
     public let svrAuthCredentialStore: SVRAuthCredentialStorage
@@ -50,8 +49,8 @@ public struct RegistrationCoordinatorDependencies {
             db: DependenciesBridge.shared.db,
             experienceManager: RegistrationCoordinatorImpl.Wrappers.ExperienceManager(),
             featureFlags: RegistrationCoordinatorImpl.Wrappers.FeatureFlags(),
+            keyValueStoreFactory: DependenciesBridge.shared.keyValueStoreFactory,
             localUsernameManager: DependenciesBridge.shared.localUsernameManager,
-            messageBackupKeyMaterial: DependenciesBridge.shared.messageBackupKeyMaterial,
             messageBackupErrorPresenter: DependenciesBridge.shared.messageBackupErrorPresenter,
             messageBackupManager: DependenciesBridge.shared.messageBackupManager,
             messagePipelineSupervisor: RegistrationCoordinatorImpl.Wrappers.MessagePipelineSupervisor(SSKEnvironment.shared.messagePipelineSupervisorRef),
@@ -68,7 +67,6 @@ public struct RegistrationCoordinatorDependencies {
             schedulers: DependenciesBridge.shared.schedulers,
             sessionManager: DependenciesBridge.shared.registrationSessionManager,
             signalService: SSKEnvironment.shared.signalServiceRef,
-            storageServiceRecordIkmCapabilityStore: DependenciesBridge.shared.storageServiceRecordIkmCapabilityStore,
             storageServiceManager: SSKEnvironment.shared.storageServiceManagerRef,
             svr: DependenciesBridge.shared.svr,
             svrAuthCredentialStore: DependenciesBridge.shared.svrCredentialStorage,

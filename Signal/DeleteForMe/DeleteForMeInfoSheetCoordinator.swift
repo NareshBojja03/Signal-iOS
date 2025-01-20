@@ -21,6 +21,7 @@ final class DeleteForMeInfoSheetCoordinator {
     }
 
     private let db: any DB
+    private let deleteForMeSyncMessageSettingsStore: DeleteForMeSyncMessageSettingsStore
     private let deviceStore: OWSDeviceStore
     private let interactionDeleteManager: InteractionDeleteManager
     private let keyValueStore: KeyValueStore
@@ -28,22 +29,27 @@ final class DeleteForMeInfoSheetCoordinator {
 
     init(
         db: any DB,
+        deleteForMeSyncMessageSettingsStore: DeleteForMeSyncMessageSettingsStore,
         deviceStore: OWSDeviceStore,
         interactionDeleteManager: InteractionDeleteManager,
+        keyValueStoreFactory: KeyValueStoreFactory,
         threadSoftDeleteManager: ThreadSoftDeleteManager
     ) {
         self.db = db
+        self.deleteForMeSyncMessageSettingsStore = deleteForMeSyncMessageSettingsStore
         self.deviceStore = deviceStore
         self.interactionDeleteManager = interactionDeleteManager
-        self.keyValueStore = KeyValueStore(collection: "DeleteForMeInfoSheetCoordinator")
+        self.keyValueStore = keyValueStoreFactory.keyValueStore(collection: "DeleteForMeInfoSheetCoordinator")
         self.threadSoftDeleteManager = threadSoftDeleteManager
     }
 
     static func fromGlobals() -> DeleteForMeInfoSheetCoordinator {
         return DeleteForMeInfoSheetCoordinator(
             db: DependenciesBridge.shared.db,
+            deleteForMeSyncMessageSettingsStore: DependenciesBridge.shared.deleteForMeSyncMessageSettingsStore,
             deviceStore: DependenciesBridge.shared.deviceStore,
             interactionDeleteManager: DependenciesBridge.shared.interactionDeleteManager,
+            keyValueStoreFactory: DependenciesBridge.shared.keyValueStoreFactory,
             threadSoftDeleteManager: DependenciesBridge.shared.threadSoftDeleteManager
         )
     }
@@ -86,6 +92,11 @@ final class DeleteForMeInfoSheetCoordinator {
 
     private func shouldShowInfoSheet() -> Bool {
         return db.read { tx -> Bool in
+            guard deleteForMeSyncMessageSettingsStore.isSendingEnabled(tx: tx) else {
+                // Nothing will actually be synced!
+                return false
+            }
+
             guard deviceStore.hasLinkedDevices(tx: tx) else {
                 // No devices with which to sync!
                 return false

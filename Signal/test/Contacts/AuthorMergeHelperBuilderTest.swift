@@ -13,7 +13,7 @@ import XCTest
 final class AuthorMergeHelperBuilderTest: XCTestCase {
     func testBuildTableIfNeeded() async {
         let appContext = TestAppContext()
-        let authorMergeHelper = AuthorMergeHelper()
+        let authorMergeHelper = AuthorMergeHelper(keyValueStoreFactory: InMemoryKeyValueStoreFactory())
         let inMemoryDb = InMemoryDB()
         let recipientDatabaseTable = MockRecipientDatabaseTable()
 

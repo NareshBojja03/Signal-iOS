@@ -147,9 +147,9 @@ public protocol _ProvisioningCoordinator_SyncManagerShim {
 
 public class _ProvisioningCoordinator_SyncManagerWrapper: _ProvisioningCoordinator_SyncManagerShim {
 
-    private let syncManager: SyncManagerProtocol
+    private let syncManager: OWSSyncManager
 
-    public init(_ syncManager: SyncManagerProtocol) {
+    public init(_ syncManager: OWSSyncManager) {
         self.syncManager = syncManager
     }
 

@@ -51,10 +51,10 @@ class OWSRequestFactoryTest: SSKBaseTest {
             serviceId: serviceId,
             messages: [],
             timestamp: 1234,
+            udAccessKey: udAccessKey,
             isOnline: true,
             isUrgent: false,
-            isStory: false,
-            auth: .accessKey(udAccessKey)
+            isStory: false
         )
 
         let url = try XCTUnwrap(request.url, "request.url")

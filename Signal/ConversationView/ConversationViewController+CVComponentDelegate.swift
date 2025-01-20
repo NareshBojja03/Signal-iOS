@@ -226,7 +226,7 @@ extension ConversationViewController: CVComponentDelegate {
         AssertIsOnMainThread()
 
         SSKEnvironment.shared.databaseStorageRef.write { tx in
-            DependenciesBridge.shared.attachmentDownloadManager.enqueueDownloadOfAttachmentsForMessage(
+            DependenciesBridge.shared.tsResourceDownloadManager.enqueueDownloadOfAttachmentsForMessage(
                 message,
                 priority: .userInitiated,
                 tx: tx.asV2Write
@@ -244,7 +244,7 @@ extension ConversationViewController: CVComponentDelegate {
 
     public func didTapBodyMedia(
         itemViewModel: CVItemViewModelImpl,
-        attachmentStream: ReferencedAttachmentStream,
+        attachmentStream: ReferencedTSResourceStream,
         imageView: UIView
     ) {
         AssertIsOnMainThread()

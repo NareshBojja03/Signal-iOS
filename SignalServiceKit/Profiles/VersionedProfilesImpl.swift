@@ -30,16 +30,16 @@ public struct VersionedProfileRequest {
 public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedProfiles {
 
     private enum CredentialStore {
-        private static let deprecatedCredentialStore = KeyValueStore(collection: "VersionedProfiles.credentialStore")
+        private static let deprecatedCredentialStore = SDSKeyValueStore(collection: "VersionedProfiles.credentialStore")
 
-        private static let expiringCredentialStore = KeyValueStore(collection: "VersionedProfilesImpl.expiringCredentialStore")
+        private static let expiringCredentialStore = SDSKeyValueStore(collection: "VersionedProfilesImpl.expiringCredentialStore")
 
         private static func storeKey(for aci: Aci) -> String {
             return aci.serviceIdUppercaseString
         }
 
         static func dropDeprecatedCredentialsIfNecessary(transaction: SDSAnyWriteTransaction) {
-            deprecatedCredentialStore.removeAll(transaction: transaction.asV2Write)
+            deprecatedCredentialStore.removeAll(transaction: transaction)
         }
 
         static func getValidCredential(
@@ -48,7 +48,7 @@ public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedP
         ) throws -> ExpiringProfileKeyCredential? {
             guard let credentialData = expiringCredentialStore.getData(
                 storeKey(for: aci),
-                transaction: transaction.asV2Read
+                transaction: transaction
             ) else {
                 return nil
             }
@@ -80,16 +80,16 @@ public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedP
             expiringCredentialStore.setData(
                 credentialData,
                 key: storeKey(for: aci),
-                transaction: transaction.asV2Write
+                transaction: transaction
             )
         }
 
         static func removeValue(for aci: Aci, transaction: SDSAnyWriteTransaction) {
-            expiringCredentialStore.removeValue(forKey: storeKey(for: aci), transaction: transaction.asV2Write)
+            expiringCredentialStore.removeValue(forKey: storeKey(for: aci), transaction: transaction)
         }
 
         static func removeAll(transaction: SDSAnyWriteTransaction) {
-            expiringCredentialStore.removeAll(transaction: transaction.asV2Write)
+            expiringCredentialStore.removeAll(transaction: transaction)
         }
     }
 
@@ -109,8 +109,8 @@ public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedP
 
     // MARK: -
 
-    public func clientZkProfileOperations() -> ClientZkProfileOperations {
-        return ClientZkProfileOperations(serverPublicParams: GroupsV2Protos.serverPublicParams())
+    public func clientZkProfileOperations() throws -> ClientZkProfileOperations {
+        return ClientZkProfileOperations(serverPublicParams: try GroupsV2Protos.serverPublicParams())
     }
 
     // MARK: - Update
@@ -311,7 +311,7 @@ public class VersionedProfilesImpl: NSObject, VersionedProfilesSwift, VersionedP
             }
 
             let credentialResponse = try ExpiringProfileKeyCredentialResponse(contents: [UInt8](credentialResponseData))
-            let clientZkProfileOperations = self.clientZkProfileOperations()
+            let clientZkProfileOperations = try self.clientZkProfileOperations()
             let profileKeyCredential = try clientZkProfileOperations.receiveExpiringProfileKeyCredential(
                 profileKeyCredentialRequestContext: requestContext,
                 profileKeyCredentialResponse: credentialResponse

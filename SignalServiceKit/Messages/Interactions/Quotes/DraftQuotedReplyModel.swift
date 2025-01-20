@@ -49,8 +49,8 @@ public class DraftQuotedReplyModel {
         /// This includes sticker messages, which are thumbnailable attachments.
         case attachment(
             MessageBody?,
-            attachmentRef: AttachmentReference,
-            attachment: Attachment,
+            attachmentRef: TSResourceReference,
+            attachment: TSResource,
             thumbnailImage: UIImage?
         )
 
@@ -69,15 +69,6 @@ public class DraftQuotedReplyModel {
         public var isGiftBadge: Bool {
             switch self {
             case .giftBadge:
-                return true
-            default:
-                return false
-            }
-        }
-
-        public var isViewOnce: Bool {
-            switch self {
-            case .viewOnce:
                 return true
             default:
                 return false
@@ -269,7 +260,7 @@ extension DraftQuotedReplyModel.Content: Equatable {
             .attachment(rhsBody, _, rhsAttachment, rhsThumbnailImage)
         ):
             return lhsBody == rhsBody
-                && lhsAttachment.id == rhsAttachment.id
+                && lhsAttachment.resourceId == rhsAttachment.resourceId
                 && lhsThumbnailImage == rhsThumbnailImage
         case
             (.giftBadge, _),

@@ -102,14 +102,14 @@ public class TSRequestOWSURLSessionMock: BaseOWSURLSessionMock {
         public static func networkError(
             url: URL
         ) -> Self {
-            Self.init(matcher: { $0.url == url }, error: OWSHTTPError.networkFailure)
+            Self.init(matcher: { $0.url == url }, error: OWSHTTPError.networkFailure(requestUrl: url))
         }
 
         public static func networkError(
             matcher: @escaping (TSRequest) -> Bool,
             url: URL
         ) -> Self {
-            Self.init(matcher: matcher, error: OWSHTTPError.networkFailure)
+            Self.init(matcher: matcher, error: OWSHTTPError.networkFailure(requestUrl: url))
         }
     }
 
@@ -170,22 +170,6 @@ public class TSRequestOWSURLSessionMock: BaseOWSURLSessionMock {
                 bodyData: response.bodyData
             ))
         }
-    }
-
-    public override func performRequest(_ rawRequest: TSRequest) async throws -> any HTTPResponse {
-        guard let responseIndex = responses.firstIndex(where: { $0.0.matcher(rawRequest) }) else {
-            fatalError("Got a request with no response set up!")
-        }
-        let response = await responses.remove(at: responseIndex).1.awaitable()
-        if let error = response.error {
-            throw error
-        }
-        return HTTPResponseImpl(
-            requestUrl: rawRequest.url!,
-            status: response.statusCode,
-            headers: response.headers,
-            bodyData: response.bodyData
-        )
     }
 }
 #endif

@@ -47,19 +47,12 @@ public protocol MessageBackupPlaintextProtoStreamProvider {
     /// Open an output stream to write a plaintext backup to a file on disk. The
     /// caller owns the returned stream, and is responsible for closing it once
     /// finished.
-    func openPlaintextOutputFileStream(
-        progress: MessageBackupExportProgress,
-        memorySampler: MemorySampler
-    ) -> ProtoStream.OpenOutputStreamResult<URL>
+    func openPlaintextOutputFileStream() -> ProtoStream.OpenOutputStreamResult<URL>
 
     /// Open an input stream to read a plaintext backup from a file on disk. The
     /// caller becomes the owner of the stream, and is responsible for closing
     /// it once finished.
-    func openPlaintextInputFileStream(
-        fileUrl: URL,
-        progress: MessageBackupImportProgress,
-        memorySampler: MemorySampler
-    ) -> ProtoStream.OpenInputStreamResult
+    func openPlaintextInputFileStream(fileUrl: URL) -> ProtoStream.OpenInputStreamResult
 }
 
 /// Creates streams for reading and writing to an encrypted Backup file on-disk.
@@ -79,9 +72,7 @@ public protocol MessageBackupEncryptedProtoStreamProvider {
     /// once finished.
     func openEncryptedOutputFileStream(
         localAci: Aci,
-        backupKey: BackupKey,
-        progress: MessageBackupExportProgress,
-        memorySampler: MemorySampler,
+        mode: MessageBackup.EncryptionMode,
         tx: DBReadTransaction
     ) -> ProtoStream.OpenOutputStreamResult<ProtoStream.EncryptionMetadataProvider>
 
@@ -91,9 +82,7 @@ public protocol MessageBackupEncryptedProtoStreamProvider {
     func openEncryptedInputFileStream(
         fileUrl: URL,
         localAci: Aci,
-        backupKey: BackupKey,
-        progress: MessageBackupImportProgress,
-        memorySampler: MemorySampler,
+        mode: MessageBackup.EncryptionMode,
         tx: DBReadTransaction
     ) -> ProtoStream.OpenInputStreamResult
 }
@@ -111,34 +100,26 @@ public class MessageBackupEncryptedProtoStreamProviderImpl: MessageBackupEncrypt
 
     public func openEncryptedOutputFileStream(
         localAci: Aci,
-        backupKey: BackupKey,
-        progress: MessageBackupExportProgress,
-        memorySampler: MemorySampler,
+        mode: MessageBackup.EncryptionMode,
         tx: any DBReadTransaction
     ) -> ProtoStream.OpenOutputStreamResult<ProtoStream.EncryptionMetadataProvider> {
         do {
-            let messageBackupKey = try backupKey.asMessageBackupKey(for: localAci)
             let inputTrackingTransform = MetadataStreamTransform(calculateDigest: false)
             let outputTrackingTransform = MetadataStreamTransform(calculateDigest: true)
 
             let transforms: [any StreamTransform] = [
-                MemorySamplerStreamTransform(memorySampler: memorySampler),
                 inputTrackingTransform,
                 ChunkedOutputStreamTransform(),
                 try GzipStreamTransform(.compress),
-                try EncryptingStreamTransform(
-                    iv: Randomness.generateRandomBytes(UInt(Cryptography.Constants.aescbcIVLength)),
-                    encryptionKey: Data(messageBackupKey.aesKey)
-                ),
-                try HmacStreamTransform(hmacKey: Data(messageBackupKey.hmacKey), operation: .generate),
+                try backupKeyMaterial.createEncryptingStreamTransform(localAci: localAci, mode: mode, tx: tx),
+                try backupKeyMaterial.createHmacGeneratingStreamTransform(localAci: localAci, mode: mode, tx: tx),
                 outputTrackingTransform
             ]
 
             let outputStream: MessageBackupProtoOutputStream
             let fileUrl: URL
             switch genericStreamProvider.openOutputFileStream(
-                transforms: transforms,
-                progress: progress
+                transforms: transforms
             ) {
             case .success(let _outputStream, let _fileUrl):
                 outputStream = _outputStream
@@ -166,22 +147,17 @@ public class MessageBackupEncryptedProtoStreamProviderImpl: MessageBackupEncrypt
     public func openEncryptedInputFileStream(
         fileUrl: URL,
         localAci: Aci,
-        backupKey: BackupKey,
-        progress: MessageBackupImportProgress,
-        memorySampler: MemorySampler,
+        mode: MessageBackup.EncryptionMode,
         tx: any DBReadTransaction
     ) -> ProtoStream.OpenInputStreamResult {
-        guard validateBackupHMAC(localAci: localAci, backupKey: backupKey, fileUrl: fileUrl, tx: tx) else {
+        guard validateBackupHMAC(localAci: localAci, mode: mode, fileUrl: fileUrl, tx: tx) else {
             return .hmacValidationFailedOnEncryptedFile
         }
 
         do {
-            let messageBackupKey = try backupKey.asMessageBackupKey(for: localAci)
             let transforms: [any StreamTransform] = [
-                MemorySamplerStreamTransform(memorySampler: memorySampler),
-                InputProgressStreamTransform(progress: progress),
-                try HmacStreamTransform(hmacKey: Data(messageBackupKey.hmacKey), operation: .validate),
-                try DecryptingStreamTransform(encryptionKey: Data(messageBackupKey.aesKey)),
+                try backupKeyMaterial.createHmacValidatingStreamTransform(localAci: localAci, mode: mode, tx: tx),
+                try backupKeyMaterial.createDecryptingStreamTransform(localAci: localAci, mode: mode, tx: tx),
                 try GzipStreamTransform(.decompress),
                 ChunkedInputStreamTransform(),
             ]
@@ -197,16 +173,19 @@ public class MessageBackupEncryptedProtoStreamProviderImpl: MessageBackupEncrypt
 
     private func validateBackupHMAC(
         localAci: Aci,
-        backupKey: BackupKey,
+        mode: MessageBackup.EncryptionMode,
         fileUrl: URL,
         tx: DBReadTransaction
     ) -> Bool {
         do {
-            let messageBackupKey = try backupKey.asMessageBackupKey(for: localAci)
             let inputStreamResult = genericStreamProvider.openInputFileStream(
                 fileUrl: fileUrl,
                 transforms: [
-                    try HmacStreamTransform(hmacKey: Data(messageBackupKey.hmacKey), operation: .validate)
+                    try backupKeyMaterial.createHmacGeneratingStreamTransform(
+                        localAci: localAci,
+                        mode: mode,
+                        tx: tx
+                    )
                 ]
             )
 
@@ -235,29 +214,18 @@ public class MessageBackupPlaintextProtoStreamProviderImpl: MessageBackupPlainte
         self.genericStreamProvider = GenericStreamProvider()
     }
 
-    public func openPlaintextOutputFileStream(
-        progress: MessageBackupExportProgress,
-        memorySampler: MemorySampler
-    ) -> ProtoStream.OpenOutputStreamResult<URL> {
+    public func openPlaintextOutputFileStream() -> ProtoStream.OpenOutputStreamResult<URL> {
         let transforms: [any StreamTransform] = [
-            MemorySamplerStreamTransform(memorySampler: memorySampler),
             ChunkedOutputStreamTransform(),
         ]
 
         return genericStreamProvider.openOutputFileStream(
-            transforms: transforms,
-            progress: progress
+            transforms: transforms
         )
     }
 
-    public func openPlaintextInputFileStream(
-        fileUrl: URL,
-        progress: MessageBackupImportProgress,
-        memorySampler: MemorySampler
-    ) -> ProtoStream.OpenInputStreamResult {
+    public func openPlaintextInputFileStream(fileUrl: URL) -> ProtoStream.OpenInputStreamResult {
         let transforms: [any StreamTransform] = [
-            MemorySamplerStreamTransform(memorySampler: memorySampler),
-            InputProgressStreamTransform(progress: progress),
             ChunkedInputStreamTransform(),
         ]
 
@@ -276,8 +244,7 @@ private class GenericStreamProvider {
     init() {}
 
     func openOutputFileStream(
-        transforms: [any StreamTransform],
-        progress: MessageBackupExportProgress
+        transforms: [any StreamTransform]
     ) -> ProtoStream.OpenOutputStreamResult<URL> {
         let fileUrl = OWSFileSystem.temporaryFileUrl(isAvailableWhileDeviceLocked: true)
         guard let outputStream = OutputStream(url: fileUrl, append: false) else {
@@ -299,8 +266,7 @@ private class GenericStreamProvider {
         )
 
         let messageBackupOutputStream = MessageBackupProtoOutputStreamImpl(
-            outputStream: transformingOutputStream,
-            progress: progress
+            outputStream: transformingOutputStream
         )
 
         return .success(messageBackupOutputStream, fileUrl)
@@ -349,34 +315,5 @@ private class GenericStreamProvider {
                 _hadError.set(true)
             }
         }
-    }
-}
-
-private class InputProgressStreamTransform: StreamTransform {
-
-    private let progress: MessageBackupImportProgress
-
-    init(progress: MessageBackupImportProgress) {
-        self.progress = progress
-    }
-
-    func transform(data: Data) throws -> Data {
-        progress.didReadBytes(byteLength: Int64(data.byteLength))
-        return data
-    }
-}
-
-/// We sample memory after every frame we write, just because that's a convenient hook for sampling.
-private class MemorySamplerStreamTransform: StreamTransform {
-
-    private let memorySampler: MemorySampler
-
-    init(memorySampler: MemorySampler) {
-        self.memorySampler = memorySampler
-    }
-
-    func transform(data: Data) throws -> Data {
-        memorySampler.sample()
-        return data
     }
 }

@@ -536,9 +536,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>ld</string>
 			<key>one</key>
-			<string>%1$ld persona está en esta llamada</string>
+			<string>%1$ld persona participa en esta llamada</string>
 			<key>other</key>
-			<string>%1$ld personas están en esta llamada</string>
+			<string>%1$ld personas participan en esta llamada</string>
 		</dict>
 	</dict>
 	<key>GROUP_CALL_MANY_PEOPLE_HERE_%d</key>
@@ -792,9 +792,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>Se ha invitado a una persona al grupo.</string>
+			<string>Se ha invitado a %1$d persona al grupo.</string>
 			<key>other</key>
-			<string>Se ha invitado a %1$d personas al grupo.</string>
+			<string>Se han invitado a %1$d personas al grupo.</string>
 		</dict>
 	</dict>
 	<key>GROUP_REMOTE_USER_INVITED_BY_REMOTE_USER_%d</key>
@@ -856,9 +856,9 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>%2$@ ha solicitado y cancelado unirse al grupo mediante enlace.</string>
+			<string>%2$@ ha solicitado y cancelado participar en el grupo vía enlace.</string>
 			<key>other</key>
-			<string>%2$@ ha solicitado y cancelado %1$d veces unirse al grupo mediante enlace.</string>
+			<string>%2$@ ha solicitado y cancelado %1$d veces participar en el grupo vía enlace.</string>
 		</dict>
 	</dict>
 	<key>GROUP_STORY_VIEWERS_%d</key>

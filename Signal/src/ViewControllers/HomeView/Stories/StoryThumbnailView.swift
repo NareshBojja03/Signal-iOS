@@ -8,13 +8,13 @@ import SignalUI
 
 class StoryThumbnailView: UIView {
     enum Attachment: Equatable {
-        case file(ReferencedAttachment)
+        case file(ReferencedTSResource)
         case text(PreloadedTextAttachment)
         case missing
 
         static func from(_ storyMessage: StoryMessage, transaction: SDSAnyReadTransaction) -> Self {
             switch storyMessage.attachment {
-            case .media:
+            case .file, .foreignReferenceAttachment:
                 guard
                     let attachment = storyMessage.fileAttachment(tx: transaction)
                 else {
@@ -30,7 +30,7 @@ class StoryThumbnailView: UIView {
         static func == (lhs: StoryThumbnailView.Attachment, rhs: StoryThumbnailView.Attachment) -> Bool {
             switch (lhs, rhs) {
             case (.file(let lhsAttachment), .file(let rhsAttachment)):
-                return lhsAttachment.attachment.id == rhsAttachment.attachment.id
+                return lhsAttachment.attachment.resourceId == rhsAttachment.attachment.resourceId
                     && lhsAttachment.reference.hasSameOwner(as: rhsAttachment.reference)
             case (.text(let lhsTextAttachment), .text(let rhsTextAttachment)):
                 return lhsTextAttachment == rhsTextAttachment
@@ -50,7 +50,7 @@ class StoryThumbnailView: UIView {
 
         switch attachment {
         case .file(let attachment):
-            if let stream = attachment.attachment.asStream() {
+            if let stream = attachment.attachment.asResourceStream() {
                 let imageView = buildThumbnailImageView(stream: stream)
                 addSubview(imageView)
                 imageView.autoPinEdgesToSuperviewEdges()
@@ -85,7 +85,7 @@ class StoryThumbnailView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func buildThumbnailImageView(stream: AttachmentStream) -> UIView {
+    private func buildThumbnailImageView(stream: TSResourceStream) -> UIView {
         let imageView = UIImageView()
         imageView.contentMode = .scaleAspectFill
         imageView.layer.minificationFilter = .trilinear
@@ -97,9 +97,9 @@ class StoryThumbnailView: UIView {
         return imageView
     }
 
-    private static let thumbnailCache = LRUCache<SignalServiceKit.Attachment.IDType, UIImage>(maxSize: 64, shouldEvacuateInBackground: true)
-    private func applyThumbnailImage(to imageView: UIImageView, for stream: AttachmentStream) {
-        if let thumbnailImage = Self.thumbnailCache[stream.id] {
+    private static let thumbnailCache = LRUCache<TSResourceId, UIImage>(maxSize: 64, shouldEvacuateInBackground: true)
+    private func applyThumbnailImage(to imageView: UIImageView, for stream: TSResourceStream) {
+        if let thumbnailImage = Self.thumbnailCache[stream.resourceId] {
             imageView.image = thumbnailImage
         } else {
             Task {
@@ -108,13 +108,13 @@ class StoryThumbnailView: UIView {
                     return
                 }
                 imageView.image = thumbnailImage
-                Self.thumbnailCache.setObject(thumbnailImage, forKey: stream.id)
+                Self.thumbnailCache.setObject(thumbnailImage, forKey: stream.resourceId)
             }
         }
     }
 
-    private func buildBlurHashImageViewIfAvailable(pointer: AttachmentTransitPointer) -> UIView? {
-        guard let blurHash = pointer.attachment.blurHash, let blurHashImage = BlurHash.image(for: blurHash) else {
+    private func buildBlurHashImageViewIfAvailable(pointer: TSResourcePointer) -> UIView? {
+        guard let blurHash = pointer.resource.resourceBlurHash, let blurHashImage = BlurHash.image(for: blurHash) else {
             return nil
         }
         let imageView = UIImageView()

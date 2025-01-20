@@ -330,15 +330,16 @@ class StoryContextViewController: OWSViewController {
     private func buildStoryItem(for message: StoryMessage, transaction: SDSAnyReadTransaction) -> StoryItem? {
         let replyCount = message.replyCount
 
-        let attachment: ReferencedAttachment?
+        let attachment: ReferencedTSResource?
         switch message.attachment {
-        case .media:
-            attachment = message.id.map {
-                return DependenciesBridge.shared.attachmentStore.fetchFirstReferencedAttachment(
-                    for: .storyMessageMedia(storyMessageRowId: $0),
-                    tx: transaction.asV2Read
-                )
-            } ?? nil
+        case .file, .foreignReferenceAttachment:
+            let attachmentReference = DependenciesBridge.shared.tsResourceStore.mediaAttachment(for: message, tx: transaction.asV2Read)
+            let attachmentValue = attachmentReference?.fetch(tx: transaction)
+            if let attachmentReference, let attachmentValue {
+                attachment = .init(reference: attachmentReference, attachment: attachmentValue)
+            } else {
+                attachment = nil
+            }
 
         case .text(let attachment):
             let preloadedAttachment = PreloadedTextAttachment.from(
@@ -353,7 +354,7 @@ class StoryContextViewController: OWSViewController {
             owsFailDebug("Missing attachment for StoryMessage with timestamp \(message.timestamp)")
             return nil
         }
-        if attachment.attachment.asStream() == nil, let attachmentPointer = attachment.attachment.asTransitTierPointer() {
+        if attachment.attachment.asResourceStream() == nil, let attachmentPointer = attachment.attachment.asTransitTierPointer() {
             let transitTierDownloadState = attachmentPointer.downloadState(tx: transaction.asV2Read)
             let pointer = StoryItem.Attachment.Pointer(
                 reference: attachment.reference,
@@ -365,7 +366,7 @@ class StoryContextViewController: OWSViewController {
                 numberOfReplies: replyCount,
                 attachment: .pointer(pointer)
             )
-        } else if let attachmentStream = attachment.attachment.asStream() {
+        } else if let attachmentStream = attachment.attachment.asResourceStream() {
             let stream = StoryItem.Attachment.Stream(
                 attachment: .init(reference: attachment.reference, attachmentStream: attachmentStream)
             )
@@ -386,7 +387,7 @@ class StoryContextViewController: OWSViewController {
                 let attachment: StoryThumbnailView.Attachment
                 switch currentItem.attachment {
                 case .pointer(let pointer):
-                    attachment = .file(.init(reference: pointer.reference, attachment: pointer.attachment.attachment))
+                    attachment = .file(.init(reference: pointer.reference, attachment: pointer.attachment.resource))
                 case .stream(let stream):
                     attachment = .file(stream.attachment)
                 case .text(let textAttachment):

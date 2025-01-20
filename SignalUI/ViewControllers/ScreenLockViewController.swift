@@ -43,8 +43,8 @@ open class ScreenLockViewController: UIViewController {
             comment: "Label for button on lock screen that lets users unlock Signal."
         ),
         font: OWSFlatButton.fontForHeight(ScreenLockViewController.buttonHeight),
-        titleColor: UIColor.Signal.label,
-        backgroundColor: UIColor.Signal.tertiaryFill,
+        titleColor: Theme.accentBlueColor,
+        backgroundColor: .white,
         target: self,
         selector: #selector(unlockUIButtonTapped)
     )
@@ -52,7 +52,7 @@ open class ScreenLockViewController: UIViewController {
     open override func loadView() {
         super.loadView()
 
-        view.backgroundColor = UIColor.Signal.background
+        view.backgroundColor = Theme.launchScreenBackgroundColor
 
         view.addSubview(imageViewLogo)
         imageViewLogo.autoHCenterInSuperview()
@@ -64,6 +64,8 @@ open class ScreenLockViewController: UIViewController {
         buttonUnlockUI.autoPinBottomToSuperviewMargin(withInset: 65)
 
         updateUIWithState(.screenProtection, isLogoAtTop: false, animated: false)
+
+        NotificationCenter.default.addObserver(self, selector: #selector(themeDidChange), name: .themeDidChange, object: nil)
     }
 
     // The "screen blocking" window has three possible states:
@@ -117,6 +119,11 @@ open class ScreenLockViewController: UIViewController {
 
     open override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
         UIDevice.current.defaultSupportedOrientations
+    }
+
+    @objc
+    private func themeDidChange() {
+        view.backgroundColor = Theme.launchScreenBackgroundColor
     }
 
     @objc

@@ -242,7 +242,7 @@ public class StorageServiceUnknownFieldMigrator {
 
     /// Call this after every succesful write of a manifest to Storage Service.
     public static func didWriteToStorageService(tx: SDSAnyWriteTransaction) {
-        kvStore.setUInt(MigrationId.highestKnownValue, key: Keys.lastSuccessfulStorageServiceWrite, transaction: tx.asV2Write)
+        kvStore.setUInt(MigrationId.highestKnownValue, key: Keys.lastSuccessfulStorageServiceWrite, transaction: tx)
     }
 
     /// Given an array of every record from the latest synced manifest known to have unknown fields, runs any necessary migrations.
@@ -292,7 +292,7 @@ public class StorageServiceUnknownFieldMigrator {
         // locally.
         static let lastSuccessfulStorageServiceWrite = "lastSuccessfulStorageServiceWrite"
     }
-    private static var kvStore = KeyValueStore(collection: "StorageServiceUnknownFieldMigrator")
+    private static var kvStore = SDSKeyValueStore(collection: "StorageServiceUnknownFieldMigrator")
 
     private class Migrator {
         var migrations: [MigrationId: any StorageServiceUnknownFieldMigration] = [:]
@@ -330,7 +330,7 @@ public class StorageServiceUnknownFieldMigrator {
         forKey key: String,
         tx: SDSAnyReadTransaction
     ) -> LazyFilterSequence<[MigrationId]> {
-        guard let latestMigrationId = kvStore.getUInt(key, transaction: tx.asV2Read) else {
+        guard let latestMigrationId = kvStore.getUInt(key, transaction: tx) else {
             // We've never run any migrations!
             return MigrationId.allCases.lazy.filter { _ in true }
         }
@@ -366,7 +366,7 @@ public class StorageServiceUnknownFieldMigrator {
             doMergeUnknownFields(records: records, migration: migration)
         }
 
-        kvStore.setUInt(MigrationId.highestKnownValue, key: Keys.lastRunUnknownFieldsMerge, transaction: tx.asV2Write)
+        kvStore.setUInt(MigrationId.highestKnownValue, key: Keys.lastRunUnknownFieldsMerge, transaction: tx)
     }
 
     private static func _interceptRemoteManifestBeforeMerging<RecordType: MigrateableStorageServiceRecordType>(

@@ -68,6 +68,7 @@ public actor ProfileFetcherImpl: ProfileFetcher {
 
     public init(
         db: any DB,
+        deleteForMeSyncMessageSettingsStore: any DeleteForMeSyncMessageSettingsStore,
         disappearingMessagesConfigurationStore: any DisappearingMessagesConfigurationStore,
         identityManager: any OWSIdentityManager,
         paymentsHelper: any PaymentsHelper,
@@ -76,8 +77,6 @@ public actor ProfileFetcherImpl: ProfileFetcher {
         recipientDatabaseTable: any RecipientDatabaseTable,
         recipientManager: any SignalRecipientManager,
         recipientMerger: any RecipientMerger,
-        storageServiceRecordIkmCapabilityStore: any StorageServiceRecordIkmCapabilityStore,
-        storageServiceRecordIkmMigrator: any StorageServiceRecordIkmMigrator,
         syncManager: any SyncManagerProtocol,
         tsAccountManager: any TSAccountManager,
         udManager: any OWSUDManager,
@@ -90,6 +89,7 @@ public actor ProfileFetcherImpl: ProfileFetcher {
                 serviceId: serviceId,
                 authedAccount: authedAccount,
                 db: db,
+                deleteForMeSyncMessageSettingsStore: deleteForMeSyncMessageSettingsStore,
                 disappearingMessagesConfigurationStore: disappearingMessagesConfigurationStore,
                 identityManager: identityManager,
                 paymentsHelper: paymentsHelper,
@@ -97,8 +97,6 @@ public actor ProfileFetcherImpl: ProfileFetcher {
                 recipientDatabaseTable: recipientDatabaseTable,
                 recipientManager: recipientManager,
                 recipientMerger: recipientMerger,
-                storageServiceRecordIkmCapabilityStore: storageServiceRecordIkmCapabilityStore,
-                storageServiceRecordIkmMigrator: storageServiceRecordIkmMigrator,
                 syncManager: syncManager,
                 tsAccountManager: tsAccountManager,
                 udManager: udManager,

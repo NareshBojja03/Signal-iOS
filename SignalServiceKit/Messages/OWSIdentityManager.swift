@@ -213,6 +213,7 @@ public class OWSIdentityManagerImpl: OWSIdentityManager {
         aciProtocolStore: SignalProtocolStore,
         appReadiness: AppReadiness,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         messageSenderJobQueue: MessageSenderJobQueue,
         networkManager: NetworkManager,
         notificationPresenter: any NotificationPresenter,
@@ -229,17 +230,17 @@ public class OWSIdentityManagerImpl: OWSIdentityManager {
         self.messageSenderJobQueue = messageSenderJobQueue
         self.networkManager = networkManager
         self.notificationPresenter = notificationPresenter
-        self.ownIdentityKeyValueStore = KeyValueStore(
+        self.ownIdentityKeyValueStore = keyValueStoreFactory.keyValueStore(
             collection: "TSStorageManagerIdentityKeyStoreCollection"
         )
         self.pniProtocolStore = pniProtocolStore
-        self.queuedVerificationStateSyncMessagesKeyValueStore = KeyValueStore(
+        self.queuedVerificationStateSyncMessagesKeyValueStore = keyValueStoreFactory.keyValueStore(
             collection: "OWSIdentityManager_QueuedVerificationStateSyncMessages"
         )
         self.recipientFetcher = recipientFetcher
         self.recipientIdFinder = recipientIdFinder
         self.schedulers = schedulers
-        self.shareMyPhoneNumberStore = KeyValueStore(
+        self.shareMyPhoneNumberStore = keyValueStoreFactory.keyValueStore(
             collection: "OWSIdentityManager.shareMyPhoneNumberStore"
         )
         self.storageServiceManager = storageServiceManager
@@ -304,7 +305,7 @@ public class OWSIdentityManagerImpl: OWSIdentityManager {
     // MARK: - Local Identity
 
     public func identityKeyPair(for identity: OWSIdentity, tx: DBReadTransaction) -> ECKeyPair? {
-        return ownIdentityKeyValueStore.getObject(identity.persistenceKey, ofClass: ECKeyPair.self, transaction: tx)
+        return ownIdentityKeyValueStore.getObject(forKey: identity.persistenceKey, transaction: tx) as? ECKeyPair
     }
 
     public func setIdentityKeyPair(_ keyPair: ECKeyPair?, for identity: OWSIdentity, tx: DBWriteTransaction) {
@@ -616,31 +617,27 @@ public class OWSIdentityManagerImpl: OWSIdentityManager {
         localThread: TSThread,
         tx: DBReadTransaction
     ) -> OWSVerificationStateSyncMessage? {
-        let value: Any? = queuedVerificationStateSyncMessagesKeyValueStore.getObject(
-            key,
-            ofClasses: [NSNumber.self, NSString.self, SignalServiceAddress.self],
-            transaction: tx
-        )
-        guard let value else {
+        guard let value = queuedVerificationStateSyncMessagesKeyValueStore.getObject(forKey: key, transaction: tx) else {
             return nil
         }
         let recipientUniqueId: RecipientUniqueId
         switch value {
-        case let numberValue as NSNumber:
-            guard numberValue.boolValue else {
+        case let value as Bool:
+            guard value else {
                 return nil
             }
             recipientUniqueId = key
         case is SignalServiceAddress:
             recipientUniqueId = key
-        case let stringValue as NSString:
+        case let value as String:
             // Previously, we stored phone numbers in this KV store.
-            let address = SignalServiceAddress.legacyAddress(serviceId: nil, phoneNumber: stringValue as String)
+            let address = SignalServiceAddress.legacyAddress(serviceId: nil, phoneNumber: value)
             guard let recipientUniqueId_ = try? recipientIdFinder.recipientUniqueId(for: address, tx: tx)?.get() else {
                 return nil
             }
             recipientUniqueId = recipientUniqueId_
         default:
+            owsFailDebug("Invalid object: \(type(of: value))")
             return nil
         }
 

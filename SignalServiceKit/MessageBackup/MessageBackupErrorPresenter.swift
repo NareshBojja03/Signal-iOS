@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 //
 
-public import LibSignalClient
-
 public protocol MessageBackupErrorPresenterFactory {
 
     func build(
+        appReadiness: AppReadiness,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         tsAccountManager: TSAccountManager
     ) -> MessageBackupErrorPresenter
 }
@@ -21,14 +21,8 @@ public protocol MessageBackupErrorPresenter {
     /// We only care to hold onto the latest set of backup errors.
     func persistErrors(_ errors: [MessageBackup.CollapsedErrorLog], tx: DBWriteTransaction)
 
-    /// Persist a validation error for future display.
-    /// We persist because display may be deferred until certain UI actions occur (finishing registration)
-    /// during which time the app may be interrupted.
-    /// We only care to hold onto the latest validation error.
-    func persistValidationError(_ error: MessageBackupValidationError) async
-
-    /// Present over the current view controller; calls completion when presentation has finished.
-    func presentOverTopmostViewController(completion: @escaping () -> Void)
+    /// Force presentation during registration; calls completion when presentation has finished.
+    func forcePresentDuringRegistration(completion: @escaping () -> Void)
 }
 
 public class NoOpMessageBackupErrorPresenterFactory: MessageBackupErrorPresenterFactory {
@@ -36,7 +30,9 @@ public class NoOpMessageBackupErrorPresenterFactory: MessageBackupErrorPresenter
     public init() {}
 
     public func build(
+        appReadiness: AppReadiness,
         db: any DB,
+        keyValueStoreFactory: KeyValueStoreFactory,
         tsAccountManager: TSAccountManager
     ) -> MessageBackupErrorPresenter {
         return NoOpMessageBackupErrorPresenter()
@@ -51,11 +47,7 @@ public class NoOpMessageBackupErrorPresenter: MessageBackupErrorPresenter {
         // do nothing
     }
 
-    public func persistValidationError(_ error: MessageBackupValidationError) async {
-        // do nothing
-    }
-
-    public func presentOverTopmostViewController(completion: @escaping () -> Void) {
+    public func forcePresentDuringRegistration(completion: @escaping () -> Void) {
         // do nothing
     }
 }

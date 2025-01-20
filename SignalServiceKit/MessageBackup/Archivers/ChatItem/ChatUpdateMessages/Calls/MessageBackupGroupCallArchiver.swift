@@ -73,14 +73,7 @@ final class MessageBackupGroupCallArchiver {
             case .read: true
             case .unread: false
             }
-            if associatedCallRecord.callEndedTimestamp > 0 {
-                groupCallUpdate.endedCallTimestamp = associatedCallRecord.callEndedTimestamp
-            }
-        } else {
-            /// This property is non-optional, but we only track it for calls
-            /// with an `associatedCallRecord`. For those without, mark them as
-            /// read.
-            groupCallUpdate.read = true
+            groupCallUpdate.endedCallTimestamp = associatedCallRecord.callEndedTimestamp
         }
 
         if let ringerAci = associatedCallRecord?.groupCallRingerAci {
@@ -154,14 +147,11 @@ final class MessageBackupGroupCallArchiver {
             thread: groupThread,
             sentAtTimestamp: chatItem.dateSent
         )
-
         do {
             try interactionStore.insert(
                 groupCallInteraction,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                startedCallAci: startedCallAci,
-                wasRead: groupCall.read,
                 context: context
             )
         } catch let error {
@@ -213,32 +203,26 @@ final class MessageBackupGroupCallArchiver {
                 groupCallRingerAci = nil
             }
 
-            let callRecord: CallRecord
-            do {
-                callRecord = try groupCallRecordManager.createGroupCallRecord(
-                    callId: groupCall.callID,
-                    groupCallInteraction: groupCallInteraction,
-                    groupCallInteractionRowId: groupCallInteraction.sqliteRowId!,
-                    groupThreadRowId: chatThread.threadRowId,
-                    callDirection: callDirection,
-                    groupCallStatus: callStatus,
-                    groupCallRingerAci: groupCallRingerAci,
-                    callEventTimestamp: groupCall.startedCallTimestamp,
-                    shouldSendSyncMessage: false,
-                    tx: context.tx
-                )
-                if groupCall.hasEndedCallTimestamp {
-                    try callRecordStore.updateCallEndedTimestamp(
-                        callRecord: callRecord,
-                        callEndedTimestamp: groupCall.endedCallTimestamp,
-                        tx: context.tx
-                    )
-                }
-                if groupCall.read {
-                    try callRecordStore.markAsRead(callRecord: callRecord, tx: context.tx)
-                }
-            } catch {
-                return .messageFailure([.restoreFrameError(.databaseInsertionFailed(error), chatItem.id)])
+            let callRecord = groupCallRecordManager.createGroupCallRecord(
+                callId: groupCall.callID,
+                groupCallInteraction: groupCallInteraction,
+                groupCallInteractionRowId: groupCallInteraction.sqliteRowId!,
+                groupThreadRowId: chatThread.threadRowId,
+                callDirection: callDirection,
+                groupCallStatus: callStatus,
+                groupCallRingerAci: groupCallRingerAci,
+                callEventTimestamp: groupCall.startedCallTimestamp,
+                shouldSendSyncMessage: false,
+                tx: context.tx
+            )
+            callRecordStore.updateCallEndedTimestamp(
+                callRecord: callRecord,
+                callEndedTimestamp: groupCall.endedCallTimestamp,
+                tx: context.tx
+            )
+
+            if groupCall.read {
+                callRecordStore.markAsRead(callRecord: callRecord, tx: context.tx)
             }
         }
 
@@ -298,7 +282,7 @@ private extension MessageBackup.RecipientRestoringContext {
         case .contact(let contactAddress):
             guard let aci = contactAddress.aci else { fallthrough }
             return .found(aci)
-        case .group, .distributionList, .releaseNotesChannel, .callLink:
+        case .group, .distributionList, .releaseNotesChannel:
             return .missing(.restoreFrameError(
                 .invalidProtoData(.groupCallRecipientIdNotAnAci(recipientId)),
                 chatItemId

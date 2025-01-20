@@ -14,7 +14,7 @@ public enum AudioWaveformError: Error {
 public protocol AudioWaveformManager {
 
     func audioWaveform(
-        forAttachment attachment: AttachmentStream,
+        forAttachment attachment: TSResourceStream,
         highPriority: Bool
     ) -> Task<AudioWaveform, Error>
 

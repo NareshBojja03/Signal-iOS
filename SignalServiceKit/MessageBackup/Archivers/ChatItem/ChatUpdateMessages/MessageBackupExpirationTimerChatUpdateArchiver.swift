@@ -19,16 +19,13 @@ final class MessageBackupExpirationTimerChatUpdateArchiver {
     private typealias RestoreFrameError = MessageBackup.RestoreFrameError<MessageBackup.ChatItemId>
 
     private let contactManager: MessageBackup.Shims.ContactManager
-    private let groupUpdateArchiver: MessageBackupGroupUpdateMessageArchiver
     private let interactionStore: MessageBackupInteractionStore
 
     init(
         contactManager: MessageBackup.Shims.ContactManager,
-        groupUpdateArchiver: MessageBackupGroupUpdateMessageArchiver,
         interactionStore: MessageBackupInteractionStore
     ) {
         self.contactManager = contactManager
-        self.groupUpdateArchiver = groupUpdateArchiver
         self.interactionStore = interactionStore
     }
 
@@ -36,7 +33,7 @@ final class MessageBackupExpirationTimerChatUpdateArchiver {
 
     func archiveExpirationTimerChatUpdate(
         infoMessage: TSInfoMessage,
-        threadInfo: MessageBackup.ChatArchivingContext.CachedThreadInfo,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         func messageFailure(
@@ -53,9 +50,9 @@ final class MessageBackupExpirationTimerChatUpdateArchiver {
         guard let dmUpdateInfoMessage = infoMessage as? OWSDisappearingConfigurationUpdateInfoMessage else {
             return messageFailure(.disappearingMessageConfigUpdateNotExpectedSDSRecordType)
         }
-
-        // If the "remote name" is `nil`, the author is the local user.
-        let wasAuthoredByLocalUser = dmUpdateInfoMessage.createdByRemoteName == nil
+        guard let contactThread = thread as? TSContactThread else {
+            return messageFailure(.disappearingMessageConfigUpdateNotInContactThread)
+        }
 
         let chatUpdateExpiresInMs: UInt64
         if dmUpdateInfoMessage.configurationIsEnabled {
@@ -64,27 +61,12 @@ final class MessageBackupExpirationTimerChatUpdateArchiver {
             chatUpdateExpiresInMs = 0
         }
 
-        let recipientAddress: MessageBackup.ContactAddress?
-        switch threadInfo {
-        case .contactThread(let contactAddress):
-            recipientAddress = contactAddress
-        case .groupThread:
-            // This may have been a DM timer update in a gv1 group that became a gv2 group;
-            // we can't tell anymore if this group was ever gv1 so just assume so
-            // and swizzle this to a gv2 timer update for backup purposes.
-            return swizzleGV1ExpirationTimerChatUpdateToGV2Update(
-                dmUpdateInfoMessage: dmUpdateInfoMessage,
-                wasAuthoredByLocalUser: wasAuthoredByLocalUser,
-                updatedExpiresInMs: chatUpdateExpiresInMs,
-                context: context
-            )
-        }
-
         let chatUpdateAuthorRecipientId: MessageBackup.RecipientId
-        if wasAuthoredByLocalUser {
+        if dmUpdateInfoMessage.createdByRemoteName == nil {
+            /// If the "remote name" is `nil`, the author is the local user.
             chatUpdateAuthorRecipientId = context.recipientContext.localRecipientId
         } else {
-            guard let recipientAddress else {
+            guard let recipientAddress = contactThread.contactAddress.asSingleServiceIdBackupAddress() else {
                 return messageFailure(.disappearingMessageConfigUpdateMissingAuthor)
             }
             guard let recipientId = context.recipientContext[.contact(recipientAddress)] else {
@@ -112,34 +94,6 @@ final class MessageBackupExpirationTimerChatUpdateArchiver {
         )
 
         return .success(interactionArchiveDetails)
-    }
-
-    /// Its possible to have had a gv1 group that had an expiration timer
-    /// update, then migrate the group to gv2. We need to swizzle that
-    /// OWSDisappearingConfigurationUpdateInfoMessage into a group update proto.
-    private func swizzleGV1ExpirationTimerChatUpdateToGV2Update(
-        dmUpdateInfoMessage: OWSDisappearingConfigurationUpdateInfoMessage,
-        wasAuthoredByLocalUser: Bool,
-        updatedExpiresInMs: UInt64,
-        context: MessageBackup.ChatArchivingContext
-    ) -> ArchiveChatUpdateMessageResult {
-
-        let swizzledGroupUpdateItem: TSInfoMessage.PersistableGroupUpdateItem
-        if dmUpdateInfoMessage.configurationIsEnabled {
-            swizzledGroupUpdateItem = wasAuthoredByLocalUser
-                ? .disappearingMessagesEnabledByLocalUser(durationMs: updatedExpiresInMs)
-                : .disappearingMessagesEnabledByUnknownUser(durationMs: updatedExpiresInMs)
-        } else {
-            swizzledGroupUpdateItem = wasAuthoredByLocalUser
-                ? .disappearingMessagesDisabledByLocalUser
-                : .disappearingMessagesDisabledByUnknownUser
-        }
-
-        return groupUpdateArchiver.archiveGroupUpdateItems(
-            [swizzledGroupUpdateItem],
-            for: dmUpdateInfoMessage,
-            context: context
-        )
     }
 
     // MARK: -
@@ -190,17 +144,11 @@ final class MessageBackupExpirationTimerChatUpdateArchiver {
             configurationDurationSeconds: UInt32(clamping: expiresInSeconds), // Safe to clamp, we checked for overflow above
             createdByRemoteName: createdByRemoteName
         )
-
-        guard let directionalDetails = chatItem.directionalDetails else {
-            return invalidProtoData(.chatItemMissingDirectionalDetails)
-        }
-
         do {
             try interactionStore.insert(
                 dmUpdateInfoMessage,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                directionalDetails: directionalDetails,
                 context: context
             )
         } catch let error {

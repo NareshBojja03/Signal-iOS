@@ -188,6 +188,9 @@ public class OWSContact: MTLModel {
         }
 
         let e164PhoneNumbers: [String] = phoneNumbers.compactMap { phoneNumber in
+            if let parsedPhoneNumber = SSKEnvironment.shared.phoneNumberUtilRef.parseE164(phoneNumber.phoneNumber) {
+                return parsedPhoneNumber.e164
+            }
             if let parsedPhoneNumber = SSKEnvironment.shared.phoneNumberUtilRef.parsePhoneNumber(userSpecifiedText: phoneNumber.phoneNumber) {
                 return parsedPhoneNumber.e164
             }

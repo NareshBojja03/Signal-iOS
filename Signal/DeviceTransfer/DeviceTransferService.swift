@@ -90,10 +90,18 @@ class DeviceTransferService: NSObject {
         set { serialQueue.sync { _transferState = newValue } }
     }
 
-    private let sleepBlockObject = DeviceSleepManager.BlockObject(blockReason: "device transfer")
-
     private(set) var identity: SecIdentity?
-    private(set) var session: MCSession?
+    private(set) var session: MCSession? {
+        didSet {
+            if let oldValue = oldValue {
+                DeviceSleepManager.shared.removeBlock(blockObject: oldValue)
+            }
+
+            if let session = session {
+                DeviceSleepManager.shared.addBlock(blockObject: session)
+            }
+        }
+    }
     private(set) lazy var peerId = MCPeerID(displayName: UUID().uuidString)
 
     private lazy var newDeviceServiceBrowser: MCNearbyServiceBrowser = {
@@ -146,8 +154,6 @@ class DeviceTransferService: NSObject {
         let session = MCSession(peer: peerId, securityIdentity: [identity], encryptionPreference: .required)
         session.delegate = self
         self.session = session
-
-        DeviceSleepManager.shared.addBlock(blockObject: sleepBlockObject)
 
         newDeviceServiceAdvertiser.startAdvertisingPeer()
 
@@ -212,8 +218,6 @@ class DeviceTransferService: NSObject {
         session.delegate = self
         self.session = session
 
-        DeviceSleepManager.shared.addBlock(blockObject: sleepBlockObject)
-
         transferState = .outgoing(
             newDevicePeerId: peerId,
             newDeviceCertificateHash: certificateHash,
@@ -263,7 +267,7 @@ class DeviceTransferService: NSObject {
     func stopTransfer(notifyRegState: Bool = true) {
         switch transferState {
         case .outgoing:
-            sendTask?.cancel()
+            DeviceTransferOperation.cancelAllOperations()
         case .incoming:
             newDeviceServiceAdvertiser.stopAdvertisingPeer()
         case .idle:
@@ -273,8 +277,6 @@ class DeviceTransferService: NSObject {
         session?.disconnect()
         session = nil
         identity = nil
-
-        DeviceSleepManager.shared.removeBlock(blockObject: sleepBlockObject)
 
         // It is possible that we get here because the app was backgrounded
         // after a failed launch. In that case, `tsAccountManager` will not be
@@ -317,21 +319,7 @@ class DeviceTransferService: NSObject {
 
     // MARK: - Sending
 
-    private var sendTask: Task<Void, any Swift.Error>?
     func sendAllFiles() throws {
-        self.sendTask = Task {
-            do {
-                try await self._sendAllFiles()
-            } catch is CancellationError {
-                // Nothing to do.
-            } catch {
-                self.failTransfer(.assertion, "\(error)")
-            }
-        }
-    }
-
-    @MainActor
-    private func _sendAllFiles() async throws {
         guard case .outgoing(let newDevicePeerId, _, let manifest, _, _) = transferState else {
             throw OWSAssertionError("Attempted to send files while no transfer in progress")
         }
@@ -340,53 +328,61 @@ class DeviceTransferService: NSObject {
             throw OWSAssertionError("Manifest unexpectedly missing database")
         }
 
+        var promises = [Promise<Void>]()
+
         struct DatabaseCopy {
             let db: DeviceTransferProtoFile
             let wal: DeviceTransferProtoFile
         }
 
-        try await withThrowingTaskGroup(of: Void.self) { taskGroup in
-            taskGroup.addTask {
-                // Make a copy of the database files within a write transaction so we can be confident
-                // they aren't mutated during the copy. We then transfer these copies.
-                let dbCopy = try await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { _ in
-                    do {
-                        let dbCopy = try Self.makeLocalCopy(databaseFile: database.database)
-                        let walCopy = try Self.makeLocalCopy(databaseFile: database.wal)
-                        return DatabaseCopy(db: dbCopy, wal: walCopy)
-                    } catch {
-                        Logger.error("Failed to copy database files!")
-                        throw error
+        let (databaseCopyPromise, databaseCopyFuture) = Promise<DatabaseCopy>.pending()
+
+        let databaseTransferPromise = databaseCopyPromise.then { dbCopy in
+            return Promise.when(fulfilled: [
+                DeviceTransferOperation.scheduleTransfer(file: dbCopy.db, priority: .high).ensure {
+                    // Delete the copy (but don't block on it if it fails).
+                    if let copyURL = try? Self.urlForCopy(databaseFile: dbCopy.db) {
+                        try? OWSFileSystem.deleteFile(url: copyURL)
                     }
-                }
-                defer {
-                    for databaseFile in [dbCopy.db, dbCopy.wal] {
-                        if let copyUrl = try? Self.urlForCopy(databaseFile: databaseFile) {
-                            try? OWSFileSystem.deleteFile(url: copyUrl)
-                        }
+                },
+                DeviceTransferOperation.scheduleTransfer(file: dbCopy.wal, priority: .high).ensure {
+                    // Delete the copy (but don't block on it if it fails).
+                    if let copyURL = try? Self.urlForCopy(databaseFile: dbCopy.wal) {
+                        try? OWSFileSystem.deleteFile(url: copyURL)
                     }
-                }
-                for databaseFile in [dbCopy.db, dbCopy.wal] {
-                    try await DeviceTransferOperation(file: databaseFile).run()
-                }
-            }
-            for (index, file) in manifest.files.enumerated() {
-                if index >= 10 {
-                    // If we've already kicked off 10, wait for one to finish before starting the next.
-                    try await taskGroup.next()
-                }
-                taskGroup.addTask {
-                    try await DeviceTransferOperation(file: file).run()
-                }
-            }
-            // Make sure to wait for whatever's left at the end.
-            try await taskGroup.waitForAll()
+                },
+            ])
         }
 
-        await DependenciesBridge.shared.db.awaitableWrite { tx in
-            DependenciesBridge.shared.registrationStateChangeManager.setWasTransferred(tx: tx)
+        promises.append(databaseTransferPromise)
+
+        // Make a copy of the database files within a write transaction so we can be confident
+        // they aren't mutated during the copy. We then transfer these copies.
+        SSKEnvironment.shared.databaseStorageRef.asyncWrite { _ in
+            do {
+                let dbCopy = try Self.makeLocalCopy(databaseFile: database.database)
+                let walCopy = try Self.makeLocalCopy(databaseFile: database.wal)
+                databaseCopyFuture.resolve(.init(db: dbCopy, wal: walCopy))
+            } catch {
+                Logger.error("Failed to copy database files!")
+                databaseCopyFuture.reject(error)
+            }
         }
-        try self.sendDoneMessage(to: newDevicePeerId)
+
+        for file in manifest.files {
+            promises.append(DeviceTransferOperation.scheduleTransfer(file: file))
+        }
+
+        Promise.when(fulfilled: promises).done {
+            DependenciesBridge.shared.db.write { tx in
+                DependenciesBridge.shared.registrationStateChangeManager.setWasTransferred(tx: tx)
+            }
+            try self.sendDoneMessage(to: newDevicePeerId)
+        }.catch { error in
+            if !(error is DeviceTransferOperation.CancelError) {
+                self.failTransfer(.assertion, "\(error)")
+            }
+        }
     }
 
     private static let dbCopyFilename = "db_copy_for_transfer"

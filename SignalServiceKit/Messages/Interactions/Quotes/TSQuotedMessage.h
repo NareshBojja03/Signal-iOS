@@ -14,6 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
 @class SDSAnyWriteTransaction;
 @class SSKProtoDataMessage;
 @class SignalServiceAddress;
+@class TSAttachment;
+@class TSAttachmentPointer;
+@class TSAttachmentStream;
 @class TSMessage;
 @class TSQuotedMessage;
 @class TSThread;
@@ -30,9 +33,29 @@ typedef NS_ENUM(NSUInteger, TSQuotedMessageContentSource) {
     TSQuotedMessageContentSourceStory
 };
 
+/// Indicates the sort of attachment ID included in the attachment info
+typedef NS_ENUM(NSUInteger, OWSAttachmentInfoReference) {
+    OWSAttachmentInfoReferenceUnset = 0,
+    /// An original attachment for a quoted reply draft. This needs to be thumbnailed before it is sent.
+    OWSAttachmentInfoReferenceOriginalForSend = 1,
+    /// A reference to an original attachment in a quoted reply we've received. If this ever manifests as a stream
+    /// we should clone it as a private thumbnail
+    OWSAttachmentInfoReferenceOriginal,
+    /// A private thumbnail that we (the quoted reply) have ownership of
+    OWSAttachmentInfoReferenceThumbnail,
+    /// An untrusted pointer to a thumbnail. This was included in the proto of a message we've received.
+    OWSAttachmentInfoReferenceUntrustedPointer,
+    /// A v2 attachment; the reference is kept in the AttachmentReferences table.
+    /// TODO: eliminate other reference types
+    OWSAttachmentInfoReferenceV2,
+};
+
 @interface OWSAttachmentInfo : MTLModel
 @property (class, nonatomic, readonly) NSUInteger currentSchemaVersion;
 @property (nonatomic, readonly) NSUInteger schemaVersion;
+
+@property (nonatomic) OWSAttachmentInfoReference attachmentType;
+@property (nonatomic) NSString *rawAttachmentId;
 
 /// rawAttachmentId, above, is Mantel-decoded and transforms nil values into empty strings
 /// (Mantle provides "reasonable" defaults). This undoes that; empty string values are reverted to nil.
@@ -68,16 +91,24 @@ typedef NS_ENUM(NSUInteger, TSQuotedMessageContentSource) {
 + (instancetype)stubWithOriginalAttachmentMimeType:(NSString *)originalAttachmentMimeType
                   originalAttachmentSourceFilename:(NSString *_Nullable)originalAttachmentSourceFilename;
 
-+ (instancetype)forThumbnailReferenceWithOriginalAttachmentMimeType:(NSString *)originalAttachmentMimeType
-                                   originalAttachmentSourceFilename:
-                                       (NSString *_Nullable)originalAttachmentSourceFilename;
++ (instancetype)forV2ThumbnailReferenceWithOriginalAttachmentMimeType:(NSString *)originalAttachmentMimeType
+                                     originalAttachmentSourceFilename:
+                                         (NSString *_Nullable)originalAttachmentSourceFilename;
+
++ (instancetype)withLegacyAttachmentId:(NSString *)attachmentId
+                                ofType:(OWSAttachmentInfoReference)attachmentType
+            originalAttachmentMimeType:(NSString *)originalAttachmentMimeType
+      originalAttachmentSourceFilename:(NSString *_Nullable)originalAttachmentSourceFilename;
 
 #if TESTABLE_BUILD
 /// Do not use this constructor directly! Instead, use the static constructors.
+///
 /// Legacy data may contain a `nil` content type, so this constructor is exposed
 /// to facilitate testing the deserialization of that legacy data.
-+ (instancetype)stubWithNullableOriginalAttachmentMimeType:(NSString *_Nullable)originalAttachmentMimeType
-                          originalAttachmentSourceFilename:(NSString *_Nullable)originalAttachmentSourceFilename;
+- (instancetype)initWithAttachmentId:(NSString *_Nullable)attachmentId
+                              ofType:(OWSAttachmentInfoReference)attachmentType
+          originalAttachmentMimeType:(NSString *_Nullable)originalAttachmentMimeType
+    originalAttachmentSourceFilename:(NSString *_Nullable)originalAttachmentSourceFilename;
 #endif
 
 @end
@@ -95,18 +126,12 @@ typedef NS_ENUM(NSUInteger, TSQuotedMessageContentSource) {
 @property (nonatomic, readonly, nullable) MessageBodyRanges *bodyRanges;
 
 @property (nonatomic, readonly) BOOL isGiftBadge;
-/// If we found the target message at receive time (TSQuotedMessageContentSourceLocal),
-/// true if that target message was view once.
-/// If we did not find the target message (TSQuotedMessageContentSourceRemote), will always
-/// be false because we do not know if the target message was view-once. In these cases, we
-/// take the body off the Quote proto we receive.
-/// At send time, we always set the body of the outgoing Quote proto as the localized string
-/// that indicates this was a reply to a view-once message.
-@property (nonatomic, readonly) BOOL isTargetMessageViewOnce;
 
 #pragma mark - Attachments
 
 - (nullable OWSAttachmentInfo *)attachmentInfo;
+
+- (void)setLegacyThumbnailAttachmentStream:(TSAttachment *)thumbnailAttachmentStream;
 
 + (instancetype)new NS_UNAVAILABLE;
 - (instancetype)init NS_UNAVAILABLE;
@@ -117,8 +142,7 @@ typedef NS_ENUM(NSUInteger, TSQuotedMessageContentSource) {
                              body:(nullable NSString *)body
                        bodyRanges:(nullable MessageBodyRanges *)bodyRanges
        quotedAttachmentForSending:(nullable OWSAttachmentInfo *)attachmentInfo
-                      isGiftBadge:(BOOL)isGiftBadge
-          isTargetMessageViewOnce:(BOOL)isTargetMessageViewOnce;
+                      isGiftBadge:(BOOL)isGiftBadge;
 
 // used when receiving quoted messages. Do not call directly outside AttachmentManager.
 - (instancetype)initWithTimestamp:(uint64_t)timestamp
@@ -127,8 +151,7 @@ typedef NS_ENUM(NSUInteger, TSQuotedMessageContentSource) {
                        bodyRanges:(nullable MessageBodyRanges *)bodyRanges
                        bodySource:(TSQuotedMessageContentSource)bodySource
      receivedQuotedAttachmentInfo:(nullable OWSAttachmentInfo *)attachmentInfo
-                      isGiftBadge:(BOOL)isGiftBadge
-          isTargetMessageViewOnce:(BOOL)isTargetMessageViewOnce;
+                      isGiftBadge:(BOOL)isGiftBadge;
 
 // used when restoring quoted messages from backups
 + (instancetype)quotedMessageWithTargetMessageTimestamp:(nullable NSNumber *)timestamp
@@ -137,8 +160,7 @@ typedef NS_ENUM(NSUInteger, TSQuotedMessageContentSource) {
                                              bodyRanges:(nullable MessageBodyRanges *)bodyRanges
                                              bodySource:(TSQuotedMessageContentSource)bodySource
                                    quotedAttachmentInfo:(nullable OWSAttachmentInfo *)attachmentInfo
-                                            isGiftBadge:(BOOL)isGiftBadge
-                                isTargetMessageViewOnce:(BOOL)isTargetMessageViewOnce;
+                                            isGiftBadge:(BOOL)isGiftBadge;
 
 @end
 

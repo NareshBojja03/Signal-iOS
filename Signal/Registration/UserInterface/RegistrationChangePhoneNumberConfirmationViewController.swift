@@ -169,14 +169,13 @@ class RegistrationChangePhoneNumberConfirmationViewController: OWSViewController
             phoneNumberStack
         ])
 
-        let now = Date()
-        if let rateLimitedError = state.rateLimitedError, !rateLimitedError.canSubmit(e164: self.state.newE164, dateProvider: { now }) {
+        if let warningLabelText = state.rateLimitedError?.warningLabelText(e164: self.state.newE164, dateProvider: Date.provider) {
             let warningLabel = UILabel()
             warningLabel.textColor = .ows_accentRed
             warningLabel.numberOfLines = 0
             warningLabel.font = UIFont.dynamicTypeSubheadlineClamped
             warningLabel.accessibilityIdentifier = "registration.phonenumber.validationWarningLabel"
-            warningLabel.text = rateLimitedError.warningLabelText(dateProvider: { now })
+            warningLabel.text = warningLabelText
 
             rootView.addArrangedSubview(UIView.spacer(withHeight: 12))
             rootView.addArrangedSubview(warningLabel)

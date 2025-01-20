@@ -275,7 +275,11 @@ public class CLVLoadCoordinator {
             lastViewInfo: CLVViewInfo,
             transaction: SDSAnyReadTransaction
         ) -> CLVLoadInfo {
-            let inboxFilter = inboxFilter ?? loadCoordinator.filterStore.inboxFilter(transaction: transaction.asV2Read) ?? .none
+            let inboxFilter = if FeatureFlags.chatListFilter {
+                inboxFilter ?? loadCoordinator.filterStore.inboxFilter(transaction: transaction.asV2Read) ?? .none
+            } else {
+                InboxFilter.none
+            }
 
             let viewInfo = CLVViewInfo.build(
                 chatListMode: chatListMode,

@@ -22,8 +22,8 @@ struct UsernameEducationManagerImpl: UsernameEducationManager {
 
     private let keyValueStore: KeyValueStore
 
-    init() {
-        keyValueStore = KeyValueStore(collection: Constants.collectionName)
+    init(keyValueStoreFactory: KeyValueStoreFactory) {
+        keyValueStore = keyValueStoreFactory.keyValueStore(collection: Constants.collectionName)
     }
 
     func shouldShowUsernameEducation(tx: DBReadTransaction) -> Bool {

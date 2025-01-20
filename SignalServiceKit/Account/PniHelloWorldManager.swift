@@ -42,6 +42,7 @@ class PniHelloWorldManagerImpl: PniHelloWorldManager {
     init(
         database: any DB,
         identityManager: any OWSIdentityManager,
+        keyValueStoreFactory: KeyValueStoreFactory,
         networkManager: Shims.NetworkManager,
         pniDistributionParameterBuilder: PniDistributionParamaterBuilder,
         pniSignedPreKeyStore: SignalSignedPreKeyStore,
@@ -52,7 +53,7 @@ class PniHelloWorldManagerImpl: PniHelloWorldManager {
     ) {
         self.database = database
         self.identityManager = identityManager
-        self.keyValueStore = KeyValueStore(collection: StoreConstants.collectionName)
+        self.keyValueStore = keyValueStoreFactory.keyValueStore(collection: StoreConstants.collectionName)
         self.networkManager = networkManager
         self.pniDistributionParameterBuilder = pniDistributionParameterBuilder
         self.pniSignedPreKeyStore = pniSignedPreKeyStore

@@ -4,7 +4,6 @@
 //
 
 import CocoaLumberjack
-import SignalRingRTC
 import XCTest
 
 @testable import SignalServiceKit
@@ -14,6 +13,18 @@ final class ScrubbingLogFormatterTest: XCTestCase {
 
     private func format(_ input: String) -> String {
         return formatter.redactMessage(input)
+    }
+
+    func testAttachmentPathScrubbed() {
+        let testCases: [String] = [
+            "/Attachments/",
+            "/foo/bar/Attachments/abc123.txt",
+            "Something /foo/bar/Attachments/abc123.txt Something"
+        ]
+
+        for testCase in testCases {
+            XCTAssertEqual(format(testCase), "[USER_PATH]")
+        }
     }
 
     func testDataScrubbed_preformatted() {
@@ -355,46 +366,34 @@ final class ScrubbingLogFormatterTest: XCTestCase {
         for _ in (1...10) {
             let uuid = UUID().data.base64EncodedString()
             let result = format("My base64 UUID is \(uuid)")
-            XCTAssertEqual(result, "My base64 UUID is …\(uuid.suffix(5))")
+            XCTAssertEqual(result, "My base64 UUID is \(uuid.prefix(3))…")
         }
     }
 
     func testBase64UUIDsScrubbed_Specific() {
         let uuidString = "GW/VMbPjTiyr5cSoblKBmQ=="
         let result = format("My base64 UUID is \(uuidString)")
-        XCTAssertEqual(result, "My base64 UUID is …BmQ==")
+        XCTAssertEqual(result, "My base64 UUID is GW/…")
     }
 
     func testBase64UUIDsScrubbed_SpecificInURL() {
         var uuidString = "sdfssAFFDSAFdsFFsdaFfg=="
         var result = format("http://signal.org/\(uuidString)")
-        XCTAssertEqual(result, "http://signal.org/…Ffg==")
+        XCTAssertEqual(result, "http://signal.org/sdf…")
 
         // Do one with a leading / in itself.
         uuidString = "/dfssAFFDSAFdsFFsdaFfg=="
         result = format("http://signal.org/\(uuidString)")
-        XCTAssertEqual(result, "http://signal.org/…Ffg==")
+        XCTAssertEqual(result, "http://signal.org//df…")
     }
 
     func testBase64UUIDsScrubbed_dontScrubDifferentLengths() {
-        for byteLength in [15, 17, 1] {
+        for byteLength in [15, 17, 32, 1] {
             for _ in (1...10) {
-                let stringValue = Randomness.generateRandomBytes(UInt(byteLength)).base64EncodedString()
-                let result = format("My base64 UUID is not \(stringValue)")
-                XCTAssert(result.contains(stringValue), "Incorrectly redacted non UUID base64 string: \(result)")
+                let uuid = Data.secRngGenBytes(byteLength).base64EncodedString()
+                let result = format("My not base64 UUID is \(uuid)")
+                XCTAssert(result.contains(uuid), "Incorrectly redacted non base64 UUID string: \(result)")
             }
         }
-    }
-
-    func testBase64RoomId() {
-        let roomIdString = CallLinkRootKey.generate().deriveRoomId().base64EncodedString()
-        let result = format("The room is \(roomIdString)")
-        XCTAssertEqual(result, "The room is …\(roomIdString.suffix(4))")
-    }
-
-    func testHexRoomId() {
-        let roomIdString = CallLinkRootKey.generate().deriveRoomId().hexadecimalString
-        let result = format("The room is \(roomIdString)")
-        XCTAssertEqual(result, "The room is …\(roomIdString.suffix(3))")
     }
 }

@@ -251,7 +251,7 @@ extension DonateViewController {
                 }
             }
 
-            public var paymentMethodIfPaymentProcessing: DonationPaymentMethod? {
+            public var paymentProcessingWithPaymentMethod: DonationPaymentMethod? {
                 guard let subscription = currentSubscription else { return nil }
 
                 let subscriptionProcessing = subscription.isPaymentProcessing
@@ -259,14 +259,14 @@ extension DonateViewController {
 
                 if subscriptionProcessing || receiptCredentialRequestErrorProcessing {
                     guard
-                        let donationPaymentMethod = subscription.donationPaymentMethod
+                        let paymentMethod = subscription.paymentMethod
                             ?? receiptCredentialRequestError?.paymentMethod
                     else {
                         owsFailDebug("Missing payment method for processing subscription payment!")
                         return .applePay
                     }
 
-                    return donationPaymentMethod
+                    return paymentMethod
                 }
 
                 return nil

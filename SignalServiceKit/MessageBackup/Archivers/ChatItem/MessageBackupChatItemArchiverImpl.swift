@@ -65,7 +65,7 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
         backupAttachmentDownloadManager: backupAttachmentDownloadManager
     )
     private lazy var reactionArchiver = MessageBackupReactionArchiver(
-        reactionStore: MessageBackupReactionStore()
+        reactionStore: reactionStore
     )
     private lazy var contentsArchiver = MessageBackupTSMessageContentsArchiver(
         interactionStore: interactionStore,
@@ -110,26 +110,22 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
         func archiveInteraction(
             _ interaction: TSInteraction
         ) -> Bool {
-            var stop = false
-            autoreleasepool {
-                let result = self.archiveInteraction(
-                    interaction,
-                    stream: stream,
-                    context: context
-                )
-                switch result {
-                case .success:
-                    break
-                case .partialSuccess(let errors):
-                    partialFailures.append(contentsOf: errors)
-                case .completeFailure(let error):
-                    completeFailureError = error
-                    stop = true
-                    return
-                }
+            let result = self.archiveInteraction(
+                interaction,
+                stream: stream,
+                context: context
+            )
+            switch result {
+            case .success:
+                break
+            case .partialSuccess(let errors):
+                partialFailures.append(contentsOf: errors)
+            case .completeFailure(let error):
+                completeFailureError = error
+                return false
             }
 
-            return !stop
+            return true
         }
 
         do {
@@ -159,16 +155,10 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
     ) -> ArchiveMultiFrameResult {
         var partialErrors = [ArchiveFrameError]()
 
-        let chatId = context[interaction.uniqueThreadIdentifier]
-        let threadInfo = chatId.map { context[$0] } ?? nil
-
-        if context.gv1ThreadIds.contains(interaction.uniqueThreadIdentifier) {
-            /// We are knowingly dropping GV1 data from backups, so we'll skip
-            /// archiving any interactions for GV1 threads without errors.
-            return .success
-        }
-
-        guard let chatId, let threadInfo else {
+        guard
+            let chatId = context[interaction.uniqueThreadIdentifier],
+            let thread = context[chatId]
+        else {
             partialErrors.append(.archiveFrameError(
                 .referencedThreadIdMissing(interaction.uniqueThreadIdentifier),
                 interaction.uniqueInteractionId
@@ -176,22 +166,26 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
             return .partialSuccess(partialErrors)
         }
 
-        let archiveInteractionResult: MessageBackup.ArchiveInteractionResult<MessageBackup.InteractionArchiveDetails>
         if
-            let message = interaction as? TSMessage,
-            message.isGroupStoryReply
+            let groupThread = thread as? TSGroupThread,
+            groupThread.isGroupV1Thread
         {
-            // We skip group story reply messages, as stories
-            // aren't backed up so neither should their replies.
+            /// We are knowingly dropping GV1 data from backups, so we'll skip
+            /// archiving any interactions for GV1 threads without errors.
             return .success
-        } else if let incomingMessage = interaction as? TSIncomingMessage {
+        }
+
+        let archiveInteractionResult: MessageBackup.ArchiveInteractionResult<MessageBackup.InteractionArchiveDetails>
+        if let incomingMessage = interaction as? TSIncomingMessage {
             archiveInteractionResult = incomingMessageArchiver.archiveIncomingMessage(
                 incomingMessage,
+                thread: thread,
                 context: context
             )
         } else if let outgoingMessage = interaction as? TSOutgoingMessage {
             archiveInteractionResult = outgoingMessageArchiver.archiveOutgoingMessage(
                 outgoingMessage,
+                thread: thread,
                 context: context
             )
         } else if let individualCallInteraction = interaction as? TSCall {
@@ -202,17 +196,19 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
         } else if let groupCallInteraction = interaction as? OWSGroupCallMessage {
             archiveInteractionResult = chatUpdateMessageArchiver.archiveGroupCall(
                 groupCallInteraction,
+                thread: thread,
                 context: context
             )
         } else if let errorMessage = interaction as? TSErrorMessage {
             archiveInteractionResult = chatUpdateMessageArchiver.archiveErrorMessage(
                 errorMessage,
+                thread: thread,
                 context: context
             )
         } else if let infoMessage = interaction as? TSInfoMessage {
             archiveInteractionResult = chatUpdateMessageArchiver.archiveInfoMessage(
                 infoMessage,
-                threadInfo: threadInfo,
+                thread: thread,
                 context: context
             )
         } else {
@@ -239,23 +235,16 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
             return .completeFailure(error)
         }
 
-        switch context.backupPurpose {
-        case .deviceTransfer:
-            // We include soon-to expire messages for
-            // "device transfer" backups.
-            break
-        case .remoteBackup:
-            let minExpireTime = dateProvider().ows_millisecondsSince1970
-                + MessageBackup.Constants.minExpireTimerMs
-            if
-                let expireStartDate = details.expireStartDate,
-                let expiresInMs = details.expiresInMs,
-                expiresInMs > 0, // Only check expiration if `expiresInMs` is set to something interesting.
-                expireStartDate + expiresInMs < minExpireTime
-            {
-                // Skip this message, but count it as a success.
-                return .success
-            }
+        let minExpireTime = dateProvider().ows_millisecondsSince1970
+            + MessageBackup.Constants.minExpireTimerMs
+        if
+            let expireStartDate = details.expireStartDate,
+            let expiresInMs = details.expiresInMs,
+            expiresInMs > 0, // Only check expiration if `expiresInMs` is set to something interesting.
+            expireStartDate + expiresInMs < minExpireTime
+        {
+            // Skip this message, but count it as a success.
+            return .success
         }
 
         let chatItem = buildChatItem(
@@ -290,12 +279,8 @@ public class MessageBackupChatItemArchiverImpl: MessageBackupChatItemArchiver {
         chatItem.chatID = chatId.value
         chatItem.authorID = details.author.value
         chatItem.dateSent = details.dateCreated
-        if let expiresInMs = details.expiresInMs, expiresInMs > 0 {
-            if let expireStartDate = details.expireStartDate {
-                chatItem.expireStartDate = expireStartDate
-            }
-            chatItem.expiresInMs = expiresInMs
-        }
+        chatItem.expireStartDate = details.expireStartDate ?? 0
+        chatItem.expiresInMs = details.expiresInMs ?? 0
         chatItem.sms = details.isSmsPreviouslyRestoredFromBackup
         chatItem.item = details.chatItemType
         chatItem.directionalDetails = details.directionalDetails

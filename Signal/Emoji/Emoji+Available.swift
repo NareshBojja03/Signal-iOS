@@ -67,6 +67,8 @@ extension Emoji {
             }
         }
 
+        Logger.info("Warmed emoji availability cache with \(availableCache.lazy.filter { $0.value }.count) available emoji for iOS \(iosVersion)")
+
         Self.availableCache.set(availableCache)
     }
 

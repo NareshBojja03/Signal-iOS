@@ -24,17 +24,45 @@ extension MessageSender {
         }
     }
 
-    enum SenderKeyError: Error, IsRetryableProvider, UserErrorDescriptionProvider {
+    private enum SenderKeyError: Error, IsRetryableProvider, UserErrorDescriptionProvider {
         case invalidAuthHeader
         case invalidRecipient
         case deviceUpdate
         case staleDevices
         case oversizeMessage
+        case recipientSKDMFailed(Error)
 
         var isRetryableProvider: Bool { true }
 
+        var asSSKError: NSError {
+            let result: Error
+            switch self {
+            case let .recipientSKDMFailed(underlyingError):
+                result = underlyingError
+            case .invalidAuthHeader, .invalidRecipient, .oversizeMessage:
+                // For all of these error types, there's a chance that a fanout send may be successful. This
+                // error is retryable, but indicates that the next send attempt should restrict itself to fanout
+                // send only.
+                result = SenderKeyUnavailableError(customLocalizedDescription: localizedDescription)
+            case .deviceUpdate, .staleDevices:
+                result = SenderKeyEphemeralError(customLocalizedDescription: localizedDescription)
+            }
+            return (result as NSError)
+        }
+
         var localizedDescription: String {
-            return OWSLocalizedString("ERROR_DESCRIPTION_CLIENT_SENDING_FAILURE", comment: "Generic notice when message failed to send.")
+            // Since this is a retryable error, so it's unlikely to be surfaced to the user. I think the only situation
+            // where it would is it happens to be the last error hit before we run out of resend attempts. In that case,
+            // we should just show a generic error just to be safe.
+            // TODO: This probably isn't the only error like this. Should we have a fallback generic string
+            // for all retryable errors without a description that exhaust retry attempts?
+            switch self {
+            case .recipientSKDMFailed(let error):
+                return error.localizedDescription
+            default:
+                return OWSLocalizedString("ERROR_DESCRIPTION_CLIENT_SENDING_FAILURE",
+                                         comment: "Generic notice when message failed to send.")
+            }
         }
     }
 
@@ -64,7 +92,7 @@ extension MessageSender {
         in thread: TSThread,
         message: TSOutgoingMessage,
         serializedMessage: SerializedMessage,
-        udAccessMap: [ServiceId: OWSUDAccess],
+        udAccessMap: [ServiceId: OWSUDSendingAccess],
         senderCertificate: SenderCertificate,
         localIdentifiers: LocalIdentifiers,
         tx: SDSAnyWriteTransaction
@@ -82,7 +110,7 @@ extension MessageSender {
             }
 
             // You also must support Sealed Sender.
-            switch udAccessMap[serviceId]?.udAccessMode {
+            switch udAccessMap[serviceId]?.udAccess.udAccessMode {
             case .disabled, .unknown, nil:
                 return false
             case .enabled, .unrestricted:
@@ -125,7 +153,6 @@ extension MessageSender {
                 in: thread,
                 originalMessage: message,
                 udAccessMap: udAccessMap,
-                senderCertificate: senderCertificate,
                 localIdentifiers: localIdentifiers,
                 tx: tx
             )
@@ -155,7 +182,15 @@ extension MessageSender {
                     senderCertificate: senderCertificate,
                     localIdentifiers: localIdentifiers
                 )
-                return failedRecipients
+                return failedRecipients.map { serviceId, error in
+                    return (serviceId, {
+                        if let error = error as? SenderKeyError {
+                            return error.asSSKError
+                        } else {
+                            return error
+                        }
+                    }())
+                }
             }
         )
     }
@@ -165,7 +200,7 @@ extension MessageSender {
         in thread: TSThread,
         message: TSOutgoingMessage,
         serializedMessage: SerializedMessage,
-        udAccessMap: [ServiceId: OWSUDAccess],
+        udAccessMap: [ServiceId: OWSUDSendingAccess],
         senderCertificate: SenderCertificate,
         localIdentifiers: LocalIdentifiers
     ) async -> [(ServiceId, any Error)] {
@@ -238,7 +273,7 @@ extension MessageSender {
 
     private struct PrepareDistributionResult {
         var readyRecipients = [ServiceId]()
-        var failedRecipients = [(ServiceId, any Error)]()
+        var failedRecipients = [(ServiceId, SenderKeyError)]()
         var senderKeyDistributionMessageSends = [(OWSMessageSend, SealedSenderParameters?)]()
     }
 
@@ -246,8 +281,7 @@ extension MessageSender {
         for recipients: [ServiceId],
         in thread: TSThread,
         originalMessage: TSOutgoingMessage,
-        udAccessMap: [ServiceId: OWSUDAccess],
-        senderCertificate: SenderCertificate,
+        udAccessMap: [ServiceId: OWSUDSendingAccess],
         localIdentifiers: LocalIdentifiers,
         tx writeTx: SDSAnyWriteTransaction
     ) throws -> PrepareDistributionResult {
@@ -294,7 +328,7 @@ extension MessageSender {
             skdmMessage.configureAsSentOnBehalfOf(originalMessage, in: thread)
 
             guard let serializedMessage = self.buildAndRecordMessage(skdmMessage, in: contactThread, tx: writeTx) else {
-                result.failedRecipients.append((serviceId, OWSAssertionError("Couldn't build message.")))
+                result.failedRecipients.append((serviceId, SenderKeyError.recipientSKDMFailed(OWSAssertionError("Couldn't build message."))))
                 continue
             }
 
@@ -307,11 +341,9 @@ extension MessageSender {
                 localIdentifiers: localIdentifiers
             )
 
-            let sealedSenderParameters = SealedSenderParameters(
-                message: skdmMessage,
-                senderCertificate: senderCertificate,
-                accessKey: udAccessMap[serviceId]
-            )
+            let sealedSenderParameters = udAccessMap[serviceId].map {
+                SealedSenderParameters(message: skdmMessage, udSendingAccess: $0)
+            }
 
             result.senderKeyDistributionMessageSends.append((messageSend, sealedSenderParameters))
         }
@@ -326,7 +358,7 @@ extension MessageSender {
         _ prepareResult: PrepareDistributionResult,
         in thread: TSThread,
         onBehalfOf originalMessage: TSOutgoingMessage
-    ) async -> (readyRecipients: [ServiceId], failedRecipients: [(ServiceId, any Error)]) {
+    ) async -> (readyRecipients: [ServiceId], failedRecipients: [(ServiceId, SenderKeyError)]) {
         if prepareResult.senderKeyDistributionMessageSends.isEmpty {
             return (prepareResult.readyRecipients, prepareResult.failedRecipients)
         }
@@ -368,7 +400,7 @@ extension MessageSender {
                             transaction: tx
                         )
                     }
-                    failedRecipients.append((serviceId, error))
+                    failedRecipients.append((serviceId, SenderKeyError.recipientSKDMFailed(error)))
                 }
             }
             do {
@@ -380,7 +412,7 @@ extension MessageSender {
                 readyRecipients.append(contentsOf: sentSenderKeys.lazy.map(\.recipient))
             } catch {
                 failedRecipients.append(contentsOf: sentSenderKeys.lazy.map {
-                    return ($0.recipient, error)
+                    return ($0.recipient, SenderKeyError.recipientSKDMFailed(error))
                 })
             }
             return (readyRecipients, failedRecipients)
@@ -404,7 +436,7 @@ extension MessageSender {
         plaintext: Data,
         thread: TSThread,
         serviceIds: [ServiceId],
-        udAccessMap: [ServiceId: OWSUDAccess],
+        udAccessMap: [ServiceId: OWSUDSendingAccess],
         senderCertificate: SenderCertificate
     ) async throws -> SenderKeySendResult {
         if serviceIds.isEmpty {
@@ -426,31 +458,22 @@ extension MessageSender {
             )
             return (recipients, ciphertext)
         }
-        let result = try await Retry.performRepeatedly(
-            block: {
-                return try await self._sendSenderKeyRequest(
-                    encryptedMessageBody: ciphertext,
-                    timestamp: message.timestamp,
-                    isOnline: message.isOnline,
-                    isUrgent: message.isUrgent,
-                    isStory: message.isStorySend,
-                    thread: thread,
-                    recipients: recipients,
-                    udAccessMap: udAccessMap
-                )
-            },
-            onError: { error, attemptCount in
-                if attemptCount <= 1, (error as? OWSHTTPError)?.httpStatusCode == 428 {
-                    // Retry immediately if we submitted a push challenge.
-                } else {
-                    throw error
-                }
-            }
+        let result = try await self._sendSenderKeyRequest(
+            encryptedMessageBody: ciphertext,
+            timestamp: message.timestamp,
+            isOnline: message.isOnline,
+            isUrgent: message.isUrgent,
+            isStory: message.isStorySend,
+            thread: thread,
+            recipients: recipients,
+            udAccessMap: udAccessMap,
+            remainingAttempts: 3
         )
         Logger.info("Sent sender key message with timestamp \(message.timestamp) to \(result.successServiceIds) (unregistered: \(result.unregisteredServiceIds))")
         return result
     }
 
+    // TODO: This is a similar pattern to RequestMaker. An opportunity to reduce duplication.
     fileprivate func _sendSenderKeyRequest(
         encryptedMessageBody: Data,
         timestamp: UInt64,
@@ -459,7 +482,8 @@ extension MessageSender {
         isStory: Bool,
         thread: TSThread,
         recipients: [Recipient],
-        udAccessMap: [ServiceId: OWSUDAccess]
+        udAccessMap: [ServiceId: OWSUDSendingAccess],
+        remainingAttempts: UInt
     ) async throws -> SenderKeySendResult {
         do {
             let httpResponse = try await self.performSenderKeySend(
@@ -477,32 +501,52 @@ extension MessageSender {
                 OWSAssertionError("Unhandled error")
             }
 
-            let response = try Self.decodeSuccessResponse(data: httpResponse.responseBodyData ?? Data())
+            let response = try Self.decodeSuccessResponse(data: httpResponse.responseBodyData)
             let unregisteredServiceIds = Set(response.unregisteredServiceIds.map { $0.wrappedValue })
             let successful = recipients.filter { !unregisteredServiceIds.contains($0.serviceId) }
             let unregistered = recipients.filter { unregisteredServiceIds.contains($0.serviceId) }
             return SenderKeySendResult(success: successful, unregistered: unregistered)
         } catch {
-            if let httpError = error as? OWSHTTPError {
+            let retryIfPossible = { () async throws -> SenderKeySendResult in
+                if remainingAttempts > 0 {
+                    return try await self._sendSenderKeyRequest(
+                        encryptedMessageBody: encryptedMessageBody,
+                        timestamp: timestamp,
+                        isOnline: isOnline,
+                        isUrgent: isUrgent,
+                        isStory: isStory,
+                        thread: thread,
+                        recipients: recipients,
+                        udAccessMap: udAccessMap,
+                        remainingAttempts: remainingAttempts-1
+                    )
+                } else {
+                    throw error
+                }
+            }
+
+            if error.isNetworkFailureOrTimeout {
+                return try await retryIfPossible()
+            } else if let httpError = error as? OWSHTTPError {
                 let statusCode = httpError.httpStatusCode ?? 0
                 let responseData = httpError.httpResponseData
                 switch statusCode {
                 case 401:
-                    Logger.warn("Invalid composite authorization header for sender key send request. Falling back to fanout")
+                    Logger.debug("Invalid composite authorization header for sender key send request. Falling back to fanout")
                     throw SenderKeyError.invalidAuthHeader
                 case 404:
-                    Logger.warn("One of the recipients could not match an account. We don't know which. Falling back to fanout")
+                    Logger.warn("One of the recipients could not match an account. We don't know which. Falling back to fanout.")
                     throw SenderKeyError.invalidRecipient
                 case 409:
                     // Incorrect device set. We should add/remove devices and try again.
-                    let responseBody = try Self.decode409Response(data: responseData ?? Data())
+                    let responseBody = try Self.decode409Response(data: responseData)
                     await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
                         for account in responseBody {
-                            handleMismatchedDevices(
+                            self.updateDevices(
                                 serviceId: account.serviceId,
-                                missingDevices: account.devices.missingDevices,
-                                extraDevices: account.devices.extraDevices,
-                                tx: tx
+                                devicesToAdd: account.devices.missingDevices,
+                                devicesToRemove: account.devices.extraDevices,
+                                transaction: tx
                             )
                         }
                     }
@@ -510,10 +554,10 @@ extension MessageSender {
 
                 case 410:
                     // Server reports stale devices. We should reset our session and try again.
-                    let responseBody = try Self.decode410Response(data: responseData ?? Data())
+                    let responseBody = try Self.decode410Response(data: responseData)
                     await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
                         for account in responseBody {
-                            handleStaleDevices(serviceId: account.serviceId, staleDevices: account.devices.staleDevices, tx: tx)
+                            self.handleStaleDevices(account.devices.staleDevices, for: account.serviceId, tx: tx.asV2Write)
                         }
                     }
                     throw SenderKeyError.staleDevices
@@ -530,11 +574,15 @@ extension MessageSender {
                             }
                         }
                     }
+                    return try await retryIfPossible()
                 default:
-                    break
+                    // Unhandled response code.
+                    throw error
                 }
+            } else {
+                owsFailDebug("Unexpected error \(error)")
+                throw error
             }
-            throw error
         }
     }
 
@@ -598,12 +646,12 @@ extension MessageSender {
         isStory: Bool,
         thread: TSThread,
         recipients: [Recipient],
-        udAccessMap: [ServiceId: OWSUDAccess]
+        udAccessMap: [ServiceId: OWSUDSendingAccess]
     ) async throws -> HTTPResponse {
 
         // Sender key messages use an access key composed of every recipient's individual access key.
         let allAccessKeys = recipients.compactMap {
-            udAccessMap[$0.serviceId]?.udAccessKey
+            udAccessMap[$0.serviceId]?.udAccess.senderKeyUDAccessKey
         }
         guard recipients.count == allAccessKeys.count else {
             throw OWSAssertionError("Incomplete access key set")
@@ -627,7 +675,7 @@ extension MessageSender {
     }
 }
 
-private extension MessageSender {
+extension MessageSender {
 
     struct SuccessPayload: Decodable {
         let unregisteredServiceIds: [ServiceIdString]
@@ -637,37 +685,60 @@ private extension MessageSender {
         }
     }
 
-    struct AccountMismatchedDevices: Decodable {
+    typealias ResponseBody409 = [Account409]
+    struct Account409: Decodable {
         @ServiceIdString var serviceId: ServiceId
-        let devices: MismatchedDevices
+        let devices: DeviceSet
 
         enum CodingKeys: String, CodingKey {
             case serviceId = "uuid"
             case devices
         }
+
+        struct DeviceSet: Decodable {
+            let missingDevices: [UInt32]
+            let extraDevices: [UInt32]
+        }
     }
 
-    struct AccountStaleDevices: Decodable {
+    typealias ResponseBody410 = [Account410]
+    struct Account410: Decodable {
         @ServiceIdString var serviceId: ServiceId
-        let devices: StaleDevices
+        let devices: DeviceSet
 
         enum CodingKeys: String, CodingKey {
             case serviceId = "uuid"
             case devices
         }
+
+        struct DeviceSet: Decodable {
+            let staleDevices: [UInt32]
+        }
     }
 
-    static func decodeSuccessResponse(data: Data) throws -> SuccessPayload {
+    static func decodeSuccessResponse(data: Data?) throws -> SuccessPayload {
+        guard let data = data else {
+            throw OWSAssertionError("No data provided")
+        }
         return try JSONDecoder().decode(SuccessPayload.self, from: data)
     }
 
-    static func decode409Response(data: Data) throws -> [AccountMismatchedDevices] {
-        return try JSONDecoder().decode([AccountMismatchedDevices].self, from: data)
+    static func decode409Response(data: Data?) throws -> ResponseBody409 {
+        guard let data = data else {
+            throw OWSAssertionError("No data provided")
+        }
+        return try JSONDecoder().decode(ResponseBody409.self, from: data)
     }
 
-    static func decode410Response(data: Data) throws -> [AccountStaleDevices] {
-        return try JSONDecoder().decode([AccountStaleDevices].self, from: data)
+    static func decode410Response(data: Data?) throws -> ResponseBody410 {
+        guard let data = data else {
+            throw OWSAssertionError("No data provided")
+        }
+        return try JSONDecoder().decode(ResponseBody410.self, from: data)
     }
+}
+
+fileprivate extension MessageSender {
 
     enum RegistrationIdStatus {
         /// The address has a session with a valid registration id

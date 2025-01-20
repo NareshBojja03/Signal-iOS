@@ -91,6 +91,7 @@ private class IncomingContactSyncJobRunner: JobRunner {
 
     private func _runJob(_ jobRecord: IncomingContactSyncJobRecord) async throws {
         let fileUrl: URL
+        let legacyAttachmentId: String?
         switch jobRecord.downloadInfo {
         case .invalid:
             owsFailDebug("Invalid contact sync job!")
@@ -98,16 +99,42 @@ private class IncomingContactSyncJobRunner: JobRunner {
                 jobRecord.anyRemove(transaction: tx)
             }
             return
+        case .legacy(let attachmentId):
+            guard let attachment = (SSKEnvironment.shared.databaseStorageRef.read { transaction in
+                return TSAttachment.anyFetch(uniqueId: attachmentId, transaction: transaction)
+            }) else {
+                throw OWSAssertionError("missing attachment")
+            }
+
+            let attachmentStream: TSAttachmentStream
+            switch attachment {
+            case let attachmentPointer as TSAttachmentPointer:
+                attachmentStream = try await TSAttachmentDownloadManager(appReadiness: appReadiness)
+                    .enqueueContactSyncDownload(attachmentPointer: attachmentPointer)
+            case let attachmentStreamValue as TSAttachmentStream:
+                attachmentStream = attachmentStreamValue
+            default:
+                throw OWSAssertionError("unexpected attachment type: \(attachment)")
+            }
+            guard let url = attachmentStream.originalMediaURL else {
+                throw OWSAssertionError("fileUrl was unexpectedly nil")
+            }
+            fileUrl = url
+            legacyAttachmentId = attachmentStream.uniqueId
         case .transient(let downloadMetadata):
             fileUrl = try await DependenciesBridge.shared.attachmentDownloadManager.downloadTransientAttachment(
                 metadata: downloadMetadata
             ).awaitable()
+            legacyAttachmentId = nil
         }
 
         let insertedThreads = try await firstly(on: DispatchQueue.global()) {
             try self.processContactSync(decryptedFileUrl: fileUrl, isComplete: jobRecord.isCompleteContactSync)
         }.awaitable()
         await SSKEnvironment.shared.databaseStorageRef.awaitableWrite { tx in
+            if let legacyAttachmentId {
+                TSAttachmentStream.anyFetch(uniqueId: legacyAttachmentId, transaction: tx)?.anyRemove(transaction: tx)
+            }
             jobRecord.anyRemove(transaction: tx)
         }
         NotificationCenter.default.post(name: .incomingContactSyncDidComplete, object: self, userInfo: [

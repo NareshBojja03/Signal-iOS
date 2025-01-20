@@ -10,17 +10,15 @@ public import SignalRingRTC
 
 @objc(OWSFakeStorageServiceManager)
 public class FakeStorageServiceManager: NSObject, StorageServiceManager {
-    public func setLocalIdentifiers(_ localIdentifiers: LocalIdentifiers) {}
-
-    public func currentManifestVersion(tx: DBReadTransaction) -> UInt64 { 0 }
-    public func currentManifestHasRecordIkm(tx: DBReadTransaction) -> Bool { false }
-
     public func recordPendingUpdates(updatedRecipientUniqueIds: [RecipientUniqueId]) {}
     public func recordPendingUpdates(updatedAddresses: [SignalServiceAddress]) {}
     public func recordPendingUpdates(updatedGroupV2MasterKeys: [Data]) {}
     public func recordPendingUpdates(updatedStoryDistributionListIds: [Data]) {}
     public func recordPendingUpdates(callLinkRootKeys: [CallLinkRootKey]) {}
+    public func recordPendingUpdates(groupModel: TSGroupModel) {}
     public func recordPendingLocalAccountUpdates() {}
+
+    public func setLocalIdentifiers(_ localIdentifiers: LocalIdentifiersObjC) {}
 
     public func backupPendingChanges(authedDevice: AuthedDevice) {}
 
@@ -29,8 +27,6 @@ public class FakeStorageServiceManager: NSObject, StorageServiceManager {
     public func restoreOrCreateManifestIfNecessary(authedDevice: AuthedDevice) -> Promise<Void> {
         return restoreOrCreateManifestIfNecessaryMock(authedDevice)
     }
-
-    public func rotateManifest(mode: ManifestRotationMode, authedDevice: AuthedDevice) async throws {}
 
     public func waitForPendingRestores() -> Promise<Void> { Promise.value(()) }
 

@@ -176,7 +176,59 @@ public class PushRegistrationManager: NSObject, PKPushRegistryDelegate {
             return
         }
 
-        owsFailDebug("Ignoring PKPush without a valid payload.")
+        if let challenge = payload.dictionaryPayload["challenge"] as? String {
+            Logger.info("received preauth challenge")
+            DispatchQueue.main.sync {
+                self.preauthChallengeFuture.resolve(challenge)
+            }
+            return
+        }
+
+        Logger.info("Fetching messages.")
+        var backgroundTask: OWSBackgroundTask? = OWSBackgroundTask(label: "Push fetch.")
+        firstly { () -> Promise<Void> in
+            SSKEnvironment.shared.messageFetcherJobRef.run()
+        }.done(on: DispatchQueue.main) {
+            owsAssertDebug(backgroundTask != nil)
+            backgroundTask = nil
+        }.catch { error in
+            owsFailDebug("Error: \(error)")
+        }
+
+        Self.handleUnexpectedVoipPush()
+    }
+
+    private static func handleUnexpectedVoipPush() {
+        assertOnQueue(calloutQueue)
+
+        Logger.info("")
+
+        // If the main app receives an unexpected VOIP push on iOS 15,
+        // we need to:
+        //
+        // * Post a generic incoming message notification.
+        // * Try to sync push tokens.
+        // * Block on completion of both activities for reasons?
+        let completionSignal = DispatchSemaphore(value: 0)
+        Task {
+            defer {
+                completionSignal.signal()
+            }
+            await SSKEnvironment.shared.notificationPresenterImplRef.postGenericIncomingMessageNotification()
+            do {
+                try await SyncPushTokensJob(mode: .forceUpload).run()
+            } catch {
+                owsFailDebugUnlessNetworkFailure(error)
+            }
+        }
+        let waitInterval = DispatchTimeInterval.seconds(20)
+        let didTimeout = (completionSignal.wait(timeout: .now() + waitInterval) == .timedOut)
+        if didTimeout {
+            owsFailDebug("Timed out.")
+        } else {
+            Logger.info("Complete.")
+            Logger.flush()
+        }
     }
 
     public func pushRegistry(_ registry: PKPushRegistry, didUpdate credentials: PKPushCredentials, for type: PKPushType) {
@@ -194,7 +246,9 @@ public class PushRegistrationManager: NSObject, PKPushRegistryDelegate {
     // User notification settings must be registered *before* AppDelegate will
     // return any requested push tokens.
     public func registerUserNotificationSettings() async {
-        await SSKEnvironment.shared.notificationPresenterRef.registerNotificationSettings()
+        Logger.info("registering user notification settings")
+
+        await SSKEnvironment.shared.notificationPresenterImplRef.registerNotificationSettings()
     }
 
     /**

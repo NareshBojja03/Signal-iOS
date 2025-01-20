@@ -12,6 +12,9 @@ public class ProfileDetailLabel: UIStackView {
     private let tapAction: (() -> Void)?
     private let longPressAction: (() -> Void)?
 
+    private static let foregroundColor = UIColor(named: "Signal/label")!
+    private static let secondaryTextColor = UIColor(named: "Signal/secondaryLabel")!
+
     public convenience init(
         title: String,
         icon: ThemeIcon,
@@ -26,7 +29,7 @@ public class ProfileDetailLabel: UIStackView {
                 string: title,
                 attributes: [
                     .font: font,
-                    .foregroundColor: UIColor.Signal.label,
+                    .foregroundColor: Self.foregroundColor,
                 ]
             ),
             icon: icon,
@@ -65,7 +68,7 @@ public class ProfileDetailLabel: UIStackView {
             font: font,
             attributes: [
                 .font: font,
-                .foregroundColor: UIColor.Signal.label,
+                .foregroundColor: Self.foregroundColor,
             ]
         )
         let imageLabel = UILabel()
@@ -84,7 +87,7 @@ public class ProfileDetailLabel: UIStackView {
             let attachmentString = NSAttributedString.with(
                 image: chevron,
                 font: font,
-                attributes: [.foregroundColor: UIColor.Signal.secondaryLabel]
+                attributes: [.foregroundColor: Self.secondaryTextColor]
             )
             if shouldLineWrap {
                 // Add the chevron at the end of the last line of text
@@ -144,7 +147,7 @@ public extension ProfileDetailLabel {
                         displayName,
                         " ",
                         "(\(secondaryName))"
-                            .styled(with: .color(UIColor.Signal.secondaryLabel))
+                            .styled(with: .color(Self.secondaryTextColor))
                     ])
                 } else {
                     return NSAttributedString.composed(of: [displayName])

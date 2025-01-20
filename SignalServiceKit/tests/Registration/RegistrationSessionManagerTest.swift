@@ -14,8 +14,9 @@ public class RegistrationSessionManagerTest: XCTestCase {
     private var date = Date()
 
     private var db: InMemoryDB!
-    private var kvStore: KeyValueStore!
+    private var kvStore: InMemoryKeyValueStore!
     private var mockURLSession: TSRequestOWSURLSessionMock!
+    private var scheduler: TestScheduler!
 
     public override func setUp() {
         db = InMemoryDB()
@@ -27,19 +28,25 @@ public class RegistrationSessionManagerTest: XCTestCase {
             return mockURLSession
         }
 
-        kvStore = KeyValueStore(
+        let kvStoreFactory = InMemoryKeyValueStoreFactory()
+        kvStore = kvStoreFactory.keyValueStore(
             collection: RegistrationSessionManagerImpl.KvStore.collectionName
-        )
+        ) as? InMemoryKeyValueStore
+
+        scheduler = TestScheduler()
+        // Don't care about time in these tests, just run everything sync.
+        scheduler.start()
 
         registrationSessionManager = RegistrationSessionManagerImpl(
             dateProvider: { self.date },
             db: db,
-            schedulers: DispatchQueueSchedulers(),
+            keyValueStoreFactory: kvStoreFactory,
+            schedulers: TestSchedulers(scheduler: scheduler),
             signalService: mockSignalService
         )
     }
 
-    public func testParseRegistrationSession() async throws {
+    public func testParseRegistrationSession() {
         let code = "1234"
         let oldSession = stubSession()
         let expectedRequest = RegistrationRequestFactory.submitVerificationCodeRequest(
@@ -66,12 +73,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             bodyData: responseJSON.data(using: .utf8)
         ))
 
-        do {
-            let result = await registrationSessionManager.requestVerificationCode(
-                for: oldSession,
-                transport: [Registration.CodeTransport.sms, .voice].randomElement()!
-            ).awaitable()
-
+        registrationSessionManager.requestVerificationCode(
+            for: oldSession,
+            transport: [Registration.CodeTransport.sms, .voice].randomElement()!
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(RegistrationSession(
                 id: "abcd",
                 e164: oldSession.e164,
@@ -102,12 +107,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             bodyData: responseJSON.data(using: .utf8)
         ))
 
-        do {
-            let result = await registrationSessionManager.requestVerificationCode(
-                for: oldSession,
-                transport: [Registration.CodeTransport.sms, .voice].randomElement()!
-            ).awaitable()
-
+        registrationSessionManager.requestVerificationCode(
+            for: oldSession,
+            transport: [Registration.CodeTransport.sms, .voice].randomElement()!
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(RegistrationSession(
                 id: "abcd",
                 e164: oldSession.e164,
@@ -141,12 +144,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             bodyData: responseJSON.data(using: .utf8)
         ))
 
-        do {
-            let result = await registrationSessionManager.requestVerificationCode(
-                for: oldSession,
-                transport: [Registration.CodeTransport.sms, .voice].randomElement()!
-            ).awaitable()
-
+        registrationSessionManager.requestVerificationCode(
+            for: oldSession,
+            transport: [Registration.CodeTransport.sms, .voice].randomElement()!
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(RegistrationSession(
                 id: "abcd",
                 e164: oldSession.e164,
@@ -163,7 +164,7 @@ public class RegistrationSessionManagerTest: XCTestCase {
         }
     }
 
-    public func testBeginOrRestoreSession() async throws {
+    public func testBeginOrRestoreSession() throws {
         let e164 = E164("+17875550100")!
         let apnsToken = "1234"
         let beginSessionRequest = RegistrationRequestFactory.beginSessionRequest(
@@ -182,11 +183,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             forUrlSuffix: beginSessionRequest.url!.relativeString,
             bodyJson: responseBody
         )
-        do {
-            let result = await registrationSessionManager.beginOrRestoreSession(
-                e164: e164,
-                apnsToken: apnsToken
-            ).awaitable()
+        registrationSessionManager.beginOrRestoreSession(
+            e164: e164,
+            apnsToken: apnsToken
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(responseSession))
         }
 
@@ -212,11 +212,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             forUrlSuffix: fetchSessionRequest.url!.relativeString,
             bodyJson: responseBody
         )
-        do {
-            let result = await registrationSessionManager.beginOrRestoreSession(
-                e164: e164,
-                apnsToken: apnsToken
-            ).awaitable()
+        registrationSessionManager.beginOrRestoreSession(
+            e164: e164,
+            apnsToken: apnsToken
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(responseSession))
         }
 
@@ -246,11 +245,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             forUrlSuffix: beginSessionRequest.url!.relativeString,
             bodyJson: responseBody
         )
-        do {
-            let result = await registrationSessionManager.beginOrRestoreSession(
-                e164: e164,
-                apnsToken: apnsToken
-            ).awaitable()
+        registrationSessionManager.beginOrRestoreSession(
+            e164: e164,
+            apnsToken: apnsToken
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(responseSession))
         }
 
@@ -285,11 +283,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             forUrlSuffix: beginSessionRequest.url!.relativeString,
             bodyJson: responseBody
         )
-        do {
-            let result = await registrationSessionManager.beginOrRestoreSession(
-                e164: e164,
-                apnsToken: apnsToken
-            ).awaitable()
+        registrationSessionManager.beginOrRestoreSession(
+            e164: e164,
+            apnsToken: apnsToken
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(responseSession))
         }
 
@@ -312,11 +309,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             forUrlSuffix: beginSessionRequest.url!.relativeString,
             bodyJson: responseBody
         )
-        do {
-            let result = await registrationSessionManager.beginOrRestoreSession(
-                e164: newE164,
-                apnsToken: apnsToken
-            ).awaitable()
+        registrationSessionManager.beginOrRestoreSession(
+            e164: newE164,
+            apnsToken: apnsToken
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .success(responseSession))
         }
 
@@ -331,7 +327,7 @@ public class RegistrationSessionManagerTest: XCTestCase {
         XCTAssertEqual(savedSession, responseSession)
     }
 
-    public func testFulfillChallenge() async {
+    public func testFulfillChallenge() {
         let captchaToken = "1234"
         let pushChallengeToken = "ABCD"
         let oldSession = stubSession()
@@ -362,18 +358,19 @@ public class RegistrationSessionManagerTest: XCTestCase {
                 statusCode: statusCode.rawValue,
                 bodyJson: sessionInBody ? responseBody : nil
             )
-            let result = await registrationSessionManager.fulfillChallenge(
+            registrationSessionManager.fulfillChallenge(
                 for: oldSession,
                 fulfillment: [
                     Registration.ChallengeFulfillment.captcha(captchaToken),
                     .pushChallenge(pushChallengeToken)
                 ].randomElement()!
-            ).awaitable()
-            XCTAssertEqual(result, expectedResponse)
+            ).done(on: scheduler) { result in
+                XCTAssertEqual(result, expectedResponse)
+            }
         }
     }
 
-    public func testFulfillChallenge_sucessResponseWithoutBody() async {
+    public func testFulfillChallenge_sucessResponseWithoutBody() {
         let captchaToken = "1234"
         let oldSession = stubSession()
         let expectedRequest = RegistrationRequestFactory.fulfillChallengeRequest(
@@ -387,16 +384,15 @@ public class RegistrationSessionManagerTest: XCTestCase {
             statusCode: RegistrationServiceResponses.FulfillChallengeResponseCodes.success.rawValue,
             bodyJson: nil /* empty json */
         )
-        do {
-            let result = await registrationSessionManager.fulfillChallenge(
-                for: oldSession,
-                fulfillment: .captcha(captchaToken)
-            ).awaitable()
+        registrationSessionManager.fulfillChallenge(
+            for: oldSession,
+            fulfillment: .captcha(captchaToken)
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, Registration.UpdateSessionResponse.genericError)
         }
     }
 
-    public func testRequestVerificationCode() async {
+    public func testRequestVerificationCode() {
         let oldSession = stubSession()
         let expectedRequest = RegistrationRequestFactory.requestVerificationCodeRequest(
             sessionId: oldSession.id,
@@ -426,15 +422,16 @@ public class RegistrationSessionManagerTest: XCTestCase {
                 statusCode: statusCode.rawValue,
                 bodyJson: sessionInBody ? responseBody : nil
             )
-            let result = await registrationSessionManager.requestVerificationCode(
+            registrationSessionManager.requestVerificationCode(
                 for: oldSession,
                 transport: [Registration.CodeTransport.sms, .voice].randomElement()!
-            ).awaitable()
-            XCTAssertEqual(result, expectedResponse)
+            ).done(on: scheduler) { result in
+                XCTAssertEqual(result, expectedResponse)
+            }
         }
     }
 
-    public func testRequestVerificationCodeServiceError() async {
+    public func testRequestVerificationCodeServiceError() {
         let oldSession = stubSession()
         let expectedRequest = RegistrationRequestFactory.requestVerificationCodeRequest(
             sessionId: oldSession.id,
@@ -456,11 +453,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             bodyData: errorResponseJSON.data(using: .utf8)
         ))
 
-        do {
-            let result = await registrationSessionManager.requestVerificationCode(
-                for: oldSession,
-                transport: [Registration.CodeTransport.sms, .voice].randomElement()!
-            ).awaitable()
+        registrationSessionManager.requestVerificationCode(
+            for: oldSession,
+            transport: [Registration.CodeTransport.sms, .voice].randomElement()!
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .serverFailure(Registration.ServerFailureResponse(
                 session: oldSession,
                 isPermanent: false,
@@ -481,11 +477,10 @@ public class RegistrationSessionManagerTest: XCTestCase {
             bodyData: errorResponseJSON.data(using: .utf8)
         ))
 
-        do {
-            let result = await registrationSessionManager.requestVerificationCode(
-                for: oldSession,
-                transport: [Registration.CodeTransport.sms, .voice].randomElement()!
-            ).awaitable()
+        registrationSessionManager.requestVerificationCode(
+            for: oldSession,
+            transport: [Registration.CodeTransport.sms, .voice].randomElement()!
+        ).done(on: scheduler) { result in
             XCTAssertEqual(result, .serverFailure(Registration.ServerFailureResponse(
                 session: oldSession,
                 isPermanent: false,
@@ -494,7 +489,7 @@ public class RegistrationSessionManagerTest: XCTestCase {
         }
     }
 
-    public func testSubmitVerificationCode() async {
+    public func testSubmitVerificationCode() {
         let code = "1234"
         let oldSession = stubSession()
         let expectedRequest = RegistrationRequestFactory.submitVerificationCodeRequest(
@@ -531,11 +526,12 @@ public class RegistrationSessionManagerTest: XCTestCase {
                 statusCode: statusCode.rawValue,
                 bodyJson: sessionInBody
             )
-            let result = await registrationSessionManager.submitVerificationCode(
+            registrationSessionManager.submitVerificationCode(
                 for: oldSession,
                 code: code
-            ).awaitable()
-            XCTAssertEqual(result, expectedResponse)
+            ).done(on: scheduler) { result in
+                XCTAssertEqual(result, expectedResponse)
+            }
         }
     }
 

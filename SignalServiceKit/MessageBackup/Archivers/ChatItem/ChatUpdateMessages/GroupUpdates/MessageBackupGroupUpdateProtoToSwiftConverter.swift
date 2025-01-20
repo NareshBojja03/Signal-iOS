@@ -113,13 +113,13 @@ final class MessageBackupGroupUpdateProtoToSwiftConverter {
         case .groupCreationUpdate(let proto):
             switch unwrapOptionalAci(proto, \.updaterAci) {
             case .unknown:
-                return .success([.createdByUnknownUser])
+                return .success([.genericUpdateByUnknownUser])
             case .localUser:
                 // When we see a `createdByLocalUser`, also include a
                 // `inviteFriendsToNewlyCreatedGroup`.
-                return .success([.createdByLocalUser, .inviteFriendsToNewlyCreatedGroup])
+                return .success([.genericUpdateByLocalUser, .inviteFriendsToNewlyCreatedGroup])
             case .otherUser(let aci):
-                return .success([.createdByOtherUser(updaterAci: aci)])
+                return .success([.genericUpdateByOtherUser(updaterAci: aci)])
             case .invalidAci(let error):
                 return .messageFailure([error])
             }

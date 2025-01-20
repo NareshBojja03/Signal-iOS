@@ -18,52 +18,72 @@ import Foundation
 
 public class DeviceSleepManager {
 
-    public class BlockObject {
-        let blockReason: String
-        public init(blockReason: String) {
-            self.blockReason = blockReason
-        }
-    }
-
     public static let shared = DeviceSleepManager()
 
-    private let blockObjects = AtomicValue<[Weak<BlockObject>]>([], lock: .init())
+    let serialQueue = DispatchQueue(label: "org.signal.device-sleep")
+
+    private class SleepBlock: CustomDebugStringConvertible {
+        weak var blockObject: AnyObject?
+
+        var debugDescription: String {
+            return "SleepBlock(\(String(reflecting: blockObject)))"
+        }
+
+        init(blockObject: AnyObject) {
+            self.blockObject = blockObject
+        }
+    }
+    private var blocks: [SleepBlock] = []
 
     private init() {
         SwiftSingletons.register(self)
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(didEnterBackground),
+            name: .OWSApplicationDidEnterBackground,
+            object: nil
+        )
     }
 
-    public func addBlock(blockObject: BlockObject) {
-        self.blockObjects.update {
-            $0.append(Weak(value: blockObject))
-            ensureSleepBlocking(blockObjects: &$0)
+    @objc
+    private func didEnterBackground() {
+        AssertIsOnMainThread()
+
+        serialQueue.sync {
+            ensureSleepBlocking()
         }
     }
 
-    public func removeBlock(blockObject: BlockObject) {
-        self.blockObjects.update {
-            $0.removeAll(where: { $0.value === blockObject })
-            ensureSleepBlocking(blockObjects: &$0)
+    public func addBlock(blockObject: AnyObject) {
+        serialQueue.sync {
+            blocks.append(SleepBlock(blockObject: blockObject))
+            ensureSleepBlocking()
         }
     }
 
-    private func ensureSleepBlocking(blockObjects: inout [Weak<BlockObject>]) {
+    public func removeBlock(blockObject: AnyObject) {
+        serialQueue.sync {
+            blocks.removeAll(where: { $0.blockObject === blockObject })
+            ensureSleepBlocking()
+        }
+    }
+
+    private func ensureSleepBlocking() {
+        assertOnQueue(serialQueue)
+
         // Cull expired blocks.
-        if blockObjects.contains(where: { $0.value == nil }) {
-            owsFailDebug("Callers must remove BlockObjects explicitly.")
-            blockObjects.removeAll(where: { $0.value == nil })
-        }
-
-        let shouldBlock = !blockObjects.isEmpty
+        blocks.removeAll(where: { $0.blockObject === nil })
+        let shouldBlock = !blocks.isEmpty
 
         let description: String
-        switch blockObjects.count {
+        switch blocks.count {
         case 0:
             description = "no blocking objects"
         case 1:
-            description = "\(blockObjects[0].value?.blockReason ?? "")"
+            description = "\(blocks[0])"
         default:
-            description = "\(blockObjects[0].value?.blockReason ?? "") and \(blockObjects.count - 1) other(s)"
+            description = "\(blocks[0]) and \(blocks.count - 1) others"
         }
 
         DispatchQueue.main.async {

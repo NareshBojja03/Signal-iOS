@@ -32,22 +32,31 @@ public enum FeatureFlags {
 
     public static let preRegDeviceTransfer = build.includes(.dev)
 
+    public static let paymentsScrubDetails = false
+
     public static let isPrerelease = build.includes(.beta)
 
     /// If we ever need to internally detect database corruption again in the
     /// future, we can re-enable this.
     public static let periodicallyCheckDatabaseIntegrity: Bool = false
 
-    public static let messageBackupErrorDisplay = build.includes(.internal)
-    public static let messageBackupFileAlpha = build.includes(.internal)
-    public static let messageBackupRemoteExportAlpha = build.includes(.dev)
-    public static let messageBackupFileAlphaRegistrationFlow = build.includes(.dev)
-    public static let linkAndSync = build.includes(.internal)
-    public static let linkAndSyncTimeoutSeconds: UInt32 = 60 * (build.includes(.internal) ? 5 : 1)
-    public static let backupsMemorySamplerRatio: Float = build.includes(.internal) ? 0.1 : 0
-    public static let messageBackupQuickRestoreFlow = false
+    public static let doNotSendGroupChangeMessagesOnProfileKeyRotation = false
 
-    public static let storageServiceRecordIkmMigration = false
+    public static let messageBackupErrorDisplay = build.includes(.internal)
+    public static let messageBackupFileAlpha = build.includes(.dev)
+    public static let messageBackupFileAlphaRegistrationFlow = build.includes(.dev)
+    public static let linkAndSync = build.includes(.dev)
+    public static let linkAndSyncTimeoutSeconds: UInt32 = 60 * (build.includes(.internal) ? 4 : 1)
+
+    public static let callLinkCreate = true
+    public static let callLinkSync = true
+    public static let callLinkJoin = true
+
+    public static let chatListFilter = build.includes(.beta)
+
+    public static let versionedExpireTimer = true
+
+    public static let biometricLinkedDeviceFlow = build.includes(.dev)
 }
 
 // MARK: -

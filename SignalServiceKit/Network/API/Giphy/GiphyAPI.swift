@@ -56,12 +56,12 @@ public class GiphyAPI: NSObject {
         }
 
         let urlSession = buildURLSession()
-        return Promise.wrapAsync {
+        return firstly(on: DispatchQueue.global()) { () -> Promise<HTTPResponse> in
             var request = try urlSession.endpoint.buildRequest(urlString, method: .get)
             guard ContentProxy.configureProxiedRequest(request: &request) else {
                 throw OWSAssertionError("Invalid URL")
             }
-            return try await urlSession.performRequest(request: request, ignoreAppExpiry: false)
+            return urlSession.dataTaskPromise(request: request, ignoreAppExpiry: false)
         }.map(on: DispatchQueue.global()) { (response: HTTPResponse) -> [GiphyImageInfo] in
             guard let json = response.responseBodyJson else {
                 throw OWSAssertionError("Missing or invalid JSON")
@@ -71,9 +71,6 @@ public class GiphyAPI: NSObject {
                 throw OWSAssertionError("unable to parse trending images")
             }
             return imageInfos
-        }.recover(on: DispatchQueue.global()) { error -> Promise<[GiphyImageInfo]> in
-            Logger.warn("Request failed: \(error.shortDescription)")
-            throw error
         }
     }
 

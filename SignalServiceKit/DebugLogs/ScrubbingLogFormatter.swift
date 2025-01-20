@@ -25,7 +25,8 @@ class ScrubbingLogFormatter: NSObject, DDLogFormatter {
             self.replacementTemplate = replacementTemplate
         }
 
-        static func base64(prefix: String, length: Int) -> Replacement {
+        static func groupId(length: Int) -> Replacement {
+            let prefix = TSGroupThread.groupThreadUniqueIdPrefix
             let base64Length = ((length + 2) / 3) * 4
             let base64Padding = Data.base64PaddingCount(for: length)
 
@@ -37,17 +38,16 @@ class ScrubbingLogFormatter: NSObject, DDLogFormatter {
             let unredactedLength = 3
             let redactedLength = base64Length - base64Padding - unredactedLength
 
-            owsPrecondition(redactedLength >= 1)
+            // This assertion exists to prevent someone from updating the values and forgetting to
+            // update things here.
+            owsPrecondition(prefix == "g" && redactedLength >= 1)
 
-            // We want to find a non-matching character before the match starts. But
-            // "/" is excluded so that we can find matches within URL paths.
-            let base64Leading = "A-Za-z0-9+"
             let base64Character = "A-Za-z0-9+/"
             let paddingCharacter = "="
 
             return Replacement(
-                pattern: "(^|[^\(base64Leading)])\(prefix)[\(base64Character)]{\(redactedLength)}([\(base64Character)]{\(unredactedLength)}\(paddingCharacter){\(base64Padding)})",
-                replacementTemplate: "$1\(prefix)…$2"
+                pattern: "(^|[^\(base64Character)])\(prefix)[\(base64Character)]{\(redactedLength)}([\(base64Character)]{\(unredactedLength)}\(paddingCharacter){\(base64Padding)})",
+                replacementTemplate: "$1g…$2"
             )
         }
 
@@ -115,12 +115,36 @@ class ScrubbingLogFormatter: NSObject, DDLogFormatter {
             options: .caseInsensitive,
             replacementTemplate: "…$1"
         )
+
+        /// Redact base64 encoded UUIDs.
+        ///
+        /// We take advantage of the known length of UUIDs (16 bytes, 128 bits),
+        /// which when encoded to base64 means 22 chars (6 bits per char, so 128/6 =
+        /// 21.3) plus we add padding ("=" is the reserved padding character) to
+        /// make it 24. Otherwise we'd just be matching arbitrary length text since
+        /// all letters are covered.
+        static let base64Uuid: Replacement = Replacement(
+            pattern: (
+                // Leading can be any non-matching character (so we want leading whitespace
+                // or something else) The exception is "/". The uuid might be in a url
+                // path, and we want to redact it, so we need to allow leading path
+                // delimiters.
+                #"([^\da-zA-Z+])"#
+                // Capture the first 3 chars to retain after redaction
+                + #"([\da-zA-Z/+]{3})"#
+                // Match the rest but throw it away
+                + #"[\da-zA-Z/+]{19}"#
+                // Match the trailing padding
+                + #"=="#
+            ),
+            replacementTemplate: "$1$2…"
+        )
     }
 
     private let replacements: [Replacement] = [
         .phoneNumber,
-        .base64(prefix: TSGroupThread.groupThreadUniqueIdPrefix, length: Int(kGroupIdLengthV2)),
-        .base64(prefix: TSGroupThread.groupThreadUniqueIdPrefix, length: Int(kGroupIdLengthV1)),
+        .groupId(length: Int(kGroupIdLengthV2)),
+        .groupId(length: Int(kGroupIdLengthV1)),
         .callLink,
         .uuid,
         .data,
@@ -130,8 +154,7 @@ class ScrubbingLogFormatter: NSObject, DDLogFormatter {
         .ipv6Address,
         .ipv4Address,
         .hex,
-        .base64(prefix: "", length: 32),
-        .base64(prefix: "", length: 16),
+        .base64Uuid
     ]
 
     func format(message logMessage: DDLogMessage) -> String? {
@@ -140,6 +163,10 @@ class ScrubbingLogFormatter: NSObject, DDLogFormatter {
 
     func redactMessage(_ logString: String) -> String {
         var logString = logString
+
+        if logString.contains("/Attachments/") {
+            return "[USER_PATH]"
+        }
 
         for replacement in replacements {
             logString = replacement.regex.stringByReplacingMatches(

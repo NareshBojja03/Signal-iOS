@@ -131,24 +131,24 @@ public class OutgoingStoryMessage: TSOutgoingMessage {
         }
 
         switch storyMessage.attachment {
-        case .media:
+        case .file, .foreignReferenceAttachment:
             guard
-                let storyMessageRowId = storyMessage.id,
-                let attachment = DependenciesBridge.shared.attachmentStore.fetchFirstReferencedAttachment(
-                    for: .storyMessageMedia(storyMessageRowId: storyMessageRowId),
+                let attachmentReference = DependenciesBridge.shared.tsResourceStore.mediaAttachment(
+                    for: storyMessage,
                     tx: transaction.asV2Read
                 ),
-                let pointer = attachment.attachment.asTransitTierPointer()
+                let attachment = attachmentReference.fetch(tx: transaction),
+                let pointer = attachment.asTransitTierPointer(),
+                let attachmentProto = DependenciesBridge.shared.tsResourceManager.buildProtoForSending(
+                    from: attachmentReference,
+                    pointer: pointer
+                )
             else {
                 owsFailDebug("Missing attachment for outgoing story message")
                 return nil
             }
-            let attachmentProto = DependenciesBridge.shared.attachmentManager.buildProtoForSending(
-                from: attachment.reference,
-                pointer: pointer
-            )
             builder.setFileAttachment(attachmentProto)
-            if let storyMediaCaption = attachment.reference.storyMediaCaption {
+            if let storyMediaCaption = attachmentReference.storyMediaCaption {
                 builder.setBodyRanges(storyMediaCaption.toProtoBodyRanges())
             }
         case .text(let attachment):
@@ -167,7 +167,7 @@ public class OutgoingStoryMessage: TSOutgoingMessage {
 
         do {
             if let groupThread = thread as? TSGroupThread, let groupModel = groupThread.groupModel as? TSGroupModelV2 {
-                builder.setGroup(try GroupsV2Protos.buildGroupContextProto(groupModel: groupModel, groupChangeProtoData: nil))
+                builder.setGroup(try SSKEnvironment.shared.groupsV2Ref.buildGroupContextV2Proto(groupModel: groupModel, changeActionsProtoData: nil))
             }
 
             return try builder.build()

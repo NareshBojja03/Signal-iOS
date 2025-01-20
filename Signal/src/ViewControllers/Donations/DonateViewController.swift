@@ -530,27 +530,21 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
                         to: selectedSubscriptionLevel,
                         currencyCode: monthly.selectedCurrencyCode
                     )
-                }.then(on: DispatchQueue.sharedUserInitiated) { subscription throws -> Promise<Void> in
-                    guard let donationPaymentProcessor = subscription.donationPaymentProcessor else {
-                        throw OWSAssertionError("Missing donation payment processor while updating monthly donation!")
-                    }
-
+                }.then(on: DispatchQueue.sharedUserInitiated) { subscription -> Promise<Void> in
                     // Treat updates like new subscriptions
-                    let redemptionPromise = Promise.wrapAsync {
-                        try await DonationSubscriptionManager.requestAndRedeemReceipt(
-                            subscriberId: subscriberID,
-                            subscriptionLevel: selectedSubscriptionLevel.level,
-                            priorSubscriptionLevel: subscription.level,
-                            paymentProcessor: donationPaymentProcessor,
-                            paymentMethod: subscription.donationPaymentMethod,
-                            isNewSubscription: true,
-                            shouldSuppressPaymentAlreadyRedeemed: false
-                        )
-                    }
+                    let redemptionJob = DonationSubscriptionManager.requestAndRedeemReceipt(
+                        subscriberId: subscriberID,
+                        subscriptionLevel: selectedSubscriptionLevel.level,
+                        priorSubscriptionLevel: currentSubscription.level,
+                        paymentProcessor: currentSubscription.paymentProcessor,
+                        paymentMethod: currentSubscription.paymentMethod,
+                        isNewSubscription: true,
+                        shouldSuppressPaymentAlreadyRedeemed: false
+                    )
 
                     return DonationViewsUtil.waitForRedemptionJob(
-                        redemptionPromise,
-                        paymentMethod: subscription.donationPaymentMethod
+                        redemptionJob,
+                        paymentMethod: subscription.paymentMethod
                     )
                 }
             ).done(on: DispatchQueue.main) {
@@ -796,8 +790,8 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
             let boostBadge = donationConfiguration.boost.badge
             let subscriptionBadges = donationConfiguration.subscription.levels.map { $0.badge }
 
-            let badgePromises = ([boostBadge] + subscriptionBadges).map { badge in
-                Promise.wrapAsync { try await SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge(badge) }
+            let badgePromises = ([boostBadge] + subscriptionBadges).map {
+                SSKEnvironment.shared.profileManagerRef.badgeStore.populateAssetsOnBadge($0)
             }
 
             return Promise.when(fulfilled: badgePromises).map(on: DispatchQueue.sharedUserInitiated) { donationConfiguration }
@@ -1330,23 +1324,6 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
     }
 
     private func renderMonthlyButtonsView(monthly: State.MonthlyState) {
-        let buttons = buttonsForMonthlyView(monthly: monthly)
-
-        for button in buttons {
-            button.dimsWhenHighlighted = true
-            button.dimsWhenDisabled = true
-            button.layer.cornerRadius = 8
-            button.titleLabel?.numberOfLines = 0
-            button.titleLabel?.lineBreakMode = .byWordWrapping
-            button.titleLabel?.textAlignment = .center
-            button.autoSetDimension(.height, toSize: 48, relation: .greaterThanOrEqual)
-        }
-
-        monthlyButtonsView.removeAllSubviews()
-        monthlyButtonsView.addArrangedSubviews(buttons)
-    }
-
-    private func buttonsForMonthlyView(monthly: State.MonthlyState) -> [OWSButton] {
         func isDifferentSubscriptionLevelSelected(_ currentSubscription: Subscription?) -> Bool {
             guard let currentSubscription else { return false }
 
@@ -1363,9 +1340,9 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
             return false
         }
 
-        func doomedContinueButton(errorAlertTitle: String, errorAlertMessage: String, isEnabled: Bool) -> OWSButton {
+        func doomedButton(title: String, message: String, isEnabled: Bool) -> OWSButton {
             let doomedContinueButton = OWSButton(title: CommonStrings.continueButton) { [weak self] in
-                self?.showError(title: errorAlertTitle, errorAlertMessage)
+                self?.showError(title: title, message)
             }
 
             doomedContinueButton.backgroundColor = .ows_accentBlue
@@ -1375,20 +1352,11 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
             return doomedContinueButton
         }
 
-        func cancelSubscriptionButton() -> OWSButton {
-            let cancelTitle = OWSLocalizedString(
-                "SUSTAINER_VIEW_CANCEL_SUBSCRIPTION",
-                comment: "Sustainer view Cancel Subscription button title"
-            )
-            let cancelButton = OWSButton(title: cancelTitle) { [weak self] in
-                self?.didTapToCancelSubscription()
-            }
-            cancelButton.setTitleColor(Theme.accentBlueColor, for: .normal)
+        var buttons = [OWSButton]()
 
-            return cancelButton
-        }
-
-        if monthly.pendingIDEALSubscription != nil {
+        if nil != SSKEnvironment.shared.databaseStorageRef.read(block: { tx in
+            DependenciesBridge.shared.externalPendingIDEALDonationStore.getPendingSubscription(tx: tx.asV2Read)
+        }) {
             let title = OWSLocalizedString(
                 "DONATE_SCREEN_ERROR_TITLE_BANK_PAYMENT_AWAITING_AUTHORIZATION",
                 comment: "Title for an alert presented when the user tries to make a donation, but already has a donation that is currently awaiting authorization."
@@ -1399,21 +1367,17 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
                 comment: "Message in an alert presented when the user tries to update their recurring donation, but already has a recurring donation that is currently awaiting authorization."
             )
 
-            return [
-                doomedContinueButton(
-                    errorAlertTitle: title,
-                    errorAlertMessage: message,
-                    isEnabled: true
-                )
-            ]
-        } else if
-            let currentSubscription = monthly.currentSubscription,
-            let paymentMethodIfPaymentProcessing = monthly.paymentMethodIfPaymentProcessing
-        {
+            let doomedContinueButton = doomedButton(
+                title: title,
+                message: message,
+                isEnabled: true
+            )
+            buttons.append(doomedContinueButton)
+        } else if let paymentProcessingMethod = monthly.paymentProcessingWithPaymentMethod {
             let title: String
             let message: String
 
-            switch paymentMethodIfPaymentProcessing {
+            switch paymentProcessingMethod {
             case .applePay, .creditOrDebitCard, .paypal:
                 title = OWSLocalizedString(
                     "DONATE_SCREEN_ERROR_TITLE_YOU_HAVE_A_PAYMENT_PROCESSING",
@@ -1434,25 +1398,12 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
                 )
             }
 
-            let continueButton = doomedContinueButton(
-                errorAlertTitle: title,
-                errorAlertMessage: message,
+            let doomedContinueButton = doomedButton(
+                title: title,
+                message: message,
                 isEnabled: isDifferentSubscriptionLevelSelected(monthly.currentSubscription)
             )
-
-            switch currentSubscription.status {
-            case .pastDue:
-                /// If the user's subscription is `.pastDue`, it means a renewal
-                /// payment failed and the payment processor is auto-retrying
-                /// the renewal payment. Give the user a chance to bail out by
-                /// canceling their subscription, which will stop the retries.
-                return [continueButton, cancelSubscriptionButton()]
-            case .active:
-                return [continueButton]
-            case .unknown, .incomplete, .unpaid, .canceled:
-                owsFailDebug("Have a payment processing, but have unexpected subscription status \(currentSubscription.status)")
-                return [continueButton]
-            }
+            buttons.append(doomedContinueButton)
         } else if let currentSubscription = monthly.currentSubscription {
             if
                 currentSubscription.active,
@@ -1468,11 +1419,18 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
                 updateButton.backgroundColor = .ows_accentBlue
                 updateButton.titleLabel?.font = UIFont.dynamicTypeBody.semibold()
                 updateButton.isEnabled = isDifferentSubscriptionLevelSelected(currentSubscription)
-
-                return [updateButton, cancelSubscriptionButton()]
-            } else {
-                return [cancelSubscriptionButton()]
+                buttons.append(updateButton)
             }
+
+            let cancelTitle = OWSLocalizedString(
+                "SUSTAINER_VIEW_CANCEL_SUBSCRIPTION",
+                comment: "Sustainer view Cancel Subscription button title"
+            )
+            let cancelButton = OWSButton(title: cancelTitle) { [weak self] in
+                self?.didTapToCancelSubscription()
+            }
+            cancelButton.setTitleColor(Theme.accentBlueColor, for: .normal)
+            buttons.append(cancelButton)
         } else {
             let continueButton = OWSButton(title: CommonStrings.continueButton) { [weak self] in
                 self?.didTapToStartNewMonthlyDonation()
@@ -1480,8 +1438,21 @@ class DonateViewController: OWSViewController, OWSNavigationChildController {
             continueButton.backgroundColor = .ows_accentBlue
             continueButton.titleLabel?.font = UIFont.dynamicTypeBody.semibold()
 
-            return [continueButton]
+            buttons.append(continueButton)
         }
+
+        for button in buttons {
+            button.dimsWhenHighlighted = true
+            button.dimsWhenDisabled = true
+            button.layer.cornerRadius = 8
+            button.titleLabel?.numberOfLines = 0
+            button.titleLabel?.lineBreakMode = .byWordWrapping
+            button.titleLabel?.textAlignment = .center
+            button.autoSetDimension(.height, toSize: 48, relation: .greaterThanOrEqual)
+        }
+
+        monthlyButtonsView.removeAllSubviews()
+        monthlyButtonsView.addArrangedSubviews(buttons)
     }
 }
 

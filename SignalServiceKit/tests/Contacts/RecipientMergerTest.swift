@@ -10,9 +10,6 @@ import XCTest
 @testable import SignalServiceKit
 
 private class MockStorageServiceManager: StorageServiceManager {
-    func setLocalIdentifiers(_ localIdentifiers: LocalIdentifiers) {}
-    func currentManifestVersion(tx: DBReadTransaction) -> UInt64 { 0 }
-    func currentManifestHasRecordIkm(tx: DBReadTransaction) -> Bool { false }
     func recordPendingUpdates(updatedRecipientUniqueIds: [RecipientUniqueId]) {}
     func recordPendingUpdates(updatedAddresses: [SignalServiceAddress]) {}
     func recordPendingUpdates(updatedGroupV2MasterKeys: [Data]) {}
@@ -20,19 +17,20 @@ private class MockStorageServiceManager: StorageServiceManager {
     func recordPendingUpdates(callLinkRootKeys: [CallLinkRootKey]) {}
     func recordPendingUpdates(groupModel: TSGroupModel) {}
     func recordPendingLocalAccountUpdates() {}
+    func setLocalIdentifiers(_ localIdentifiers: LocalIdentifiersObjC) {}
     func backupPendingChanges(authedDevice: AuthedDevice) {}
     func resetLocalData(transaction: DBWriteTransaction) {}
     func restoreOrCreateManifestIfNecessary(authedDevice: AuthedDevice) -> Promise<Void> { Promise<Void>(error: OWSGenericError("Not implemented.")) }
-    func rotateManifest(mode: ManifestRotationMode, authedDevice: AuthedDevice) async throws { throw OWSGenericError("Not implemented.") }
     func waitForPendingRestores() -> Promise<Void> { Promise<Void>(error: OWSGenericError("Not implemented.")) }
 }
 
 private class TestDependencies {
     let aciSessionStore: SignalSessionStore
     var aciSessionStoreKeyValueStore: KeyValueStore {
-        KeyValueStore(collection: "TSStorageManagerSessionStoreCollection")
+        keyValueStoreFactory.keyValueStore(collection: "TSStorageManagerSessionStoreCollection")
     }
     let identityManager: MockIdentityManager
+    let keyValueStoreFactory = InMemoryKeyValueStoreFactory()
     let mockDB = InMemoryDB()
     let recipientMerger: RecipientMerger
     let recipientDatabaseTable = MockRecipientDatabaseTable()
@@ -46,13 +44,14 @@ private class TestDependencies {
         let storageServiceManager = MockStorageServiceManager()
         recipientFetcher = RecipientFetcherImpl(recipientDatabaseTable: recipientDatabaseTable)
         recipientIdFinder = RecipientIdFinder(recipientDatabaseTable: recipientDatabaseTable, recipientFetcher: recipientFetcher)
-        aciSessionStore = SSKSessionStore(for: .aci, recipientIdFinder: recipientIdFinder)
+        aciSessionStore = SSKSessionStore(for: .aci, keyValueStoreFactory: keyValueStoreFactory, recipientIdFinder: recipientIdFinder)
         identityManager = MockIdentityManager(recipientIdFinder: recipientIdFinder)
         identityManager.recipientIdentities = [:]
         identityManager.sessionSwitchoverMessages = []
         threadAssociatedDataStore = MockThreadAssociatedDataStore()
         threadStore = MockThreadStore()
         threadMerger = ThreadMerger.forUnitTests(
+            keyValueStoreFactory: keyValueStoreFactory,
             threadAssociatedDataStore: threadAssociatedDataStore,
             threadStore: threadStore
         )

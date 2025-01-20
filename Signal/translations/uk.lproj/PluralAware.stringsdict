@@ -293,13 +293,13 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>%1$d фото</string>
+			<string>%1$d Елемент</string>
 			<key>few</key>
-			<string>%1$d фото</string>
+			<string>%1$d елементи</string>
 			<key>many</key>
-			<string>%1$d фото</string>
+			<string>%1$d елементів</string>
 			<key>other</key>
-			<string>%1$d фото</string>
+			<string>%1$d елементу</string>
 		</dict>
 	</dict>
 	<key>CHAT_COLOR_SETTINGS_DELETE_ALERT_MESSAGE_%d</key>
@@ -488,13 +488,13 @@
 			<key>NSStringFormatValueTypeKey</key>
 			<string>d</string>
 			<key>one</key>
-			<string>%1$dхв</string>
+			<string>%1$d хв</string>
 			<key>few</key>
-			<string>%1$dхв</string>
+			<string>%1$d хв</string>
 			<key>many</key>
-			<string>%1$dхв</string>
+			<string>%1$d хв</string>
 			<key>other</key>
-			<string>%1$dхв</string>
+			<string>%1$d хв</string>
 		</dict>
 	</dict>
 	<key>DATE_MINUTES_AGO_LONG_%d</key>

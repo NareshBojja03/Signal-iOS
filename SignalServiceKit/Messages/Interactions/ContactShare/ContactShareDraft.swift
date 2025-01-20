@@ -15,7 +15,7 @@ public class ContactShareDraft {
 
     public var phoneNumbers: [OWSContactPhoneNumber]
 
-    public var existingAvatarAttachment: ReferencedAttachment?
+    public var existingAvatarAttachment: ReferencedTSResource?
 
     public var avatarImageData: Data? {
         didSet {
@@ -109,7 +109,7 @@ public class ContactShareDraft {
         addresses: [OWSContactAddress],
         emails: [OWSContactEmail],
         phoneNumbers: [OWSContactPhoneNumber],
-        existingAvatarAttachment: ReferencedAttachment?,
+        existingAvatarAttachment: ReferencedTSResource?,
         avatarImageData: Data?
     ) {
         self.name = name
@@ -152,7 +152,7 @@ public class ContactShareDraft {
         public let addresses: [OWSContactAddress]
         public let emails: [OWSContactEmail]
         public let phoneNumbers: [OWSContactPhoneNumber]
-        public let avatar: AttachmentDataSource?
+        public let avatar: TSResourceDataSource?
 
         public var ows_isValid: Bool {
             return OWSContact.isValid(

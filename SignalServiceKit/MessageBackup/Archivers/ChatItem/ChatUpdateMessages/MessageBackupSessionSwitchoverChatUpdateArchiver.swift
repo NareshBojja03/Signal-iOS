@@ -21,7 +21,7 @@ final class MessageBackupSessionSwitchoverChatUpdateArchiver {
 
     func archiveSessionSwitchoverChatUpdate(
         infoMessage: TSInfoMessage,
-        threadInfo: MessageBackup.ChatArchivingContext.CachedThreadInfo,
+        thread: TSThread,
         context: MessageBackup.ChatArchivingContext
     ) -> ArchiveChatUpdateMessageResult {
         func messageFailure(
@@ -42,12 +42,7 @@ final class MessageBackupSessionSwitchoverChatUpdateArchiver {
             return .skippableChatUpdate(.legacyInfoMessage(.sessionSwitchoverWithoutPhoneNumber))
         }
 
-        let switchedOverContactAddress: MessageBackup.ContactAddress
-        switch threadInfo {
-        case .contactThread(let contactAddress):
-            guard let contactAddress else { fallthrough }
-            switchedOverContactAddress = contactAddress
-        case .groupThread:
+        guard let switchedOverContactAddress = (thread as? TSContactThread)?.contactAddress.asSingleServiceIdBackupAddress() else {
             return messageFailure(.sessionSwitchoverUpdateMissingAuthor)
         }
 
@@ -108,19 +103,11 @@ final class MessageBackupSessionSwitchoverChatUpdateArchiver {
             phoneNumber: e164.stringValue
         )
 
-        guard let directionalDetails = chatItem.directionalDetails else {
-            return .messageFailure([.restoreFrameError(
-                .invalidProtoData(.chatItemMissingDirectionalDetails),
-                chatItem.id
-            )])
-        }
-
         do {
             try interactionStore.insert(
                 sessionSwitchoverInfoMessage,
                 in: chatThread,
                 chatId: chatItem.typedChatId,
-                directionalDetails: directionalDetails,
                 context: context
             )
         } catch let error {

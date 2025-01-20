@@ -8,12 +8,12 @@ import Foundation
 extension MessageEdits {
 
     public enum OversizeTextSource {
-        case dataSource(AttachmentDataSource)
+        case dataSource(OversizeTextDataSource)
         case proto(SSKProtoAttachmentPointer)
     }
 
     public enum LinkPreviewSource {
-        case draft(LinkPreviewDataSource)
+        case draft(LinkPreviewTSResourceDataSource)
         case proto(SSKProtoPreview, SSKProtoDataMessage)
     }
 }

@@ -162,19 +162,8 @@ extension DonationSettingsViewController {
                     )
                 } else {
                     if subscription.isPaymentProcessing {
-                        switch subscription.status {
-                        case .pastDue:
-                            /// Payments in `.pastDue` will be processing, but
-                            /// we won't have tried to redeem a receipt credential
-                            /// for them so it's expected we won't have a
-                            /// corresponding error.
-                            break
-                        case .active, .canceled, .incomplete, .unpaid, .unknown:
-                            logger.warn("Subscription is processing, but we don't have a receipt credential request error about it!")
-                        }
-                    }
-
-                    if subscription.chargeFailure != nil {
+                        logger.warn("Subscription is processing, but we don't have a receipt credential request error about it!")
+                    } else if subscription.chargeFailure != nil {
                         logger.warn("Subscription has charge failure, but we don't have a receipt credential request error about it!")
                     }
 
@@ -186,29 +175,12 @@ extension DonationSettingsViewController {
                         // for the purposes of this view – it may yet succeed!
                         return nil
                     case .canceled:
-                        /// This is weird, but could apply to subscriptions that
-                        /// were canceled due to charge failures before we used
-                        /// `ReceiptCredentialRequestError`s to track failures.
                         logger.warn("Subscription is canceled, but we don't have a receipt credential request error about it!")
-
-                        if
-                            let chargeFailure = subscription.chargeFailure,
-                            previouslyHadActiveSubscription
-                        {
-                            return .previouslyActiveSubscriptionLapsed(
-                                chargeFailureCode: chargeFailure.code,
-                                paymentMethod: subscription.donationPaymentMethod
-                            )
-                        } else if let chargeFailure = subscription.chargeFailure {
-                            return .paymentFailed(
-                                chargeFailureCode: chargeFailure.code,
-                                paymentMethod: subscription.donationPaymentMethod
-                            )
-                        }
-
                         return nil
                     case
                             .incomplete,
+                            .incompleteExpired,
+                            .trialing,
                             .unpaid,
                             .unknown:
                         // Not sure what's going on here, but we don't want to show a
@@ -588,6 +560,18 @@ extension DonationSettingsViewController {
         imageView.autoPinToSquareAspectRatio()
 
         return imageView
+    }
+}
+
+private extension Subscription {
+    /// If this subscription has a payment processing, returns an error state
+    /// describing that fact.
+    var errorStateIfIsPaymentProcessing: MySupportErrorState? {
+        if isPaymentProcessing {
+            return .paymentProcessing(paymentMethod: paymentMethod)
+        }
+
+        return nil
     }
 }
 

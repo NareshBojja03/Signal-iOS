@@ -145,7 +145,7 @@ public extension DeleteForMeOutgoingSyncMessageManager {
     /// - Important
     /// All the given messages must belong to the given thread.
     func send(
-        deletedAttachments: [TSMessage: [ReferencedAttachment]],
+        deletedAttachments: [TSMessage: [ReferencedTSResource]],
         thread: TSThread,
         localIdentifiers: LocalIdentifiers,
         tx: any DBWriteTransaction
@@ -155,9 +155,9 @@ public extension DeleteForMeOutgoingSyncMessageManager {
         for (message, attachments) in deletedAttachments {
             let attachmentIdentifiers: [Outgoing.AttachmentIdentifier] = attachments.map { attachment in
                 return Outgoing.AttachmentIdentifier(
-                    clientUuid: attachment.reference.knownIdInOwningMessage,
-                    encryptedDigest: attachment.attachment.asStream()?.encryptedFileSha256Digest,
-                    plaintextHash: attachment.attachment.asStream()?.sha256ContentHash
+                    clientUuid: attachment.reference.knownIdInOwningMessage(message),
+                    encryptedDigest: attachment.attachment.encryptedResourceSha256Digest,
+                    plaintextHash: attachment.attachment.knownPlaintextResourceSha256Hash
                 )
             }
 
@@ -176,6 +176,7 @@ public extension DeleteForMeOutgoingSyncMessageManager {
 // MARK: -
 
 final class DeleteForMeOutgoingSyncMessageManagerImpl: DeleteForMeOutgoingSyncMessageManager {
+    private let deleteForMeSyncMessageSettingsStore: any DeleteForMeSyncMessageSettingsStore
     private let recipientDatabaseTable: any RecipientDatabaseTable
     private let syncMessageSender: any Shims.SyncMessageSender
     private let threadStore: any ThreadStore
@@ -183,10 +184,12 @@ final class DeleteForMeOutgoingSyncMessageManagerImpl: DeleteForMeOutgoingSyncMe
     private let logger = PrefixedLogger(prefix: "[DeleteForMe]")
 
     init(
+        deleteForMeSyncMessageSettingsStore: any DeleteForMeSyncMessageSettingsStore,
         recipientDatabaseTable: any RecipientDatabaseTable,
         syncMessageSender: any Shims.SyncMessageSender,
         threadStore: any ThreadStore
     ) {
+        self.deleteForMeSyncMessageSettingsStore = deleteForMeSyncMessageSettingsStore
         self.recipientDatabaseTable = recipientDatabaseTable
         self.syncMessageSender = syncMessageSender
         self.threadStore = threadStore
@@ -362,6 +365,11 @@ final class DeleteForMeOutgoingSyncMessageManagerImpl: DeleteForMeOutgoingSyncMe
         contents: DeleteForMeOutgoingSyncMessage.Contents,
         tx: any DBWriteTransaction
     ) {
+        guard deleteForMeSyncMessageSettingsStore.isSendingEnabled(tx: tx) else {
+            logger.warn("Skipping delete-for-me sync message, feature not enabled!")
+            return
+        }
+
         guard let localThread = threadStore.getOrCreateLocalThread(tx: tx) else {
             logger.error("Missing local thread!")
             return

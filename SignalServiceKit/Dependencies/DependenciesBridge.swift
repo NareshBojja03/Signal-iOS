@@ -64,7 +64,6 @@ public class DependenciesBridge {
     public let callRecordStore: CallRecordStore
     public let changePhoneNumberPniManager: ChangePhoneNumberPniManager
     public let chatColorSettingStore: ChatColorSettingStore
-    public let chatConnectionManager: ChatConnectionManager
     public let contactShareManager: ContactShareManager
     public let currentCallProvider: any CurrentCallProvider
     public let databaseChangeObserver: DatabaseChangeObserver
@@ -73,8 +72,8 @@ public class DependenciesBridge {
     let deletedCallRecordStore: DeletedCallRecordStore
     let deleteForMeIncomingSyncMessageManager: DeleteForMeIncomingSyncMessageManager
     public let deleteForMeOutgoingSyncMessageManager: DeleteForMeOutgoingSyncMessageManager
+    public let deleteForMeSyncMessageSettingsStore: DeleteForMeSyncMessageSettingsStore
     public let deviceManager: OWSDeviceManager
-    public let deviceService: OWSDeviceService
     public let deviceStore: OWSDeviceStore
     public let disappearingMessagesConfigurationStore: DisappearingMessagesConfigurationStore
     public let donationReceiptCredentialResultStore: DonationReceiptCredentialResultStore
@@ -93,7 +92,7 @@ public class DependenciesBridge {
     public let individualCallRecordManager: IndividualCallRecordManager
     public let interactionDeleteManager: InteractionDeleteManager
     public let interactionStore: InteractionStore
-    public let lastVisibleInteractionStore: LastVisibleInteractionStore
+    public let keyValueStoreFactory: KeyValueStoreFactory
     public let learnMyOwnPniManager: LearnMyOwnPniManager
     public let linkedDevicePniKeyManager: LinkedDevicePniKeyManager
     public let linkAndSyncManager: LinkAndSyncManager
@@ -104,8 +103,8 @@ public class DependenciesBridge {
     public let localUsernameManager: LocalUsernameManager
     public let masterKeySyncManager: MasterKeySyncManager
     public let mediaBandwidthPreferenceStore: MediaBandwidthPreferenceStore
+    public let mediaGalleryResourceManager: MediaGalleryResourceManager
     public let messageBackupErrorPresenter: MessageBackupErrorPresenter
-    public let messageBackupKeyMaterial: MessageBackupKeyMaterial
     public let messageBackupManager: MessageBackupManager
     public let messageStickerManager: MessageStickerManager
     public let mrbkStore: MediaRootBackupKeyStore
@@ -134,7 +133,7 @@ public class DependenciesBridge {
     public let searchableNameIndexer: SearchableNameIndexer
     public let sentMessageTranscriptReceiver: SentMessageTranscriptReceiver
     public let signalProtocolStoreManager: SignalProtocolStoreManager
-    public let storageServiceRecordIkmCapabilityStore: StorageServiceRecordIkmCapabilityStore
+    public let chatConnectionManager: ChatConnectionManager
     public let svr: SecureValueRecovery
     public let svrCredentialStorage: SVRAuthCredentialStorage
     public let threadAssociatedDataStore: ThreadAssociatedDataStore
@@ -143,6 +142,13 @@ public class DependenciesBridge {
     public let threadSoftDeleteManager: ThreadSoftDeleteManager
     public let threadStore: ThreadStore
     public let tsAccountManager: TSAccountManager
+    public let tsResourceCloner: SignalTSResourceCloner
+    public let tsResourceContentValidator: TSResourceContentValidator
+    public let tsResourceDownloadManager: TSResourceDownloadManager
+    public let tsResourceManager: TSResourceManager
+    public let tsResourceStore: TSResourceStore
+    public let tsResourceUploadManager: TSResourceUploadManager
+    public let tsResourceViewOnceManager: TSResourceViewOnceManager
     public let usernameApiClient: UsernameApiClient
     public let usernameEducationManager: UsernameEducationManager
     public let usernameLinkManager: UsernameLinkManager
@@ -187,8 +193,8 @@ public class DependenciesBridge {
         deletedCallRecordStore: DeletedCallRecordStore,
         deleteForMeIncomingSyncMessageManager: DeleteForMeIncomingSyncMessageManager,
         deleteForMeOutgoingSyncMessageManager: DeleteForMeOutgoingSyncMessageManager,
+        deleteForMeSyncMessageSettingsStore: DeleteForMeSyncMessageSettingsStore,
         deviceManager: OWSDeviceManager,
-        deviceService: OWSDeviceService,
         deviceStore: OWSDeviceStore,
         disappearingMessagesConfigurationStore: DisappearingMessagesConfigurationStore,
         donationReceiptCredentialResultStore: DonationReceiptCredentialResultStore,
@@ -207,7 +213,7 @@ public class DependenciesBridge {
         individualCallRecordManager: IndividualCallRecordManager,
         interactionDeleteManager: InteractionDeleteManager,
         interactionStore: InteractionStore,
-        lastVisibleInteractionStore: LastVisibleInteractionStore,
+        keyValueStoreFactory: KeyValueStoreFactory,
         learnMyOwnPniManager: LearnMyOwnPniManager,
         linkedDevicePniKeyManager: LinkedDevicePniKeyManager,
         linkAndSyncManager: LinkAndSyncManager,
@@ -218,8 +224,8 @@ public class DependenciesBridge {
         localUsernameManager: LocalUsernameManager,
         masterKeySyncManager: MasterKeySyncManager,
         mediaBandwidthPreferenceStore: MediaBandwidthPreferenceStore,
+        mediaGalleryResourceManager: MediaGalleryResourceManager,
         messageBackupErrorPresenter: MessageBackupErrorPresenter,
-        messageBackupKeyMaterial: MessageBackupKeyMaterial,
         messageBackupManager: MessageBackupManager,
         messageStickerManager: MessageStickerManager,
         mrbkStore: MediaRootBackupKeyStore,
@@ -248,7 +254,6 @@ public class DependenciesBridge {
         searchableNameIndexer: SearchableNameIndexer,
         sentMessageTranscriptReceiver: SentMessageTranscriptReceiver,
         signalProtocolStoreManager: SignalProtocolStoreManager,
-        storageServiceRecordIkmCapabilityStore: StorageServiceRecordIkmCapabilityStore,
         svr: SecureValueRecovery,
         svrCredentialStorage: SVRAuthCredentialStorage,
         threadAssociatedDataStore: ThreadAssociatedDataStore,
@@ -257,6 +262,13 @@ public class DependenciesBridge {
         threadSoftDeleteManager: ThreadSoftDeleteManager,
         threadStore: ThreadStore,
         tsAccountManager: TSAccountManager,
+        tsResourceCloner: SignalTSResourceCloner,
+        tsResourceContentValidator: TSResourceContentValidator,
+        tsResourceDownloadManager: TSResourceDownloadManager,
+        tsResourceManager: TSResourceManager,
+        tsResourceStore: TSResourceStore,
+        tsResourceUploadManager: TSResourceUploadManager,
+        tsResourceViewOnceManager: TSResourceViewOnceManager,
         usernameApiClient: UsernameApiClient,
         usernameEducationManager: UsernameEducationManager,
         usernameLinkManager: UsernameLinkManager,
@@ -291,7 +303,6 @@ public class DependenciesBridge {
         self.callRecordStore = callRecordStore
         self.changePhoneNumberPniManager = changePhoneNumberPniManager
         self.chatColorSettingStore = chatColorSettingStore
-        self.chatConnectionManager = chatConnectionManager
         self.contactShareManager = contactShareManager
         self.currentCallProvider = currentCallProvider
         self.databaseChangeObserver = databaseChangeObserver
@@ -300,8 +311,8 @@ public class DependenciesBridge {
         self.deletedCallRecordStore = deletedCallRecordStore
         self.deleteForMeIncomingSyncMessageManager = deleteForMeIncomingSyncMessageManager
         self.deleteForMeOutgoingSyncMessageManager = deleteForMeOutgoingSyncMessageManager
+        self.deleteForMeSyncMessageSettingsStore = deleteForMeSyncMessageSettingsStore
         self.deviceManager = deviceManager
-        self.deviceService = deviceService
         self.deviceStore = deviceStore
         self.disappearingMessagesConfigurationStore = disappearingMessagesConfigurationStore
         self.donationReceiptCredentialResultStore = donationReceiptCredentialResultStore
@@ -320,7 +331,7 @@ public class DependenciesBridge {
         self.individualCallRecordManager = individualCallRecordManager
         self.interactionDeleteManager = interactionDeleteManager
         self.interactionStore = interactionStore
-        self.lastVisibleInteractionStore = lastVisibleInteractionStore
+        self.keyValueStoreFactory = keyValueStoreFactory
         self.learnMyOwnPniManager = learnMyOwnPniManager
         self.linkedDevicePniKeyManager = linkedDevicePniKeyManager
         self.linkAndSyncManager = linkAndSyncManager
@@ -331,8 +342,8 @@ public class DependenciesBridge {
         self.localUsernameManager = localUsernameManager
         self.masterKeySyncManager = masterKeySyncManager
         self.mediaBandwidthPreferenceStore = mediaBandwidthPreferenceStore
+        self.mediaGalleryResourceManager = mediaGalleryResourceManager
         self.messageBackupErrorPresenter = messageBackupErrorPresenter
-        self.messageBackupKeyMaterial = messageBackupKeyMaterial
         self.messageBackupManager = messageBackupManager
         self.messageStickerManager = messageStickerManager
         self.mrbkStore = mrbkStore
@@ -361,7 +372,7 @@ public class DependenciesBridge {
         self.searchableNameIndexer = searchableNameIndexer
         self.sentMessageTranscriptReceiver = sentMessageTranscriptReceiver
         self.signalProtocolStoreManager = signalProtocolStoreManager
-        self.storageServiceRecordIkmCapabilityStore = storageServiceRecordIkmCapabilityStore
+        self.chatConnectionManager = chatConnectionManager
         self.svr = svr
         self.svrCredentialStorage = svrCredentialStorage
         self.threadAssociatedDataStore = threadAssociatedDataStore
@@ -370,6 +381,13 @@ public class DependenciesBridge {
         self.threadSoftDeleteManager = threadSoftDeleteManager
         self.threadStore = threadStore
         self.tsAccountManager = tsAccountManager
+        self.tsResourceCloner = tsResourceCloner
+        self.tsResourceContentValidator = tsResourceContentValidator
+        self.tsResourceDownloadManager = tsResourceDownloadManager
+        self.tsResourceManager = tsResourceManager
+        self.tsResourceStore = tsResourceStore
+        self.tsResourceUploadManager = tsResourceUploadManager
+        self.tsResourceViewOnceManager = tsResourceViewOnceManager
         self.usernameApiClient = usernameApiClient
         self.usernameEducationManager = usernameEducationManager
         self.usernameLinkManager = usernameLinkManager

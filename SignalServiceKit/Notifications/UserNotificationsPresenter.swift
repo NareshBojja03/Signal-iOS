@@ -170,7 +170,7 @@ class UserNotificationPresenter {
             || category == .incomingReactionWithActions_CanReply
             || category == .incomingReactionWithActions_CannotReply
         )
-        if checkForCancel, !isMainAppAndActive, hasReceivedSyncMessageRecentlyWithSneakyTransaction {
+        if checkForCancel && hasReceivedSyncMessageRecentlyWithSneakyTransaction {
             assert(userInfo[AppNotificationUserInfoKey.threadId] != nil)
             trigger = UNTimeIntervalNotificationTrigger(timeInterval: kNotificationDelayForRemoteRead, repeats: false)
         } else {
@@ -214,6 +214,28 @@ class UserNotificationPresenter {
         } catch {
             owsFailDebug("Error presenting notification with identifier \(notificationIdentifier): \(error)")
         }
+    }
+
+    // This method is thread-safe.
+    func postGenericIncomingMessageNotification() async {
+        let content = UNMutableNotificationContent()
+        content.categoryIdentifier = AppNotificationCategory.incomingMessageGeneric.identifier
+        content.userInfo = [:]
+        // We use a fixed identifier so that if we post multiple "generic"
+        // notifications, they replace each other.
+        let notificationIdentifier = "org.signal.genericIncomingMessageNotification"
+        content.body = NotificationStrings.genericIncomingMessageNotification
+        let request = UNNotificationRequest(identifier: notificationIdentifier, content: content, trigger: nil)
+
+        Logger.info("Presenting generic incoming message notification with identifier \(notificationIdentifier)")
+
+        do {
+            try await Self.notificationCenter.add(request)
+        } catch {
+            owsFailDebug("Error presenting generic incoming message notification with identifier \(notificationIdentifier): \(error)")
+        }
+
+        Logger.info("Presented notification with identifier \(notificationIdentifier)")
     }
 
     private func shouldPresentNotification(
@@ -268,6 +290,10 @@ class UserNotificationPresenter {
             if case .failedStorySends = notificationSuppressionRule {
                 return false
             }
+            return true
+
+        case .incomingMessageGeneric:
+            owsFailDebug(".incomingMessageGeneric should never check shouldPresentNotification().")
             return true
         }
     }
@@ -430,5 +456,20 @@ extension Sound {
             Logger.info("[Notification Sounds] sound file doesn't exist!")
         }
         return UNNotificationSound(named: UNNotificationSoundName(rawValue: filename))
+    }
+}
+
+extension UNAuthorizationStatus: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .notDetermined: return "Not Determined"
+        case .denied: return "Denied"
+        case .authorized: return "Authorized"
+        case .provisional: return "Provisional"
+        case .ephemeral: return "Ephemeral"
+        @unknown default:
+            owsFailDebug("New case! Please update the method")
+            return "Raw value: \(rawValue)"
+        }
     }
 }

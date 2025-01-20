@@ -251,8 +251,7 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
                     messageRowId: messageRowId,
                     receivedAtTimestamp: message.receivedAtTimestamp,
                     threadRowId: thread.threadRowId,
-                    isViewOnce: message.isViewOnceMessage,
-                    isPastEditRevision: message.isPastEditRevision()
+                    isViewOnce: message.isViewOnceMessage
                 ))
             )
         }
@@ -281,8 +280,7 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
             owner: .messageOversizeText(.init(
                 messageRowId: messageRowId,
                 receivedAtTimestamp: message.receivedAtTimestamp,
-                threadRowId: thread.threadRowId,
-                isPastEditRevision: message.isPastEditRevision()
+                threadRowId: thread.threadRowId
             ))
         )
 
@@ -321,8 +319,7 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
             owner: .quotedReplyAttachment(.init(
                 messageRowId: messageRowId,
                 receivedAtTimestamp: message.receivedAtTimestamp,
-                threadRowId: thread.threadRowId,
-                isPastEditRevision: message.isPastEditRevision()
+                threadRowId: thread.threadRowId
             ))
         )
 
@@ -350,8 +347,7 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
             owner: .messageLinkPreview(.init(
                 messageRowId: messageRowId,
                 receivedAtTimestamp: message.receivedAtTimestamp,
-                threadRowId: thread.threadRowId,
-                isPastEditRevision: message.isPastEditRevision()
+                threadRowId: thread.threadRowId
             ))
         )
 
@@ -379,8 +375,7 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
             owner: .messageContactAvatar(.init(
                 messageRowId: messageRowId,
                 receivedAtTimestamp: message.receivedAtTimestamp,
-                threadRowId: thread.threadRowId,
-                isPastEditRevision: message.isPastEditRevision()
+                threadRowId: thread.threadRowId
             ))
         )
 
@@ -411,7 +406,6 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
                 messageRowId: messageRowId,
                 receivedAtTimestamp: message.receivedAtTimestamp,
                 threadRowId: thread.threadRowId,
-                isPastEditRevision: message.isPastEditRevision(),
                 stickerPackId: stickerPackId,
                 stickerId: stickerId
             ))
@@ -429,14 +423,14 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
     internal static func currentUploadEra() throws -> String {
         // TODO: [Backups] use actual subscription id. For now use a fixed,
         // arbitrary id, so that it never changes.
-        let backupSubscriptionId = Data(repeating: 4, count: 32)
+        let backupSubscriptionId = Data(repeating: 5, count: 32)
         return try Attachment.uploadEra(backupSubscriptionId: backupSubscriptionId)
     }
 
     internal static func isFreeTierBackup() -> Bool {
         // TODO: [Backups] need a way to check if we are a free tier user;
         // if so we only use the AttachmentLocator instead of BackupLocator.
-        return !FeatureFlags.messageBackupRemoteExportAlpha
+        return false
     }
 
     // MARK: Archiving
@@ -509,22 +503,7 @@ internal class MessageBackupMessageAttachmentArchiver: MessageBackupProtoArchive
             })
         }
 
-        let results: [ReferencedAttachment]
-        if
-            attachments.count == 1,
-            let attachment = attachments.first,
-            case let .messageBodyAttachment(messageRowId) = attachment.owner.id,
-            attachment.proto.contentType == MimeType.textXSignalPlain.rawValue
-        {
-            // A single body attachment thats of type text gets swizzled to a long
-            // text attachment.
-            results = attachmentStore.fetchReferencedAttachments(
-                for: .messageOversizeText(messageRowId: messageRowId),
-                tx: context.tx
-            )
-        } else {
-            results = attachmentStore.fetchReferencedAttachments(owners: attachments.map(\.owner.id), tx: context.tx)
-        }
+        let results = attachmentStore.fetchReferencedAttachments(owners: attachments.map(\.owner.id), tx: context.tx)
         if results.isEmpty && !attachments.isEmpty {
             return .messageFailure([.restoreFrameError(
                 .failedToCreateAttachment,
@@ -685,9 +664,7 @@ extension ReferencedAttachment {
             var transitTierLocator = BackupProto_FilePointer.AttachmentLocator()
             transitTierLocator.cdnKey = transitTierInfo.cdnKey
             transitTierLocator.cdnNumber = transitTierInfo.cdnNumber
-            if transitTierInfo.uploadTimestamp > 0 {
-                transitTierLocator.uploadTimestamp = transitTierInfo.uploadTimestamp
-            }
+            transitTierLocator.uploadTimestamp = transitTierInfo.uploadTimestamp
             transitTierLocator.key = transitTierInfo.encryptionKey
             transitTierLocator.digest = transitTierInfo.digestSHA256Ciphertext
             if let unencryptedByteCount = transitTierInfo.unencryptedByteCount {

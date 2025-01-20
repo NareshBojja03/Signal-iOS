@@ -12,19 +12,25 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
     private let attachmentValidator: AttachmentContentValidator
     private let linkPreviewManager: LinkPreviewManager
     private let tsMessageStore: EditManagerAttachmentsImpl.Shims.TSMessageStore
+    private let tsResourceManager: TSResourceManager
+    private let tsResourceStore: TSResourceStore
 
     public init(
         attachmentManager: AttachmentManager,
         attachmentStore: AttachmentStore,
         attachmentValidator: AttachmentContentValidator,
         linkPreviewManager: LinkPreviewManager,
-        tsMessageStore: EditManagerAttachmentsImpl.Shims.TSMessageStore
+        tsMessageStore: EditManagerAttachmentsImpl.Shims.TSMessageStore,
+        tsResourceManager: TSResourceManager,
+        tsResourceStore: TSResourceStore
     ) {
         self.attachmentManager = attachmentManager
         self.attachmentStore = attachmentStore
         self.attachmentValidator = attachmentValidator
         self.linkPreviewManager = linkPreviewManager
         self.tsMessageStore = tsMessageStore
+        self.tsResourceManager = tsResourceManager
+        self.tsResourceStore = tsResourceStore
     }
 
     public func reconcileAttachments<EditTarget: EditMessageWrapper>(
@@ -117,7 +123,6 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                     with: attachmentReferencePriorToEdit,
                     newOwnerMessageRowId: priorRevisionRowId,
                     newOwnerThreadRowId: threadRowId,
-                    newOwnerIsPastEditRevision: true,
                     tx: tx
                 )
             default:
@@ -145,8 +150,8 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
             // Drop the quoted reply on the latest revision.
             if let attachmentReferencePriorToEdit {
                 // Break the owner edge from the latest revision.
-                try attachmentStore.removeAllOwners(
-                    withId: .quotedReplyAttachment(messageRowId: latestRevisionRowId),
+                try attachmentStore.removeOwner(
+                    .quotedReplyAttachment(messageRowId: latestRevisionRowId),
                     for: attachmentReferencePriorToEdit.attachmentRowId,
                     tx: tx
                 )
@@ -190,7 +195,6 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                     with: attachmentReferencePriorToEdit,
                     newOwnerMessageRowId: priorRevisionRowId,
                     newOwnerThreadRowId: threadRowId,
-                    newOwnerIsPastEditRevision: true,
                     tx: tx
                 )
             default:
@@ -199,8 +203,8 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
 
             // Break the owner edge from the latest revision since we always
             // either drop the link preview or create a new one.
-            try attachmentStore.removeAllOwners(
-                withId: .messageLinkPreview(messageRowId: latestRevisionRowId),
+            try attachmentStore.removeOwner(
+                .messageLinkPreview(messageRowId: latestRevisionRowId),
                 for: attachmentReferencePriorToEdit.attachmentRowId,
                 tx: tx
             )
@@ -216,8 +220,9 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
             break
         case .draft(let draft):
             let builder = try linkPreviewManager.buildLinkPreview(
-                from: draft,
+                from: draft.v2DataSource,
                 builder: builder,
+                ownerType: .message,
                 tx: tx
             )
             tsMessageStore.update(latestRevision, with: builder.info, tx: tx)
@@ -225,8 +230,7 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                 owner: .messageLinkPreview(.init(
                     messageRowId: latestRevisionRowId,
                     receivedAtTimestamp: latestRevision.receivedAtTimestamp,
-                    threadRowId: threadRowId,
-                    isPastEditRevision: latestRevision.isPastEditRevision()
+                    threadRowId: threadRowId
                 )),
                 tx: tx
             )
@@ -237,6 +241,7 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                     from: preview,
                     dataMessage: dataMessage,
                     builder: builder,
+                    ownerType: .message,
                     tx: tx
                 )
             } catch let error as LinkPreviewError {
@@ -257,8 +262,7 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                 owner: .messageLinkPreview(.init(
                     messageRowId: latestRevisionRowId,
                     receivedAtTimestamp: latestRevision.receivedAtTimestamp,
-                    threadRowId: threadRowId,
-                    isPastEditRevision: latestRevision.isPastEditRevision()
+                    threadRowId: threadRowId
                 )),
                 tx: tx
             )
@@ -295,7 +299,6 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                     with: oversizeTextReferencePriorToEdit,
                     newOwnerMessageRowId: priorRevisionRowId,
                     newOwnerThreadRowId: threadRowId,
-                    newOwnerIsPastEditRevision: true,
                     tx: tx
                 )
             default:
@@ -304,8 +307,8 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
 
             // Break the owner edge from the latest revision since we always
             // either drop the oversize text or create a new one.
-            try attachmentStore.removeAllOwners(
-                withId: .messageOversizeText(messageRowId: latestRevisionRowId),
+            try attachmentStore.removeOwner(
+                .messageOversizeText(messageRowId: latestRevisionRowId),
                 for: oversizeTextReferencePriorToEdit.attachmentRowId,
                 tx: tx
             )
@@ -316,15 +319,16 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
         case .none:
             break
         case .dataSource(let dataSource):
-            let attachmentDataSource = dataSource
+            guard let attachmentDataSource = dataSource.v2DataSource else {
+                throw OWSAssertionError("Missing v2 data source")
+            }
             try attachmentManager.createAttachmentStream(
                 consuming: .init(
                     dataSource: attachmentDataSource,
                     owner: .messageOversizeText(.init(
                         messageRowId: latestRevisionRowId,
                         receivedAtTimestamp: latestRevision.receivedAtTimestamp,
-                        threadRowId: threadRowId,
-                        isPastEditRevision: latestRevision.isPastEditRevision()
+                        threadRowId: threadRowId
                     ))
                 ),
                 tx: tx
@@ -336,8 +340,7 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                     owner: .messageOversizeText(.init(
                         messageRowId: latestRevisionRowId,
                         receivedAtTimestamp: latestRevision.receivedAtTimestamp,
-                        threadRowId: threadRowId,
-                        isPastEditRevision: latestRevision.isPastEditRevision()
+                        threadRowId: threadRowId
                     ))
                 ),
                 tx: tx
@@ -370,7 +373,6 @@ public class EditManagerAttachmentsImpl: EditManagerAttachments {
                     with: attachmentReference,
                     newOwnerMessageRowId: priorRevisionRowId,
                     newOwnerThreadRowId: threadRowId,
-                    newOwnerIsPastEditRevision: true,
                     tx: tx
                 )
             default:

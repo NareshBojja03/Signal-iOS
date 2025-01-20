@@ -47,6 +47,149 @@ public enum GiftBadgeIds: String {
     }
 }
 
+/// Represents a *recurring* subscription, associated with a subscriber ID and
+/// fetched from the service using that ID.
+public struct Subscription: Equatable {
+    public struct ChargeFailure: Equatable {
+        /// The error code reported by the server.
+        ///
+        /// If nil, we know there was a charge failure but don't know the code. This is unusual,
+        /// but can happen if the server sends an invalid response.
+        public let code: String?
+
+        public init() {
+            code = nil
+        }
+
+        public init(code: String) {
+            self.code = code
+        }
+
+        public init(jsonDictionary: [String: Any]) {
+            code = try? ParamParser(dictionary: jsonDictionary).optional(key: "code")
+        }
+    }
+
+    /// The state of the subscription as understood by the backend
+    ///
+    /// A subscription will be in the `active` state as long as the current
+    /// subscription payment has been successfully processed by the payment
+    /// processor.
+    ///
+    /// - Note
+    /// Signal servers get a callback when a subscription is going to renew. If
+    /// the user hasn't performed a "subscription keep-alive in ~30-45 days, the
+    /// server will, upon getting that callback, cancel the subscription.
+    public enum SubscriptionStatus: String {
+        case unknown
+        case trialing = "trialing"
+        case incomplete = "incomplete"
+        case incompleteExpired = "incomplete_expired"
+        case unpaid = "unpaid"
+
+        /// Indicates the subscription has been paid successfully for the
+        /// current period, and all is well.
+        case active = "active"
+
+        /// Indicates the subscription has been unrecoverably canceled. This may
+        /// be due to terminal failures while renewing (in which case the charge
+        /// failure should be populated), or due to inactivity (in which case
+        /// there will be no charge failure, as Signal servers canceled the
+        /// subscription artificially).
+        case canceled = "canceled"
+
+        /// Indicates the subscription failed to renew, but the payment
+        /// processor is planning to retry the renewal. If the future renewal
+        /// succeeds, the subscription will go back to being "active". Continued
+        /// renewal failures will result in the subscription being canceled.
+        ///
+        /// - Note
+        /// Retries are not predictable, but are expected to happen on the scale
+        /// of days, for up to circa two weeks.
+        case pastDue = "past_due"
+    }
+
+    public let level: UInt
+    public let amount: FiatMoney
+    public let endOfCurrentPeriod: TimeInterval
+    public let billingCycleAnchor: TimeInterval
+    public let active: Bool
+    public let cancelAtEndOfPeriod: Bool
+    public let status: SubscriptionStatus
+    public let paymentProcessor: DonationPaymentProcessor
+    /// - Note
+    /// This will never be `.applePay`, since the server treats Apple Pay
+    /// payments like credit card payments.
+    public let paymentMethod: DonationPaymentMethod?
+
+    /// Whether the payment for this subscription is actively processing, and
+    /// has not yet succeeded nor failed.
+    public let isPaymentProcessing: Bool
+
+    /// Indicates that payment for this subscription failed.
+    public let chargeFailure: ChargeFailure?
+
+    public var debugDescription: String {
+        [
+            "Subscription",
+            "End of current period: \(endOfCurrentPeriod)",
+            "Billing cycle anchor: \(billingCycleAnchor)",
+            "Cancel at end of period?: \(cancelAtEndOfPeriod)",
+            "Status: \(status)",
+            "Charge failure: \(chargeFailure.debugDescription)"
+        ].joined(separator: ". ")
+    }
+
+    public init(subscriptionDict: [String: Any], chargeFailureDict: [String: Any]?) throws {
+        let params = ParamParser(dictionary: subscriptionDict)
+        level = try params.required(key: "level")
+        let currencyCode: Currency.Code = try {
+            let raw: String = try params.required(key: "currency")
+            return raw.uppercased()
+        }()
+        amount = FiatMoney(
+            currencyCode: currencyCode,
+            value: try {
+                let integerValue: Int64 = try params.required(key: "amount")
+                let decimalValue = Decimal(integerValue)
+                if DonationUtilities.zeroDecimalCurrencyCodes.contains(currencyCode) {
+                    return decimalValue
+                } else {
+                    return decimalValue / 100
+                }
+            }()
+        )
+        endOfCurrentPeriod = try params.required(key: "endOfCurrentPeriod")
+        billingCycleAnchor = try params.required(key: "billingCycleAnchor")
+        active = try params.required(key: "active")
+        cancelAtEndOfPeriod = try params.required(key: "cancelAtPeriodEnd")
+        status = SubscriptionStatus(rawValue: try params.required(key: "status")) ?? .unknown
+
+        let processorString: String = try params.required(key: "processor")
+        if let paymentProcessor = DonationPaymentProcessor(rawValue: processorString) {
+            self.paymentProcessor = paymentProcessor
+        } else {
+            throw OWSAssertionError("Unexpected payment processor: \(processorString)")
+        }
+
+        let paymentMethodString: String? = try params.optional(key: "paymentMethod")
+        if let paymentMethod = paymentMethodString.map({ DonationPaymentMethod(serverRawValue: $0) }) {
+            self.paymentMethod = paymentMethod
+        } else {
+            owsFailDebug("[Donations] Unrecognized payment method while parsing subscription: \(paymentMethodString ?? "nil")")
+            self.paymentMethod = nil
+        }
+
+        isPaymentProcessing = try params.required(key: "paymentProcessing")
+
+        if let chargeFailureDict = chargeFailureDict {
+            chargeFailure = ChargeFailure(jsonDictionary: chargeFailureDict)
+        } else {
+            chargeFailure = nil
+        }
+    }
+}
+
 public extension Notification.Name {
     static let hasExpiredGiftBadgeDidChangeNotification = NSNotification.Name("hasExpiredGiftBadgeDidChangeNotification")
 }
@@ -73,7 +216,7 @@ public class DonationSubscriptionManager: NSObject {
 
     public static func performMigrationToStorageServiceIfNecessary() {
         let hasMigratedToStorageService = SSKEnvironment.shared.databaseStorageRef.read { transaction in
-            subscriptionKVS.getBool(hasMigratedToStorageServiceKey, defaultValue: false, transaction: transaction.asV2Read)
+            subscriptionKVS.getBool(hasMigratedToStorageServiceKey, defaultValue: false, transaction: transaction)
         }
 
         guard !hasMigratedToStorageService else { return }
@@ -81,7 +224,7 @@ public class DonationSubscriptionManager: NSObject {
         Logger.info("[Donations] Migrating to storage service")
 
         SSKEnvironment.shared.databaseStorageRef.asyncWrite { transaction in
-            subscriptionKVS.setBool(true, key: hasMigratedToStorageServiceKey, transaction: transaction.asV2Write)
+            subscriptionKVS.setBool(true, key: hasMigratedToStorageServiceKey, transaction: transaction)
 
             let localProfile = SSKEnvironment.shared.profileManagerImplRef.localUserProfile
             let displayBadgesOnProfile = localProfile.badges.allSatisfy { badge in
@@ -99,14 +242,14 @@ public class DonationSubscriptionManager: NSObject {
 
     // MARK: -
 
-    private static var receiptCredentialRedemptionJobQueue: DonationReceiptCredentialRedemptionJobQueue {
-        SSKEnvironment.shared.donationReceiptCredentialRedemptionJobQueue
+    private static var jobQueue: DonationReceiptCredentialRedemptionJobQueue {
+        SSKEnvironment.shared.smJobQueuesRef.receiptCredentialJobQueue
     }
 
     /// - Note
     /// This collection name is reused by other subscription-related stores. For
     /// example, see ``DonationReceiptCredentialResultStore``.
-    private static let subscriptionKVS = KeyValueStore(collection: "SubscriptionKeyValueStore")
+    private static let subscriptionKVS = SDSKeyValueStore(collection: "SubscriptionKeyValueStore")
 
     fileprivate static let subscriberIDKey = "subscriberID"
     fileprivate static let subscriberCurrencyCodeKey = "subscriberCurrencyCode"
@@ -134,13 +277,10 @@ public class DonationSubscriptionManager: NSObject {
         }
     }
 
-    public class func getCurrentSubscriptionStatus(
-        for subscriberID: Data,
-        networkManager: NetworkManager = SSKEnvironment.shared.networkManagerRef
-    ) -> Promise<Subscription?> {
+    public class func getCurrentSubscriptionStatus(for subscriberID: Data) -> Promise<Subscription?> {
         let request = OWSRequestFactory.subscriptionGetCurrentSubscriptionLevelRequest(subscriberID: subscriberID)
         return firstly {
-            networkManager.makePromise(request: request)
+            SSKEnvironment.shared.networkManagerRef.makePromise(request: request)
         }.map(on: DispatchQueue.global()) { response in
             let statusCode = response.responseStatusCode
 
@@ -274,7 +414,7 @@ public class DonationSubscriptionManager: NSObject {
             switch subscription.status {
             case .active, .pastDue:
                 break
-            case .canceled, .incomplete, .unpaid, .unknown:
+            case .canceled, .incomplete, .incompleteExpired, .trialing, .unpaid, .unknown:
                 return Promise.value(())
             }
 
@@ -426,32 +566,25 @@ public class DonationSubscriptionManager: NSObject {
         paymentMethod: DonationPaymentMethod?,
         isNewSubscription: Bool,
         shouldSuppressPaymentAlreadyRedeemed: Bool
-    ) async throws {
-        let db = DependenciesBridge.shared.db
-
-        let (
-            receiptCredentialRequestContext,
-            receiptCredentialRequest
-        ) = generateReceiptRequest()
-
-        let redemptionJobRecord = await db.awaitableWrite { tx in
-            return receiptCredentialRedemptionJobQueue.saveSubscriptionRedemptionJob(
+    ) -> Promise<Void> {
+        let (promise, future) = Promise<Void>.pending()
+        let request = generateReceiptRequest()
+        SSKEnvironment.shared.databaseStorageRef.asyncWrite { transaction in
+            self.jobQueue.addSubscriptionJob(
                 paymentProcessor: paymentProcessor,
                 paymentMethod: paymentMethod,
-                receiptCredentialRequestContext: receiptCredentialRequestContext,
-                receiptCredentialRequest: receiptCredentialRequest,
+                receiptCredentialRequestContext: request.context.serialize().asData,
+                receiptCredentialRequest: request.request.serialize().asData,
                 subscriberID: subscriberId,
                 targetSubscriptionLevel: subscriptionLevel,
                 priorSubscriptionLevel: priorSubscriptionLevel,
                 isNewSubscription: isNewSubscription,
                 shouldSuppressPaymentAlreadyRedeemed: shouldSuppressPaymentAlreadyRedeemed,
-                tx: tx
+                future: future,
+                transaction: transaction
             )
         }
-
-        try await receiptCredentialRedemptionJobQueue.runRedemptionJob(
-            jobRecord: redemptionJobRecord
-        )
+        return promise
     }
 
     public class func requestAndRedeemReceipt(
@@ -459,34 +592,27 @@ public class DonationSubscriptionManager: NSObject {
         amount: FiatMoney,
         paymentProcessor: DonationPaymentProcessor,
         paymentMethod: DonationPaymentMethod
-    ) async throws {
-        let db = DependenciesBridge.shared.db
-
-        let (
-            receiptCredentialRequestContext,
-            receiptCredentialRequest
-        ) = generateReceiptRequest()
-
-        let redemptionJobRecord = await db.awaitableWrite { tx in
-            return receiptCredentialRedemptionJobQueue.saveBoostRedemptionJob(
+    ) -> Promise<Void> {
+        let (promise, future) = Promise<Void>.pending()
+        let request = generateReceiptRequest()
+        SSKEnvironment.shared.databaseStorageRef.asyncWrite { transaction in
+            self.jobQueue.addBoostJob(
                 amount: amount,
                 paymentProcessor: paymentProcessor,
                 paymentMethod: paymentMethod,
-                receiptCredentialRequestContext: receiptCredentialRequestContext,
-                receiptCredentialRequest: receiptCredentialRequest,
+                receiptCredentialRequestContext: request.context.serialize().asData,
+                receiptCredentialRequest: request.request.serialize().asData,
                 boostPaymentIntentID: boostPaymentIntentId,
-                tx: tx
+                future: future,
+                transaction: transaction
             )
         }
-
-        try await receiptCredentialRedemptionJobQueue.runRedemptionJob(
-            jobRecord: redemptionJobRecord
-        )
+        return promise
     }
 
     public class func generateReceiptRequest() -> (context: ReceiptCredentialRequestContext, request: ReceiptCredentialRequest) {
         do {
-            let clientOperations = clientZKReceiptOperations()
+            let clientOperations = try clientZKReceiptOperations()
             let receiptSerial = try generateReceiptSerial()
 
             let receiptCredentialRequestContext = try clientOperations.createReceiptCredentialRequestContext(receiptSerial: receiptSerial)
@@ -529,7 +655,6 @@ public class DonationSubscriptionManager: NSObject {
         isValidReceiptLevelPredicate: @escaping (UInt64) -> Bool,
         context: ReceiptCredentialRequestContext,
         request: ReceiptCredentialRequest,
-        networkManager: NetworkManager = SSKEnvironment.shared.networkManagerRef,
         logger: PrefixedLogger
     ) throws -> Promise<ReceiptCredential> {
         return firstly {
@@ -538,7 +663,7 @@ public class DonationSubscriptionManager: NSObject {
                 request: request.serialize().asData
             )
 
-            return networkManager.makePromise(request: networkRequest)
+            return SSKEnvironment.shared.networkManagerRef.makePromise(request: networkRequest)
         }.map(on: DispatchQueue.global()) { response throws -> ReceiptCredential in
             return try self.parseReceiptCredentialResponse(
                 httpResponse: response,
@@ -595,7 +720,7 @@ public class DonationSubscriptionManager: NSObject {
         isValidReceiptLevelPredicate: (UInt64) -> Bool,
         logger: PrefixedLogger
     ) throws -> ReceiptCredential {
-        let clientOperations = clientZKReceiptOperations()
+        let clientOperations = try clientZKReceiptOperations()
 
         let httpStatusCode = httpResponse.responseStatusCode
         switch httpStatusCode {
@@ -712,8 +837,8 @@ public class DonationSubscriptionManager: NSObject {
         return try ReceiptSerial(contents: [UInt8](bytes))
     }
 
-    private class func clientZKReceiptOperations() -> ClientZkReceiptOperations {
-        let params = GroupsV2Protos.serverPublicParams()
+    private class func clientZKReceiptOperations() throws -> ClientZkReceiptOperations {
+        let params = try GroupsV2Protos.serverPublicParams()
         return ClientZkReceiptOperations(serverPublicParams: params)
     }
 
@@ -722,82 +847,127 @@ public class DonationSubscriptionManager: NSObject {
 
     // MARK: Heartbeat
 
-    public class func redeemSubscriptionIfNecessary() async throws {
-        struct CheckerStore: SubscriptionRedemptionNecessityCheckerStore {
-            let donationSubscriptionManager: DonationSubscriptionManager.Type
-
-            func subscriberId(tx: any DBReadTransaction) -> Data? {
-                return donationSubscriptionManager.getSubscriberID(transaction: SDSDB.shimOnlyBridge(tx))
-            }
-
-            func getLastRedemptionNecessaryCheck(tx: any DBReadTransaction) -> Date? {
-                return donationSubscriptionManager.subscriptionKVS.getDate(donationSubscriptionManager.lastSubscriptionHeartbeatKey, transaction: tx)
-            }
-
-            func setLastRedemptionNecessaryCheck(_ now: Date, tx: any DBWriteTransaction) {
-                donationSubscriptionManager.subscriptionKVS.setDate(now, key: donationSubscriptionManager.lastSubscriptionHeartbeatKey, transaction: tx)
-            }
-
-            func getLastSubscriptionRenewalDate(tx: any DBReadTransaction) -> Date? {
-                return donationSubscriptionManager.lastSubscriptionExpirationDate(transaction: SDSDB.shimOnlyBridge(tx))
-            }
-
-            func setLastSubscriptionRenewalDate(_ renewalDate: Date, tx: any DBWriteTransaction) {
-                donationSubscriptionManager.setLastSubscriptionExpirationDate(renewalDate, transaction: SDSDB.shimOnlyBridge(tx))
-            }
+    public class func performSubscriptionKeepAliveIfNecessary() {
+        let tsAccountManager = DependenciesBridge.shared.tsAccountManager
+        guard tsAccountManager.registrationStateWithMaybeSneakyTransaction.isPrimaryDevice ?? false else {
+            return
         }
 
-        let subscriptionRedemptionNecessaryChecker = SubscriptionRedemptionNecessityChecker<
-            DonationReceiptCredentialRedemptionJobRecord
-        >(
-            checkerStore: CheckerStore(donationSubscriptionManager: self),
-            dateProvider: { Date() },
-            db: DependenciesBridge.shared.db,
-            logger: PrefixedLogger(prefix: "[Donations]"),
-            networkManager: SSKEnvironment.shared.networkManagerRef,
-            tsAccountManager: DependenciesBridge.shared.tsAccountManager
-        )
+        // Fetch subscriberID / subscriber currencyCode
+        var lastKeepAliveHeartbeat: Date?
+        var lastSubscriptionExpiration: Date?
+        var subscriberID: Data?
+        var currencyCode: Currency.Code?
+        SSKEnvironment.shared.databaseStorageRef.read { transaction in
+            lastKeepAliveHeartbeat = self.subscriptionKVS.getDate(self.lastSubscriptionHeartbeatKey, transaction: transaction)
+            lastSubscriptionExpiration = self.lastSubscriptionExpirationDate(transaction: transaction)
+            subscriberID = self.getSubscriberID(transaction: transaction)
+            currencyCode = self.getSubscriberCurrencyCode(transaction: transaction)
+        }
 
-        try await subscriptionRedemptionNecessaryChecker.redeemSubscriptionIfNecessary(
-            enqueueRedemptionJobBlock: { subscriberId, subscription, tx -> DonationReceiptCredentialRedemptionJobRecord in
-                guard let donationPaymentProcessor = subscription.donationPaymentProcessor else {
-                    throw OWSAssertionError("Unexpectedly missing donation payment processor while redeeming donation subscription!")
-                }
+        var performHeartbeat: Bool = true
+        if let lastKeepAliveHeartbeat = lastKeepAliveHeartbeat, Date().timeIntervalSince(lastKeepAliveHeartbeat) < heartbeatInterval {
+            performHeartbeat = false
+        }
 
-                let (
-                    receiptCredentialRequestContext,
-                    receiptCredentialRequest
-                ) = generateReceiptRequest()
+        guard performHeartbeat else {
+            return
+        }
 
-                /// It's possible that we won't know which subscription period we
-                /// last renewed for, potentially due to reinstalling. If that
-                /// happens, we may or may not have already redeemed for the period
-                /// we're in now.
-                ///
-                /// The consequence of attempting to redeem, if we'd already done so
-                /// in a previous install, is that we'll get a "payment already
-                /// redeemed" error from our servers. That's fine – we've clearly
-                /// already done the thing we want to do, so we can always treat
-                /// this like a success.
-                let shouldSuppressPaymentAlreadyRedeemed = true
+        Logger.info("[Donations] Performing subscription heartbeat")
 
-                return receiptCredentialRedemptionJobQueue.saveSubscriptionRedemptionJob(
-                    paymentProcessor: donationPaymentProcessor,
-                    paymentMethod: subscription.donationPaymentMethod,
-                    receiptCredentialRequestContext: receiptCredentialRequestContext,
-                    receiptCredentialRequest: receiptCredentialRequest,
-                    subscriberID: subscriberId,
-                    targetSubscriptionLevel: subscription.level,
-                    priorSubscriptionLevel: nil,
-                    isNewSubscription: false,
-                    shouldSuppressPaymentAlreadyRedeemed: shouldSuppressPaymentAlreadyRedeemed,
-                    tx: tx
-                )
-            },
-            startRedemptionJobBlock: { jobRecord async throws in
-                try await receiptCredentialRedemptionJobQueue.runRedemptionJob(jobRecord: jobRecord)
+        guard let subscriberID = subscriberID, currencyCode != nil else {
+            Logger.warn("[Donations] No subscription + currency code found")
+            self.updateSubscriptionHeartbeatDate()
+            return
+        }
+
+        firstly(on: DispatchQueue.global()) {
+            self.postSubscriberID(subscriberID: subscriberID)
+        }.then(on: DispatchQueue.global()) {
+            self.getCurrentSubscriptionStatus(for: subscriberID)
+        }.done(on: DispatchQueue.global()) { subscription in
+            defer {
+                // We did a heartbeat, so regardless of the outcomes below we
+                // should save the fact that we did so.
+                self.updateSubscriptionHeartbeatDate()
             }
-        )
+
+            guard let subscription else {
+                Logger.info("[Donations] No current subscription for this subscriber ID.")
+                return
+            }
+
+            if let lastSubscriptionExpiration, lastSubscriptionExpiration.timeIntervalSince1970 == subscription.endOfCurrentPeriod {
+                Logger.info("[Donations] Not triggering receipt redemption, expiration date is the same")
+            } else if subscription.status == .pastDue {
+                /// For some payment methods (e.g., cards), the payment
+                /// processors will automatically retry a subscription-renewal
+                /// payment failure. While that's happening, the subscription
+                /// will be "past due".
+                ///
+                /// Retries will occur on the scale of days, for a period of
+                /// weeks. We don't want to attempt badge redemption during this
+                /// time since we don't expect to succeed now, but failure
+                /// doesn't yet mean much as we may succeed in the future.
+                Logger.warn("[Donations] Subscription failed to renew, but payment processor is retrying. Not yet attempting receipt credential redemption for this period.")
+            } else {
+                /// When a subscription renews, the "end of period" changes to
+                /// reflect a later date. When that happens, we need to redeem a
+                /// badge for the new period.
+                ///
+                /// We may also get here if we're missing our last subscription
+                /// expiration entirely, potentially due to a reinstall. In that
+                /// case, we don't know whether or not we've already redeemed a
+                /// badge for the period we're in. Either way, we can kick off
+                /// a receipt credential job:
+                ///
+                /// - If we haven't redeemed the badge yet, maybe because the
+                /// subscription renewed just before we reinstalled, everything
+                /// is fortuitously working as expected.
+                ///
+                /// - If we *have* redeemed the badge, we can expect the job to
+                /// fail with a "payment already redeemed" error. We'll
+                /// configure the job to swallow that error and be back to our
+                /// regular rhythm.
+
+                let shouldSuppressPaymentAlreadyRedeemed: Bool = {
+                    let newExpiration = Date(timeIntervalSince1970: subscription.endOfCurrentPeriod)
+
+                    if let lastSubscriptionExpiration {
+                        Logger.info("[Donations] Triggering receipt redemption job during heartbeat, last expiration \(lastSubscriptionExpiration), new expiration \(newExpiration)")
+                        return false
+                    } else {
+                        Logger.warn("[Donations] Attempting receipt credential redemption during heartbeat, missing last subscription expiration. New expiration: \(newExpiration)")
+                        return true
+                    }
+                }()
+
+                _ = requestAndRedeemReceipt(
+                    subscriberId: subscriberID,
+                    subscriptionLevel: subscription.level,
+                    priorSubscriptionLevel: nil,
+                    paymentProcessor: subscription.paymentProcessor,
+                    paymentMethod: subscription.paymentMethod,
+                    isNewSubscription: false,
+                    shouldSuppressPaymentAlreadyRedeemed: shouldSuppressPaymentAlreadyRedeemed
+                )
+
+                // Save last expiration
+                SSKEnvironment.shared.databaseStorageRef.write { transaction in
+                    self.setLastSubscriptionExpirationDate(Date(timeIntervalSince1970: subscription.endOfCurrentPeriod), transaction: transaction)
+                }
+            }
+        }.catch(on: DispatchQueue.global()) { error in
+            owsFailDebug("Failed subscription heartbeat with error \(error)")
+        }
+    }
+
+    private static func updateSubscriptionHeartbeatDate() {
+        SSKEnvironment.shared.databaseStorageRef.write { transaction in
+            // Update keepalive
+            self.subscriptionKVS.setDate(Date(), key: self.lastSubscriptionHeartbeatKey, transaction: transaction)
+        }
     }
 
     @objc
@@ -807,7 +977,7 @@ public class DonationSubscriptionManager: NSObject {
         var lastSubscriptionExpiration: Date?
         var subscriberID: Data?
         SSKEnvironment.shared.databaseStorageRef.read { transaction in
-            lastSubscriptionExpiration = self.subscriptionKVS.getDate(self.lastSubscriptionExpirationKey, transaction: transaction.asV2Read)
+            lastSubscriptionExpiration = self.subscriptionKVS.getDate(self.lastSubscriptionExpirationKey, transaction: transaction)
             subscriberID = self.getSubscriberID(transaction: transaction)
         }
 
@@ -847,10 +1017,9 @@ extension DonationSubscriptionManager {
 
     public static func getSubscriberID(transaction: SDSAnyReadTransaction) -> Data? {
         guard let subscriberID = subscriptionKVS.getObject(
-            subscriberIDKey,
-            ofClass: NSData.self,
-            transaction: transaction.asV2Read
-        ) as Data? else {
+            forKey: subscriberIDKey,
+            transaction: transaction
+        ) as? Data else {
             return nil
         }
         return subscriberID
@@ -859,14 +1028,14 @@ extension DonationSubscriptionManager {
     public static func setSubscriberID(_ subscriberID: Data?, transaction: SDSAnyWriteTransaction) {
         subscriptionKVS.setObject(subscriberID,
                                   key: subscriberIDKey,
-                                  transaction: transaction.asV2Write)
+                                  transaction: transaction)
     }
 
     public static func getSubscriberCurrencyCode(transaction: SDSAnyReadTransaction) -> String? {
-        guard let subscriberCurrencyCode = subscriptionKVS.getString(
-            subscriberCurrencyCodeKey,
-            transaction: transaction.asV2Read
-        ) else {
+        guard let subscriberCurrencyCode = subscriptionKVS.getObject(
+            forKey: subscriberCurrencyCodeKey,
+            transaction: transaction
+        ) as? String else {
             return nil
         }
         return subscriberCurrencyCode
@@ -878,16 +1047,16 @@ extension DonationSubscriptionManager {
     ) {
         subscriptionKVS.setObject(currencyCode,
                                   key: subscriberCurrencyCodeKey,
-                                  transaction: transaction.asV2Write)
+                                  transaction: transaction)
     }
 
     public static func userManuallyCancelledSubscription(transaction: SDSAnyReadTransaction) -> Bool {
-        return subscriptionKVS.getBool(userManuallyCancelledSubscriptionKey, transaction: transaction.asV2Read) ?? false
+        return subscriptionKVS.getBool(userManuallyCancelledSubscriptionKey, transaction: transaction) ?? false
     }
 
     public static func setUserManuallyCancelledSubscription(_ value: Bool, updateStorageService: Bool = false, transaction: SDSAnyWriteTransaction) {
         guard value != userManuallyCancelledSubscription(transaction: transaction) else { return }
-        subscriptionKVS.setBool(value, key: userManuallyCancelledSubscriptionKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setBool(value, key: userManuallyCancelledSubscriptionKey, transaction: transaction)
         if updateStorageService {
             SSKEnvironment.shared.storageServiceManagerRef.recordPendingLocalAccountUpdates()
         }
@@ -902,13 +1071,13 @@ extension DonationSubscriptionManager {
     }
 
     public static func displayBadgesOnProfile(transaction: SDSAnyReadTransaction) -> Bool {
-        return subscriptionKVS.getBool(displayBadgesOnProfileKey, transaction: transaction.asV2Read) ?? false
+        return subscriptionKVS.getBool(displayBadgesOnProfileKey, transaction: transaction) ?? false
     }
 
     public static func setDisplayBadgesOnProfile(_ value: Bool, updateStorageService: Bool = false, transaction: SDSAnyWriteTransaction) {
         guard value != displayBadgesOnProfile(transaction: transaction) else { return }
         displayBadgesOnProfileCache.set(value)
-        subscriptionKVS.setBool(value, key: displayBadgesOnProfileKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setBool(value, key: displayBadgesOnProfileKey, transaction: transaction)
         if updateStorageService {
             SSKEnvironment.shared.storageServiceManagerRef.recordPendingLocalAccountUpdates()
         }
@@ -917,54 +1086,59 @@ extension DonationSubscriptionManager {
     // MARK: -
 
     fileprivate static func lastSubscriptionExpirationDate(transaction: SDSAnyReadTransaction) -> Date? {
-        return subscriptionKVS.getDate(lastSubscriptionExpirationKey, transaction: transaction.asV2Read)
+        return subscriptionKVS.getDate(lastSubscriptionExpirationKey, transaction: transaction)
     }
 
     fileprivate static func setLastSubscriptionExpirationDate(_ expirationDate: Date?, transaction: SDSAnyWriteTransaction) {
         guard let expirationDate = expirationDate else {
-            subscriptionKVS.removeValue(forKey: lastSubscriptionExpirationKey, transaction: transaction.asV2Write)
+            subscriptionKVS.removeValue(forKey: lastSubscriptionExpirationKey, transaction: transaction)
             return
         }
 
-        subscriptionKVS.setDate(expirationDate, key: lastSubscriptionExpirationKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setDate(expirationDate, key: lastSubscriptionExpirationKey, transaction: transaction)
     }
 
     fileprivate static func setKnownUserSubscriptionBadgeIDs(badgeIDs: [String], transaction: SDSAnyWriteTransaction) {
-        subscriptionKVS.setObject(badgeIDs, key: knownUserSubscriptionBadgeIDsKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setObject(badgeIDs, key: knownUserSubscriptionBadgeIDsKey, transaction: transaction)
     }
 
     fileprivate static func knownUserSubscriptionBadgeIDs(transaction: SDSAnyReadTransaction) -> [String] {
-        return subscriptionKVS.getStringArray(knownUserSubscriptionBadgeIDsKey, transaction: transaction.asV2Read) ?? []
+        let ids = subscriptionKVS.getObject(forKey: knownUserSubscriptionBadgeIDsKey, transaction: transaction) as? [String]
+        return ids ?? []
     }
 
     fileprivate static func setKnownUserBoostBadgeIDs(badgeIDs: [String], transaction: SDSAnyWriteTransaction) {
-        subscriptionKVS.setObject(badgeIDs, key: knownUserBoostBadgeIDsKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setObject(badgeIDs, key: knownUserBoostBadgeIDsKey, transaction: transaction)
     }
 
     fileprivate static func knownUserBoostBadgeIDs(transaction: SDSAnyReadTransaction) -> [String] {
-        return subscriptionKVS.getStringArray(knownUserBoostBadgeIDsKey, transaction: transaction.asV2Read) ?? []
+        guard let ids = subscriptionKVS.getObject(forKey: knownUserBoostBadgeIDsKey, transaction: transaction) as? [String] else {
+            return []
+        }
+
+        return ids
     }
 
     fileprivate static func setKnownUserGiftBadgeIDs(badgeIDs: [String], transaction: SDSAnyWriteTransaction) {
-        subscriptionKVS.setObject(badgeIDs, key: knownUserGiftBadgeIDsKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setObject(badgeIDs, key: knownUserGiftBadgeIDsKey, transaction: transaction)
     }
 
     fileprivate static func knownUserGiftBadgeIDs(transaction: SDSAnyReadTransaction) -> [String] {
-        return subscriptionKVS.getStringArray(knownUserGiftBadgeIDsKey, transaction: transaction.asV2Read) ?? []
+        subscriptionKVS.getObject(forKey: knownUserGiftBadgeIDsKey, transaction: transaction) as? [String] ?? []
     }
 
     fileprivate static func setMostRecentlyExpiredBadgeID(badgeID: String?, transaction: SDSAnyWriteTransaction) {
         guard let badgeID = badgeID else {
-            subscriptionKVS.removeValue(forKey: mostRecentlyExpiredBadgeIDKey, transaction: transaction.asV2Write)
+            subscriptionKVS.removeValue(forKey: mostRecentlyExpiredBadgeIDKey, transaction: transaction)
             return
         }
 
-        subscriptionKVS.setString(badgeID, key: mostRecentlyExpiredBadgeIDKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setString(badgeID, key: mostRecentlyExpiredBadgeIDKey, transaction: transaction)
 
     }
 
     public static func mostRecentlyExpiredBadgeID(transaction: SDSAnyReadTransaction) -> String? {
-        subscriptionKVS.getString(mostRecentlyExpiredBadgeIDKey, transaction: transaction.asV2Read)
+        subscriptionKVS.getString(mostRecentlyExpiredBadgeIDKey, transaction: transaction)
     }
 
     public static func clearMostRecentlyExpiredBadgeIDWithSneakyTransaction() {
@@ -975,9 +1149,9 @@ extension DonationSubscriptionManager {
 
     fileprivate static func setMostRecentlyExpiredGiftBadgeID(badgeID: String?, transaction: SDSAnyWriteTransaction) {
         if let badgeID = badgeID {
-            subscriptionKVS.setString(badgeID, key: mostRecentlyExpiredGiftBadgeIDKey, transaction: transaction.asV2Write)
+            subscriptionKVS.setString(badgeID, key: mostRecentlyExpiredGiftBadgeIDKey, transaction: transaction)
         } else {
-            subscriptionKVS.removeValue(forKey: mostRecentlyExpiredGiftBadgeIDKey, transaction: transaction.asV2Write)
+            subscriptionKVS.removeValue(forKey: mostRecentlyExpiredGiftBadgeIDKey, transaction: transaction)
         }
         transaction.addAsyncCompletionOnMain {
             NotificationCenter.default.post(name: .hasExpiredGiftBadgeDidChangeNotification, object: nil)
@@ -985,7 +1159,7 @@ extension DonationSubscriptionManager {
     }
 
     public static func mostRecentlyExpiredGiftBadgeID(transaction: SDSAnyReadTransaction) -> String? {
-        subscriptionKVS.getString(mostRecentlyExpiredGiftBadgeIDKey, transaction: transaction.asV2Read)
+        subscriptionKVS.getString(mostRecentlyExpiredGiftBadgeIDKey, transaction: transaction)
     }
 
     public static func clearMostRecentlyExpiredGiftBadgeIDWithSneakyTransaction() {
@@ -996,22 +1170,22 @@ extension DonationSubscriptionManager {
 
     public static func setShowExpirySheetOnHomeScreenKey(show: Bool, transaction: SDSAnyWriteTransaction) {
         Logger.info("\(show)")
-        subscriptionKVS.setBool(show, key: showExpirySheetOnHomeScreenKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setBool(show, key: showExpirySheetOnHomeScreenKey, transaction: transaction)
     }
 
     public static func showExpirySheetOnHomeScreenKey(transaction: SDSAnyReadTransaction) -> Bool {
-        return subscriptionKVS.getBool(showExpirySheetOnHomeScreenKey, transaction: transaction.asV2Read) ?? false
+        return subscriptionKVS.getBool(showExpirySheetOnHomeScreenKey, transaction: transaction) ?? false
     }
 
     public static func setMostRecentSubscriptionPaymentMethod(
         paymentMethod: DonationPaymentMethod?,
         transaction: SDSAnyWriteTransaction
     ) {
-        subscriptionKVS.setString(paymentMethod?.rawValue, key: mostRecentSubscriptionPaymentMethodKey, transaction: transaction.asV2Write)
+        subscriptionKVS.setString(paymentMethod?.rawValue, key: mostRecentSubscriptionPaymentMethodKey, transaction: transaction)
     }
 
     public static func getMostRecentSubscriptionPaymentMethod(transaction: SDSAnyReadTransaction) -> DonationPaymentMethod? {
-        guard let paymentMethodString = subscriptionKVS.getString(mostRecentSubscriptionPaymentMethodKey, transaction: transaction.asV2Read) else {
+        guard let paymentMethodString = subscriptionKVS.getString(mostRecentSubscriptionPaymentMethodKey, transaction: transaction) else {
             return nil
         }
 
